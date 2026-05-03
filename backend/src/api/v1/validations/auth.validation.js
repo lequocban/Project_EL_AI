@@ -13,7 +13,7 @@ const registerSchema = z.object({
   userName: z.string().min(2, "Tên hiển thị phải có ít nhất 2 ký tự").max(50).trim().optional(),
   dayOfBirth: z
     .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "dayOfBirth phải có định dạng YYYY-MM-DD")
+    .regex(/^\d{2}\/\d{2}\/\d{4}$/, "dayOfBirth phải có định dạng DD/MM/YYYY")
     .optional(),
 });
 

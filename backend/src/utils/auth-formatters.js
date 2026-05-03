@@ -1,3 +1,5 @@
+const { toApiDate } = require("./date.utils");
+
 const formatUser = (user) => {
   if (!user) {
     return null;
@@ -17,7 +19,7 @@ const formatProfile = (profile) => {
   return {
     email: profile.email || null,
     userName: profile.user_name || null,
-    dayOfBirth: profile.day_of_birth || null,
+    dayOfBirth: toApiDate(profile.day_of_birth),
   };
 };
 
