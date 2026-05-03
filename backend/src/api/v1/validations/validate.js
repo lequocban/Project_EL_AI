@@ -4,8 +4,14 @@ const validateBody = (schema) => (req, res, next) => {
   const result = schema.safeParse(req.body);
 
   if (!result.success) {
-    const message = result.error.issues[0]?.message || "Invalid request body";
-    return next(new AppError(message, 400));
+    const errors = result.error.issues.map((issue) => ({
+      field: issue.path.join(".") || "body",
+      message: issue.message,
+    }));
+
+    const err = new AppError("Dữ liệu không hợp lệ", 400);
+    err.errors = errors;
+    return next(err);
   }
 
   req.body = result.data;

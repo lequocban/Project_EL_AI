@@ -14,10 +14,10 @@ const getProfileById = async (accessToken, userId) => {
     .single();
 
   if (error) {
-    if (error.code === "PGRST116") {
+    // PGRST116: Row not found — profile chưa được tạo (trigger chưa kịp chạy)
+    if (error.code === "PGRST116" || error.code === "PGRST301") {
       return null;
     }
-
     throw new AppError(error.message, 400);
   }
 
@@ -38,6 +38,9 @@ const updateProfile = async (accessToken, userId, updates) => {
     .single();
 
   if (error) {
+    if (error.code === "PGRST116") {
+      return null;
+    }
     throw new AppError(error.message, 400);
   }
 

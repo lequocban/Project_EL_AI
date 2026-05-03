@@ -15,6 +15,7 @@ const formatProfile = (profile) => {
   }
 
   return {
+    email: profile.email || null,
     userName: profile.user_name || null,
     dayOfBirth: profile.day_of_birth || null,
   };
@@ -25,10 +26,14 @@ const formatSession = (session) => {
     return null;
   }
 
+  const now = Math.floor(Date.now() / 1000);
+  const expiresIn = session.expires_at ? session.expires_at - now : null;
+
   return {
     accessToken: session.access_token,
     refreshToken: session.refresh_token,
     expiresAt: session.expires_at,
+    expiresIn: expiresIn,
     tokenType: session.token_type,
   };
 };
@@ -47,3 +52,4 @@ module.exports = {
   formatSession,
   formatRoleIds,
 };
+
