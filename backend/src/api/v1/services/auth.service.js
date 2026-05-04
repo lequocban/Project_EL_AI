@@ -85,10 +85,24 @@ const refreshToken = async (refreshTokenValue) => {
   };
 };
 
+const changePassword = async ({ userId, email, currentPassword, newPassword }) => {
+  const { error } = await authModel.signInWithPassword({
+    email,
+    password: currentPassword,
+  });
+
+  if (error) {
+    throw new AppError("Mật khẩu hiện tại không chính xác", 400);
+  }
+
+  await authModel.updateUserPasswordById(userId, newPassword);
+};
+
 module.exports = {
   register,
   login,
   logout,
   refreshToken,
+  changePassword,
 };
 

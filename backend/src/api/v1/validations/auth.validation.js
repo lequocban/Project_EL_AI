@@ -25,7 +25,49 @@ const loginSchema = z.object({
   password: z.string().min(1, "Vui lòng nhập mật khẩu"),
 });
 
+const requestOtpSchema = z.object({
+  email: z
+    .string()
+    .email("Email không hợp lệ")
+    .transform((val) => val.toLowerCase().trim()),
+});
+
+const resetPasswordSchema = z.object({
+  email: z
+    .string()
+    .email("Email không hợp lệ")
+    .transform((val) => val.toLowerCase().trim()),
+  otp: z
+    .string()
+    .length(6, "Mã OTP phải có 6 chữ số")
+    .regex(/^\d{6}$/, "Mã OTP phải là 6 chữ số"),
+  newPassword: z
+    .string()
+    .min(8, "Mật khẩu mới phải có ít nhất 8 ký tự")
+    .regex(/[A-Z]/, "Mật khẩu mới phải có ít nhất 1 chữ hoa")
+    .regex(/[0-9]/, "Mật khẩu mới phải có ít nhất 1 chữ số"),
+});
+
+const requestPasswordResetSchema = z.object({
+  email: z
+    .string()
+    .email("Email không hợp lệ")
+    .transform((val) => val.toLowerCase().trim()),
+});
+
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Vui lòng nhập mật khẩu hiện tại"),
+  newPassword: z
+    .string()
+    .min(8, "Mật khẩu mới phải có ít nhất 8 ký tự")
+    .regex(/[A-Z]/, "Mật khẩu mới phải có ít nhất 1 chữ hoa")
+    .regex(/[0-9]/, "Mật khẩu mới phải có ít nhất 1 chữ số"),
+});
+
 module.exports = {
   registerSchema,
   loginSchema,
+  requestOtpSchema,
+  resetPasswordSchema,
+  changePasswordSchema,
 };

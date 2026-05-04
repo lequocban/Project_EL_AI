@@ -1,7 +1,7 @@
 const express = require("express");
 const helmet = require("helmet");
 const cors = require("cors");
-const v1Routes = require("./api/v1/routes");
+const v1Routes = require("./api/v1/routes/index");
 const { errorHandler } = require("./utils/errorHandler");
 
 const app = express();
