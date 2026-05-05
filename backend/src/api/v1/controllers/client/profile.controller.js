@@ -1,5 +1,5 @@
-const profileService = require("../services/profile.service");
-const { success } = require("../../../utils/responseHandler");
+const profileService = require("../../services/profile.service");
+const { success } = require("../../../../utils/responseHandler");
 
 /**
  * GET /api/v1/profile/me
@@ -15,7 +15,7 @@ const getMe = async (req, res, next) => {
 };
 
 /**
- * PUT /api/v1/profile/me
+ * PATCH /api/v1/profile/me
  * Cập nhật thông tin hồ sơ cá nhân (trừ mật khẩu và email).
  */
 const updateMe = async (req, res, next) => {

@@ -1,5 +1,5 @@
-const vocabularyService = require("../services/vocabulary.service");
-const { success } = require("../../../utils/responseHandler");
+const vocabularyService = require("../../services/vocabulary.service");
+const { success } = require("../../../../utils/responseHandler");
 
 /**
  * POST /api/v1/vocabulary/lookup

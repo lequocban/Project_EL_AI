@@ -1,8 +1,8 @@
 const router = require("express").Router();
-const authRoutes = require("./auth.routes");
-const profileRoutes = require("./profile.routes");
-const vocabularyRoutes = require("./vocabulary.routes");
-const vocabularySetRoutes = require("./vocabularySet.routes");
+const authRoutes = require("./client/auth.routes");
+const profileRoutes = require("./client/profile.routes");
+const vocabularyRoutes = require("./client/vocabulary.routes");
+const vocabularySetRoutes = require("./client/vocabularySet.routes");
 
 router.get("/health", (req, res) => {
   res.json({ status: "ok" });

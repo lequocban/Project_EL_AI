@@ -1,6 +1,6 @@
-const authService = require("../services/auth.service");
-const otpService = require("../services/otp.service");
-const { success } = require("../../../utils/responseHandler");
+const authService = require("../../services/auth.service");
+const otpService = require("../../services/otp.service");
+const { success } = require("../../../../utils/responseHandler");
 
 const register = async (req, res, next) => {
   try {
@@ -61,7 +61,7 @@ const resetPassword = async (req, res, next) => {
 const changePassword = async (req, res, next) => {
   try {
     const { currentPassword, newPassword } = req.body;
-    const result = await authService.changePassword({
+    await authService.changePassword({
       userId: req.user.id,
       email: req.user.email,
       currentPassword,
@@ -82,4 +82,3 @@ module.exports = {
   resetPassword,
   changePassword,
 };
-
