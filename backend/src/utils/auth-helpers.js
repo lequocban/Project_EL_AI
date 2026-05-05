@@ -1,6 +1,6 @@
 const { AppError } = require("./appError");
-const profileModel = require("../api/v1/models/profile.model");
-const roleModel = require("../api/v1/models/role.model");
+const profileModel = require("../api/v1/repositories/profile.model");
+const roleModel = require("../api/v1/repositories/role.model");
 const {
   formatUser,
   formatProfile,

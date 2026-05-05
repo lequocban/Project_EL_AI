@@ -1,4 +1,4 @@
-const vocabularyModel = require("../models/vocabulary.model");
+const vocabularyModel = require("../repositories/vocabulary.model");
 const { AppError } = require("../../../utils/appError");
 
 /**
@@ -95,17 +95,18 @@ const formatVocabulary = (vocabulary) => {
  * 2. Nếu chưa có, gọi Dictionary API + Translate API
  * 3. Lưu vào DB và trả về
  *
+ * @param {string} accessToken
  * @param {string} word
  * @returns {Promise<Object>}
  */
-const lookupWord = async (word) => {
+const lookupWord = async (accessToken, word) => {
   const normalizedWord = word.toLowerCase().trim();
 
   if (!normalizedWord) {
     throw new AppError("Vui lòng nhập từ cần tra", 400);
   }
 
-  const existing = await vocabularyModel.findByWord(normalizedWord);
+  const existing = await vocabularyModel.findByWord(accessToken, normalizedWord);
 
   if (existing) {
     return formatVocabulary(existing);
@@ -116,7 +117,7 @@ const lookupWord = async (word) => {
     fetchMeaning(normalizedWord),
   ]);
 
-  const vocabulary = await vocabularyModel.create({
+  const vocabulary = await vocabularyModel.create(accessToken, {
     word: normalizedWord,
     phonetic: dictionaryData.phonetic,
     audioUrl: dictionaryData.audioUrl,

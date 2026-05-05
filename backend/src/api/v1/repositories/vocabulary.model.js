@@ -1,15 +1,17 @@
-const { supabase } = require("../../../config/supabase");
+const { createAuthedClient } = require("../../../config/supabase");
 const { AppError } = require("../../../utils/appError");
 
 /**
  * Tìm từ vựng theo word.
+ * @param {string} accessToken
  * @param {string} word
  * @returns {Promise<Object|null>}
  */
-const findByWord = async (word) => {
+const findByWord = async (accessToken, word) => {
   const normalizedWord = word.toLowerCase().trim();
+  const client = createAuthedClient(accessToken);
 
-  const { data, error } = await supabase
+  const { data, error } = await client
     .from("words")
     .select("*")
     .ilike("word", normalizedWord)
@@ -27,6 +29,7 @@ const findByWord = async (word) => {
 
 /**
  * Tạo mới một từ vựng.
+ * @param {string} accessToken
  * @param {Object} vocabulary
  * @param {string} vocabulary.word
  * @param {string} vocabulary.phonetic
@@ -34,10 +37,11 @@ const findByWord = async (word) => {
  * @param {string} vocabulary.meaning
  * @returns {Promise<Object>}
  */
-const create = async ({ word, phonetic, audioUrl, meaning }) => {
+const create = async (accessToken, { word, phonetic, audioUrl, meaning }) => {
   const normalizedWord = word.toLowerCase().trim();
+  const client = createAuthedClient(accessToken);
 
-  const { data, error } = await supabase
+  const { data, error } = await client
     .from("words")
     .insert({
       word: normalizedWord,

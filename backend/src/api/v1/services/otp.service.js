@@ -1,7 +1,7 @@
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
-const otpModel = require("../models/otp.model");
-const authModel = require("../models/auth.model");
+const otpModel = require("../repositories/otp.model");
+const authModel = require("../repositories/auth.model");
 const { sendMail } = require("../../../utils/sendMail");
 const { AppError } = require("../../../utils/appError");
 const env = require("../../../config/env.config");

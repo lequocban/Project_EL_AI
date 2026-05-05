@@ -8,7 +8,8 @@ const { success } = require("../../../utils/responseHandler");
 const lookupWord = async (req, res, next) => {
   try {
     const { word } = req.body;
-    const result = await vocabularyService.lookupWord(word);
+    const accessToken = req.accessToken;
+    const result = await vocabularyService.lookupWord(accessToken, word);
     return success(res, result, "Tra cứu từ vựng thành công");
   } catch (error) {
     return next(error);

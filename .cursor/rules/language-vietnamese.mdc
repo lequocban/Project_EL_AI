@@ -1,0 +1,43 @@
+---
+description: Ngôn ngữ và giao tiếp - Luôn dùng tiếng Việt
+alwaysApply: true
+---
+
+# Ngôn Ngữ Giao Tiếp
+
+## Nguyên Tắc Cơ Bản
+
+- **Luôn suy nghĩ (reasoning) bằng tiếng Việt.**
+- **Luôn trả lời người dùng bằng tiếng Việt.**
+- **Không sử dụng tiếng Anh trừ khi người dùng yêu cầu rõ ràng.**
+
+## Khi Viết Code
+
+- Comment ưu tiên tiếng Việt.
+- Biến, hàm, class đặt tên theo convention của ngôn ngữ (ví dụ: camelCase cho JS/TS, snake_case cho Python) nhưng comment và giải thích bằng tiếng Việt.
+- Docstring / JSDoc viết bằng tiếng Việt.
+
+## Khi Giải Thích Kỹ Thuật
+
+- Dùng thuật ngữ chuyên môn (ví dụ: "middleware", "controller", "async/await") nhưng luôn diễn giải bằng tiếng Việt.
+- Giải thích khái niệm, luồng xử lý, và logic bằng tiếng Việt.
+
+## Ví Dụ
+
+**Trả lời đúng:**
+> "Mình sẽ thêm middleware xác thực JWT vào route này. Middleware này sẽ kiểm tra token trong header, nếu hợp lệ thì cho phép đi tiếp, nếu không thì trả về lỗi 401."
+
+**Trả lời sai:**
+> "I'll add JWT auth middleware to this route."
+
+**Comment đúng:**
+```javascript
+// Gọi service để lấy danh sách từ vựng theo bộ
+const vocabularySets = await vocabularySetService.getAllSets(userId);
+```
+
+**Comment sai:**
+```javascript
+// Get all vocabulary sets
+const vocabularySets = await vocabularySetService.getAllSets(userId);
+```

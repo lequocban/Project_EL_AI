@@ -1,4 +1,4 @@
-const profileModel = require("../models/profile.model");
+const profileModel = require("../repositories/profile.model");
 const { AppError } = require("../../../utils/appError");
 const { formatProfile } = require("../../../utils/auth-formatters");
 const { toDbDate } = require("../../../utils/date.utils");

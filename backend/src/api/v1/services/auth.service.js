@@ -1,5 +1,5 @@
-const authModel = require("../models/auth.model");
-const profileModel = require("../models/profile.model");
+const authModel = require("../repositories/auth.model");
+const profileModel = require("../repositories/profile.model");
 const { AppError } = require("../../../utils/appError");
 const { formatSession } = require("../../../utils/auth-formatters");
 const { mapAuthError, buildAuthResponse } = require("../../../utils/auth-helpers");

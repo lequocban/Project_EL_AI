@@ -3,6 +3,7 @@ const helmet = require("helmet");
 const cors = require("cors");
 const v1Routes = require("./api/v1/routes/index");
 const { errorHandler } = require("./utils/errorHandler");
+const { verifyToken } = require("./api/v1/middlewares/auth.middleware");
 
 const app = express();
 
@@ -15,6 +16,9 @@ app.use(cors());
 // Parse request body
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Verify token cho tất cả API (để có thể dùng req.user, req.accessToken)
+app.use(verifyToken);
 
 // API routes
 app.use("/api/v1", v1Routes);
