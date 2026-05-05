@@ -40,8 +40,11 @@ const AuthenticatedApp = () => {
 
   return (
     <Routes>
+      <Route path="/" element={<Landing />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+
       <Route element={<Layout />}>
-        <Route path="/" element={<Landing />} />
         <Route path="/home" element={<Home />} />
         <Route path="/vocabulary" element={<Vocabulary />} />
         <Route path="/grammar" element={<Grammar />} />
@@ -50,10 +53,9 @@ const AuthenticatedApp = () => {
         <Route path="/toeic" element={<Toeic />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/profile" element={<Profile />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="*" element={<PageNotFound />} />
       </Route>
+
+      <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
 };

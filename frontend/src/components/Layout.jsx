@@ -15,7 +15,7 @@ import { useState } from "react";
 
 const navItems = [
   {
-    path: "/",
+    path: "/home",
     label: "Trang chủ",
     icon: Home,
     activeClass: "from-violet-500 to-indigo-500",
@@ -73,7 +73,7 @@ export default function Layout() {
       {/* Sidebar Desktop */}
       <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-border fixed h-full z-20">
         <div className="p-6">
-          <Link to="/" className="flex items-center gap-2">
+          <Link to="/home" className="flex items-center gap-2">
             <div className="w-9 h-9 gradient-primary rounded-xl flex items-center justify-center">
               <Zap className="w-5 h-5 text-white" />
             </div>
@@ -86,8 +86,7 @@ export default function Layout() {
           <div className="space-y-1">
             {navItems.map(({ path, label, icon: Icon, activeClass }) => {
               const active =
-                location.pathname === path ||
-                (path !== "/" && location.pathname.startsWith(path));
+                location.pathname === path || location.pathname.startsWith(`${path}/`);
               return (
                 <Link
                   key={path}
@@ -109,7 +108,7 @@ export default function Layout() {
 
       {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-white border-b border-border px-4 py-3 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2">
+        <Link to="/home" className="flex items-center gap-2">
           <div className="w-8 h-8 gradient-primary rounded-xl flex items-center justify-center">
             <Zap className="w-4 h-4 text-white" />
           </div>
@@ -138,7 +137,8 @@ export default function Layout() {
             onClick={(e) => e.stopPropagation()}
           >
             {navItems.map(({ path, label, icon: Icon, activeClass }) => {
-              const active = location.pathname === path;
+              const active =
+                location.pathname === path || location.pathname.startsWith(`${path}/`);
               return (
                 <Link
                   key={path}
