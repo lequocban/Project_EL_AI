@@ -91,4 +91,91 @@ const softDelete = async (id) => {
   return data;
 };
 
-module.exports = { create, update, softDelete };
+/**
+ * Lấy danh sách bộ từ vựng của một user (đã xóa mềm thì không lấy).
+ * @param {string} userId
+ * @param {Object} options
+ * @param {string} options.keyword - Từ khóa tìm kiếm theo title
+ * @param {number} options.page - Trang (bắt đầu từ 1)
+ * @param {number} options.limit - Số item mỗi trang (max 15)
+ * @returns {Promise<{data: Array, total: number}>}
+ */
+const getMySets = async (userId, { keyword, page = 1, limit = 15 }) => {
+  const safeLimit = Math.min(Math.max(1, limit), 15);
+  const from = (page - 1) * safeLimit;
+  const to = from + safeLimit - 1;
+
+  let query = supabase
+    .from("vocabulary_sets")
+    .select("id, title, description", { count: "exact" })
+    .eq("created_by", userId)
+    .eq("deleted", false)
+    .order("created_at", { ascending: false })
+    .range(from, to);
+
+  if (keyword && keyword.trim()) {
+    query = query.ilike("title", `%${keyword.trim()}%`);
+  }
+
+  const { data, error, count } = await query;
+
+  if (error) {
+    throw new AppError(error.message, 500);
+  }
+
+  return { data: data || [], total: count || 0 };
+};
+
+/**
+ * Lấy danh sách bộ từ vựng public (đã xóa mềm thì không lấy).
+ * @param {Object} options
+ * @param {string} options.keyword - Từ khóa tìm kiếm theo title
+ * @param {number} options.page - Trang (bắt đầu từ 1)
+ * @param {number} options.limit - Số item mỗi trang (max 15)
+ * @returns {Promise<{data: Array, total: number}>}
+ */
+const getPublicSets = async ({ keyword, page = 1, limit = 15 }) => {
+  const safeLimit = Math.min(Math.max(1, limit), 15);
+  const from = (page - 1) * safeLimit;
+  const to = from + safeLimit - 1;
+
+  let query = supabase
+    .from("vocabulary_sets")
+    .select("id, title, description", { count: "exact" })
+    .eq("status", "public")
+    .eq("deleted", false)
+    .order("created_at", { ascending: false })
+    .range(from, to);
+
+  if (keyword && keyword.trim()) {
+    query = query.ilike("title", `%${keyword.trim()}%`);
+  }
+
+  const { data, error, count } = await query;
+
+  if (error) {
+    throw new AppError(error.message, 500);
+  }
+
+  return { data: data || [], total: count || 0 };
+};
+
+/**
+ * Đếm số từ trong một bộ từ vựng.
+ * @param {string} setId
+ * @returns {Promise<number>}
+ */
+const countWordsInSet = async (setId) => {
+  const { count, error } = await supabase
+    .from("vocabulary_set_words")
+    .select("*", { count: "exact", head: true })
+    .eq("vocabulary_id", setId);
+
+  if (error) {
+    throw new AppError(error.message, 500);
+  }
+
+  return count || 0;
+};
+
+module.exports = { create, update, softDelete, getMySets, getPublicSets, countWordsInSet };

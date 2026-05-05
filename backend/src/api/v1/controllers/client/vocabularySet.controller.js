@@ -2,6 +2,15 @@ const vocabularySetService = require("../../services/vocabularySet.service");
 const { success } = require("../../../../utils/responseHandler");
 
 /**
+ * Parse pagination query params.
+ */
+const parsePagination = (query) => {
+  const page = Math.max(1, parseInt(query.page, 10) || 1);
+  const limit = Math.min(15, Math.max(1, parseInt(query.limit, 10) || 15));
+  return { page, limit };
+};
+
+/**
  * POST /api/v1/vocabulary-sets
  * Tạo mới một bộ từ vựng.
  */
@@ -55,6 +64,42 @@ const deleteVocabularySet = async (req, res, next) => {
 
     return success(res, result, "Xóa bộ từ vựng thành công");
   } catch (error) {
+    console.error("[VocabularySet] deleteVocabularySet error:", error);
+    return next(error);
+  }
+};
+
+/**
+ * GET /api/v1/vocabulary-sets/my
+ * Lấy danh sách bộ từ vựng do user tạo ra (có phân trang, tìm kiếm).
+ */
+const getMyVocabularySets = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { page, limit } = parsePagination(req.query);
+    const keyword = req.query.keyword || "";
+
+    const result = await vocabularySetService.getMySets(userId, { keyword, page, limit });
+
+    return success(res, result, "Lấy danh sách bộ từ vựng thành công");
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * GET /api/v1/vocabulary-sets/public
+ * Lấy danh sách bộ từ vựng public (có phân trang, tìm kiếm).
+ */
+const getPublicVocabularySets = async (req, res, next) => {
+  try {
+    const { page, limit } = parsePagination(req.query);
+    const keyword = req.query.keyword || "";
+
+    const result = await vocabularySetService.getPublicSets({ keyword, page, limit });
+
+    return success(res, result, "Lấy danh sách bộ từ vựng public thành công");
+  } catch (error) {
     return next(error);
   }
 };
@@ -63,4 +108,6 @@ module.exports = {
   createVocabularySet,
   updateVocabularySet,
   deleteVocabularySet,
+  getMyVocabularySets,
+  getPublicVocabularySets,
 };

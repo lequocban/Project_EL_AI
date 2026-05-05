@@ -30,4 +30,20 @@ router.delete(
   vocabularySetController.deleteVocabularySet
 );
 
+// GET /api/v1/vocabulary-sets/my — Danh sách bộ từ vựng của user (phân trang, tìm kiếm)
+router.get(
+  "/my",
+  verifyToken,
+  requireAuth,
+  vocabularySetController.getMyVocabularySets
+);
+
+// GET /api/v1/vocabulary-sets/public — Danh sách bộ từ vựng public (phân trang, tìm kiếm)
+router.get(
+  "/public",
+  verifyToken,
+  requireAuth,
+  vocabularySetController.getPublicVocabularySets
+);
+
 module.exports = router;

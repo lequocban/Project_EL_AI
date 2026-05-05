@@ -20,6 +20,21 @@ const formatVocabularySet = (vocabularySet) => {
 };
 
 /**
+ * Format response danh sách bộ từ vựng (có số từ).
+ * @param {Object} item
+ * @param {number} wordCount
+ * @returns {Object}
+ */
+const formatListItem = (item, wordCount) => {
+  return {
+    id: item.id,
+    title: item.title,
+    description: item.description,
+    wordCount,
+  };
+};
+
+/**
  * Tạo vocabulary set mới.
  * @param {Object} params
  * @param {string} params.title
@@ -94,9 +109,77 @@ const softDeleteVocabularySet = async (id) => {
   return formatVocabularySet(vocabularySet);
 };
 
+/**
+ * Lấy danh sách bộ từ vựng của user (có phân trang, tìm kiếm, số từ trong bộ).
+ * @param {string} userId
+ * @param {Object} options
+ * @param {string} options.keyword
+ * @param {number} options.page
+ * @param {number} options.limit
+ * @returns {Promise<Object>}
+ */
+const getMySets = async (userId, { keyword, page = 1, limit = 15 }) => {
+  const { data, total } = await vocabularySetModel.getMySets(userId, { keyword, page, limit });
+
+  const items = await Promise.all(
+    data.map(async (item) => {
+      const wordCount = await vocabularySetModel.countWordsInSet(item.id);
+      return formatListItem(item, wordCount);
+    })
+  );
+
+  const safeLimit = Math.min(Math.max(1, limit), 15);
+  const totalPages = Math.ceil(total / safeLimit);
+
+  return {
+    items,
+    pagination: {
+      page,
+      limit: safeLimit,
+      total,
+      totalPages,
+    },
+  };
+};
+
+/**
+ * Lấy danh sách bộ từ vựng public (có phân trang, tìm kiếm, số từ trong bộ).
+ * @param {Object} options
+ * @param {string} options.keyword
+ * @param {number} options.page
+ * @param {number} options.limit
+ * @returns {Promise<Object>}
+ */
+const getPublicSets = async ({ keyword, page = 1, limit = 15 }) => {
+  const { data, total } = await vocabularySetModel.getPublicSets({ keyword, page, limit });
+
+  const items = await Promise.all(
+    data.map(async (item) => {
+      const wordCount = await vocabularySetModel.countWordsInSet(item.id);
+      return formatListItem(item, wordCount);
+    })
+  );
+
+  const safeLimit = Math.min(Math.max(1, limit), 15);
+  const totalPages = Math.ceil(total / safeLimit);
+
+  return {
+    items,
+    pagination: {
+      page,
+      limit: safeLimit,
+      total,
+      totalPages,
+    },
+  };
+};
+
 module.exports = {
   createVocabularySet,
   updateVocabularySet,
   softDeleteVocabularySet,
   formatVocabularySet,
+  formatListItem,
+  getMySets,
+  getPublicSets,
 };

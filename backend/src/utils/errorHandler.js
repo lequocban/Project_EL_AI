@@ -4,11 +4,12 @@ const errorHandler = (err, req, res, next) => {
   const status = err.statusCode || err.status || 500;
   const isProduction = env.nodeEnv === "production";
 
-  // Trong production: ẩn message của lỗi 500 để tránh leak thông tin nội bộ
-  const message =
-    status === 500 && isProduction
-      ? "Đã xảy ra lỗi hệ thống, vui lòng thử lại sau"
-      : err.message || "Internal Server Error";
+  let message = err.message;
+  if (!message || message.trim() === "") {
+    message = "Internal Server Error";
+  } else if (status === 500 && isProduction) {
+    message = "Đã xảy ra lỗi hệ thống, vui lòng thử lại sau";
+  }
 
   const response = {
     code: status,
@@ -16,7 +17,6 @@ const errorHandler = (err, req, res, next) => {
     message,
   };
 
-  // Đính kèm danh sách lỗi validation nếu có (từ validate.js)
   if (err.errors && Array.isArray(err.errors)) {
     response.errors = err.errors;
   }
