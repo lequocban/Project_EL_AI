@@ -64,7 +64,24 @@ const deleteVocabularySet = async (req, res, next) => {
 
     return success(res, result, "Xóa bộ từ vựng thành công");
   } catch (error) {
-    console.error("[VocabularySet] deleteVocabularySet error:", error);
+    return next(error);
+  }
+};
+
+/**
+ * POST /api/v1/vocabulary-sets/:id/words
+ * Thêm nhiều từ vào bộ từ vựng.
+ */
+const addWords = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { words } = req.body;
+    const userId = req.user.id;
+
+    const result = await vocabularySetService.addWordsToSet(id, userId, words);
+
+    return success(res, result, "Thêm từ vào bộ từ vựng thành công", 201);
+  } catch (error) {
     return next(error);
   }
 };
@@ -104,10 +121,29 @@ const getPublicVocabularySets = async (req, res, next) => {
   }
 };
 
+/**
+ * GET /api/v1/vocabulary-sets/:id
+ * Lấy chi tiết bộ từ vựng kèm danh sách từ vựng.
+ */
+const getDetail = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const result = await vocabularySetService.getDetail(id, userId);
+
+    return success(res, result, "Lấy chi tiết bộ từ vựng thành công");
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   createVocabularySet,
   updateVocabularySet,
   deleteVocabularySet,
+  addWords,
   getMyVocabularySets,
   getPublicVocabularySets,
+  getDetail,
 };

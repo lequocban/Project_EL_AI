@@ -1,4 +1,5 @@
 const vocabularySetModel = require("../repositories/vocabularySet.model");
+const vocabularyService = require("./vocabulary.service");
 const { AppError } = require("../../../utils/appError");
 
 /**
@@ -174,6 +175,109 @@ const getPublicSets = async ({ keyword, page = 1, limit = 15 }) => {
   };
 };
 
+/**
+ * Thêm nhiều từ vào một bộ từ vựng.
+ * - Kiểm tra bộ từ vựng có tồn tại và thuộc về user không
+ * - Với mỗi từ: nếu chưa có trong DB → gọi API lookup → lưu vào DB
+ * - Sau đó lưu các word_id vào bảng vocabulary_set_words
+ *
+ * @param {string} setId - ID của bộ từ vựng
+ * @param {string} userId - ID của user (để kiểm tra quyền sở hữu)
+ * @param {Array<string>} words - Mảng từ tiếng Anh cần thêm
+ * @returns {Promise<Object>}
+ */
+const addWordsToSet = async (setId, userId, words) => {
+  if (!words || words.length === 0) {
+    throw new AppError("Vui lòng gửi danh sách từ vựng", 400);
+  }
+
+  const uniqueWords = [...new Set(words.map((w) => w.toLowerCase().trim()).filter(Boolean))];
+
+  if (uniqueWords.length === 0) {
+    throw new AppError("Danh sách từ vựng không hợp lệ", 400);
+  }
+
+  if (uniqueWords.length > 100) {
+    throw new AppError("Số từ vựng không được vượt quá 100 từ mỗi lần thêm", 400);
+  }
+
+  const vocabularySet = await vocabularySetModel.findById(setId);
+
+  if (!vocabularySet) {
+    throw new AppError("Không tìm thấy bộ từ vựng", 404);
+  }
+
+  if (vocabularySet.created_by !== userId) {
+    throw new AppError("Bạn không có quyền thêm từ vào bộ từ vựng này", 403);
+  }
+
+  const wordIds = [];
+
+  for (const wordText of uniqueWords) {
+    const existingWord = await vocabularySetModel.findWordByText(wordText);
+
+    if (existingWord) {
+      wordIds.push(existingWord.id);
+    } else {
+      const [dictionaryData, meaning] = await Promise.all([
+        vocabularyService.fetchDictionaryData(wordText),
+        vocabularyService.fetchMeaning(wordText),
+      ]);
+
+      const newWord = await vocabularySetModel.createWord({
+        word: wordText,
+        phonetic: dictionaryData.phonetic,
+        audioUrl: dictionaryData.audioUrl,
+        meaning,
+      });
+
+      wordIds.push(newWord.id);
+    }
+  }
+
+  await vocabularySetModel.addWordsToSet(setId, wordIds);
+
+  const totalWords = await vocabularySetModel.countWordsInSet(setId);
+
+  return {
+    setId,
+    addedCount: wordIds.length,
+    totalWords,
+  };
+};
+
+/**
+ * Lấy chi tiết một bộ từ vựng kèm danh sách từ vựng bên trong.
+ * @param {string} setId
+ * @param {string} userId - để kiểm tra bộ private có thuộc về user không
+ * @returns {Promise<Object>}
+ */
+const getDetail = async (setId, userId) => {
+  const vocabularySet = await vocabularySetModel.findById(setId);
+
+  if (!vocabularySet) {
+    throw new AppError("Không tìm thấy bộ từ vựng", 404);
+  }
+
+  if (vocabularySet.status === "private" && vocabularySet.created_by !== userId) {
+    throw new AppError("Bạn không có quyền xem bộ từ vựng này", 403);
+  }
+
+  const words = await vocabularySetModel.getWordsInSet(setId);
+
+  return {
+    id: vocabularySet.id,
+    title: vocabularySet.title,
+    description: vocabularySet.description,
+    status: vocabularySet.status,
+    createdBy: vocabularySet.created_by,
+    createdAt: vocabularySet.created_at,
+    updatedAt: vocabularySet.updated_at,
+    wordCount: words.length,
+    words,
+  };
+};
+
 module.exports = {
   createVocabularySet,
   updateVocabularySet,
@@ -182,4 +286,6 @@ module.exports = {
   formatListItem,
   getMySets,
   getPublicSets,
+  addWordsToSet,
+  getDetail,
 };

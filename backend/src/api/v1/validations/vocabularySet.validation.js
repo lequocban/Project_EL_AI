@@ -34,7 +34,18 @@ const updateVocabularySetSchema = z.object({
   status: z.enum(["private", "public"]).optional(),
 });
 
+/**
+ * Schema validate body cho POST /api/v1/vocabulary-sets/:id/words
+ */
+const addWordsSchema = z.object({
+  words: z
+    .array(z.string().min(1, "Từ không được rỗng").trim())
+    .min(1, "Vui lòng gửi danh sách từ vựng")
+    .max(100, "Số từ vựng không được vượt quá 100 từ mỗi lần thêm"),
+});
+
 module.exports = {
   createVocabularySetSchema,
   updateVocabularySetSchema,
+  addWordsSchema,
 };
