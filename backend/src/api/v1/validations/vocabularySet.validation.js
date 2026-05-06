@@ -31,7 +31,6 @@ const updateVocabularySetSchema = z.object({
     .max(1000, "Mô tả không được dài quá 1000 ký tự")
     .optional()
     .transform((val) => val?.trim()),
-  status: z.enum(["private", "public"]).optional(),
 });
 
 /**

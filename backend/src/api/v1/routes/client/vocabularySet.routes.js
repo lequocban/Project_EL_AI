@@ -75,6 +75,14 @@ router.post(
   vocabularySetController.addWords
 );
 
+// POST /api/v1/vocabulary-sets/:id/request-public — Yêu cầu public bộ từ vựng
+router.post(
+  "/:id/request-public",
+  verifyToken,
+  requireAuth,
+  vocabularySetController.requestPublic
+);
+
 // DELETE /api/v1/vocabulary-sets/:id/words/remove — Xóa một hoặc nhiều từ khỏi bộ từ vựng
 router.delete(
   "/:id/words/remove",

@@ -38,12 +38,11 @@ const createVocabularySet = async (req, res, next) => {
 const updateVocabularySet = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { title, description, status } = req.body;
+    const { title, description } = req.body;
 
     const result = await vocabularySetService.updateVocabularySet(id, {
       title,
       description,
-      status,
     });
 
     return success(res, result, "Cập nhật bộ từ vựng thành công");
@@ -179,6 +178,23 @@ const removeWords = async (req, res, next) => {
   }
 };
 
+/**
+ * POST /api/v1/vocabulary-sets/:id/request-public
+ * Yêu cầu public một bộ từ vựng (chuyển status thành req_public).
+ */
+const requestPublic = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const result = await vocabularySetService.requestPublic(id, userId);
+
+    return success(res, result, "Yêu cầu public bộ từ vựng thành công");
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   createVocabularySet,
   updateVocabularySet,
@@ -189,4 +205,5 @@ module.exports = {
   getDetail,
   generateWords,
   removeWords,
+  requestPublic,
 };

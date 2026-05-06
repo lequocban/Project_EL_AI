@@ -334,8 +334,68 @@ const removeWordsFromSet = async (setId, wordIds) => {
   }
 };
 
+/**
+ * Cập nhật trạng thái vocabulary set.
+ * @param {string} id
+ * @param {string} status
+ * @returns {Promise<Object>}
+ */
+const updateStatus = async (id, status) => {
+  const { data, error } = await supabase
+    .from("vocabulary_sets")
+    .update({ status })
+    .eq("id", id)
+    .select("*")
+    .maybeSingle();
+
+  if (error) {
+    throw new AppError(error.message, 500);
+  }
+
+  if (!data) {
+    throw new AppError("Không tìm thấy bộ từ vựng", 404);
+  }
+
+  return data;
+};
+
+/**
+ * Lấy danh sách bộ từ vựng đang chờ duyệt public (status = 'req_public').
+ * Dùng cho admin/content_manager duyệt yêu cầu.
+ * @param {Object} options
+ * @param {string} options.keyword - Từ khóa tìm kiếm theo title
+ * @param {number} options.page - Trang (bắt đầu từ 1)
+ * @param {number} options.limit - Số item mỗi trang (max 15)
+ * @returns {Promise<{data: Array, total: number}>}
+ */
+const getPendingPublicSets = async ({ keyword, page = 1, limit = 15 }) => {
+  const safeLimit = Math.min(Math.max(1, limit), 15);
+  const from = (page - 1) * safeLimit;
+  const to = from + safeLimit - 1;
+
+  let query = supabase
+    .from("vocabulary_sets")
+    .select("id, title, description, status, created_by, created_at", { count: "exact" })
+    .eq("status", "req_public")
+    .eq("deleted", false)
+    .order("created_at", { ascending: false })
+    .range(from, to);
+
+  if (keyword && keyword.trim()) {
+    query = query.ilike("title", `%${keyword.trim()}%`);
+  }
+
+  const { data, error, count } = await query;
+
+  if (error) {
+    throw new AppError(error.message, 500);
+  }
+
+  return { data: data || [], total: count || 0 };
+};
+
 module.exports = {
   create, update, softDelete, getMySets, getPublicSets, countWordsInSet,
   findWordByText, createWord, addWordsToSet, findById, getWordsInSet,
-  removeWordsFromSet,
+  removeWordsFromSet, updateStatus, getPendingPublicSets,
 };

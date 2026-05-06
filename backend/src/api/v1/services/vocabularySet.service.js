@@ -69,11 +69,9 @@ const createVocabularySet = async ({ title, description, createdBy }) => {
  * @param {Object} params
  * @param {string} params.title
  * @param {string} params.description
- * @param {string} params.status
- * @param {string} params.userId
  * @returns {Promise<Object>}
  */
-const updateVocabularySet = async (id, { title, description, status, userId }) => {
+const updateVocabularySet = async (id, { title, description }) => {
   if (title !== undefined) {
     if (!title || !title.trim()) {
       throw new AppError("Vui lòng nhập tiêu đề bộ từ vựng", 400);
@@ -87,15 +85,9 @@ const updateVocabularySet = async (id, { title, description, status, userId }) =
     throw new AppError("Mô tả không được dài quá 1000 ký tự", 400);
   }
 
-  const validStatuses = ["private", "public"];
-  if (status !== undefined && !validStatuses.includes(status)) {
-    throw new AppError("Trạng thái không hợp lệ. Chỉ chấp nhận 'private' hoặc 'public'", 400);
-  }
-
   const vocabularySet = await vocabularySetModel.update(id, {
     title: title?.trim(),
     description: description?.trim() || null,
-    status,
   });
 
   return formatVocabularySet(vocabularySet);
@@ -367,6 +359,115 @@ const removeWordsFromSet = async (setId, userId, wordIds) => {
   };
 };
 
+/**
+ * Yêu cầu public một bộ từ vựng (chuyển status thành req_public).
+ * - Chỉ chủ sở hữu mới được yêu cầu public
+ * - Chỉ bộ từ vựng ở trạng thái "private" mới được yêu cầu public
+ *
+ * @param {string} setId - ID của bộ từ vựng
+ * @param {string} userId - ID của user (để kiểm tra quyền sở hữu)
+ * @returns {Promise<Object>}
+ */
+const requestPublic = async (setId, userId) => {
+  const vocabularySet = await vocabularySetModel.findById(setId);
+
+  if (!vocabularySet) {
+    throw new AppError("Không tìm thấy bộ từ vựng", 404);
+  }
+
+  if (vocabularySet.created_by !== userId) {
+    throw new AppError("Bạn không có quyền yêu cầu public bộ từ vựng này", 403);
+  }
+
+  if (vocabularySet.status !== "private") {
+    throw new AppError("Chỉ bộ từ vựng ở trạng thái private mới có thể yêu cầu public", 400);
+  }
+
+  const updated = await vocabularySetModel.updateStatus(setId, "req_public");
+
+  return formatVocabularySet(updated);
+};
+
+/**
+ * Lấy danh sách bộ từ vựng đang chờ duyệt public (phân trang, tìm kiếm).
+ * @param {Object} options
+ * @param {string} options.keyword
+ * @param {number} options.page
+ * @param {number} options.limit
+ * @returns {Promise<Object>}
+ */
+const getPendingPublicSets = async ({ keyword, page = 1, limit = 15 }) => {
+  const { data, total } = await vocabularySetModel.getPendingPublicSets({ keyword, page, limit });
+
+  const items = await Promise.all(
+    data.map(async (item) => {
+      const wordCount = await vocabularySetModel.countWordsInSet(item.id);
+      return formatListItem(item, wordCount);
+    })
+  );
+
+  const safeLimit = Math.min(Math.max(1, limit), 15);
+  const totalPages = Math.ceil(total / safeLimit);
+
+  return {
+    items,
+    pagination: {
+      page,
+      limit: safeLimit,
+      total,
+      totalPages,
+    },
+  };
+};
+
+/**
+ * Duyệt public một bộ từ vựng (chuyển status từ req_public thành public).
+ * - Chỉ content_manager (role_id = 2) hoặc admin (role_id = 3) mới được duyệt
+ * - Chỉ bộ từ vựng ở trạng thái "req_public" mới được duyệt
+ *
+ * @param {string} setId - ID của bộ từ vựng
+ * @returns {Promise<Object>}
+ */
+const approvePublic = async (setId) => {
+  const vocabularySet = await vocabularySetModel.findById(setId);
+
+  if (!vocabularySet) {
+    throw new AppError("Không tìm thấy bộ từ vựng", 404);
+  }
+
+  if (vocabularySet.status !== "req_public") {
+    throw new AppError("Bộ từ vựng không ở trạng thái chờ duyệt", 400);
+  }
+
+  const updated = await vocabularySetModel.updateStatus(setId, "public");
+
+  return formatVocabularySet(updated);
+};
+
+/**
+ * Từ chối duyệt public một bộ từ vựng (chuyển status từ req_public thành private).
+ * - Chỉ content_manager (role_id = 2) hoặc admin (role_id = 3) mới được từ chối
+ * - Chỉ bộ từ vựng ở trạng thái "req_public" mới được từ chối
+ *
+ * @param {string} setId - ID của bộ từ vựng
+ * @returns {Promise<Object>}
+ */
+const rejectPublic = async (setId) => {
+  const vocabularySet = await vocabularySetModel.findById(setId);
+
+  if (!vocabularySet) {
+    throw new AppError("Không tìm thấy bộ từ vựng", 404);
+  }
+
+  if (vocabularySet.status !== "req_public") {
+    throw new AppError("Bộ từ vựng không ở trạng thái chờ duyệt", 400);
+  }
+
+  const updated = await vocabularySetModel.updateStatus(setId, "private");
+
+  return formatVocabularySet(updated);
+};
+
 module.exports = {
   createVocabularySet,
   updateVocabularySet,
@@ -379,4 +480,8 @@ module.exports = {
   getDetail,
   generateWordsByTopic,
   removeWordsFromSet,
+  requestPublic,
+  getPendingPublicSets,
+  approvePublic,
+  rejectPublic,
 };

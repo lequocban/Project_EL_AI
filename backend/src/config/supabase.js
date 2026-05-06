@@ -2,30 +2,26 @@ const { createClient } = require("@supabase/supabase-js");
 const env = require("./env.config");
 const { normalizeSupabaseKey } = require("../utils/supabase-key");
 
-const rawKey = env.supabaseServiceRoleKey || env.supabaseAnonKey || env.supabaseKey;
-const supabaseKey = normalizeSupabaseKey(rawKey);
-const adminKey = env.supabaseServiceRoleKey || supabaseKey;
+const rawServiceKey = env.supabaseServiceRoleKey || env.supabaseAnonKey || env.supabaseKey;
+const serviceKey = normalizeSupabaseKey(rawServiceKey);
 
-const supabase = createClient(env.supabaseUrl, supabaseKey, {
+const supabase = createClient(env.supabaseUrl, serviceKey, {
   auth: { persistSession: false },
 });
 
 const createAuthedClient = (accessToken) => {
-  return createClient(env.supabaseUrl, supabaseKey, {
+  return createClient(env.supabaseUrl, serviceKey, {
     auth: { persistSession: false },
-    global: {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    },
   });
 };
 
 const createAdminClient = () => {
-  return createClient(env.supabaseUrl, adminKey, {
+  return createClient(env.supabaseUrl, serviceKey, {
     auth: { persistSession: false },
   });
 };
 
-const adminAuthClient = createClient(env.supabaseUrl, adminKey, {
+const adminAuthClient = createClient(env.supabaseUrl, serviceKey, {
   auth: { persistSession: false },
 });
 

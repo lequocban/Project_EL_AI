@@ -10,8 +10,12 @@ const app = express();
 // Security headers
 app.use(helmet());
 
-// CORS — cho phép frontend gọi API (cấu hình origin cụ thể trong production)
-app.use(cors());
+// CORS — cho phép mọi origin truy cập API (cấu hình origin cụ thể trong production)
+app.use(cors({
+  origin: "*",
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
 
 // Parse request body
 app.use(express.json());
