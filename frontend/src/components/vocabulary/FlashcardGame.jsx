@@ -1,12 +1,5 @@
 import { useState } from "react";
-import {
-  ArrowLeft,
-  RotateCcw,
-  ChevronLeft,
-  ChevronRight,
-  Check,
-  X,
-} from "lucide-react";
+import { ArrowLeft, RotateCcw, Check, X } from "lucide-react";
 
 export default function FlashcardGame({ words, set, onBack }) {
   const [index, setIndex] = useState(0);

@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import base44 from "@/api/base44Client";
 import {
   Plus,
   Search,
@@ -12,6 +11,7 @@ import {
 } from "lucide-react";
 import CreateSetModal from "../components/vocabulary/CreateSetModal";
 import SetDetail from "../components/vocabulary/SetDetail";
+import { vocabularyApi } from "@/api/vocabularyApi";
 
 const LEVEL_LABELS = {
   beginner: "Cơ bản",
@@ -39,33 +39,37 @@ export default function Vocabulary() {
   const [tab, setTab] = useState("mine");
   const [showCreate, setShowCreate] = useState(false);
   const [selectedSet, setSelectedSet] = useState(null);
-  const [user, setUser] = useState(null);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     loadData();
   }, []);
 
   const loadData = async () => {
-    const u = await base44.auth.me();
-    setUser(u);
-    const mine = await base44.entities.VocabularySet.filter(
-      { created_by: u.email },
-      "-created_date",
-      50,
-    );
-    setSets(mine);
-    const pub = await base44.entities.VocabularySet.filter(
-      { is_public: true },
-      "-created_date",
-      50,
-    );
-    setPublicSets(pub);
+    try {
+      const [mine, pub] = await Promise.all([
+        vocabularyApi.getMySets(),
+        vocabularyApi.getPublicSets(),
+      ]);
+      setSets(mine);
+      setPublicSets(pub);
+      setError("");
+    } catch (err) {
+      setSets([]);
+      setPublicSets([]);
+      setError(err.message || "Không thể tải dữ liệu từ vựng");
+    }
   };
 
   const deleteSet = async (id, e) => {
     e.stopPropagation();
-    await base44.entities.VocabularySet.delete(id);
-    setSets(sets.filter((s) => s.id !== id));
+    try {
+      await vocabularyApi.deleteSet(id);
+      setSets((current) => current.filter((s) => s.id !== id));
+      setError("");
+    } catch (err) {
+      setError(err.message || "Không thể xóa bộ từ");
+    }
   };
 
   const displayed = (tab === "mine" ? sets : publicSets).filter((s) =>
@@ -101,7 +105,12 @@ export default function Vocabulary() {
         </button>
       </div>
 
-      {/* Tabs */}
+      {error && (
+        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-600">
+          {error}
+        </div>
+      )}
+
       <div className="flex gap-2 mb-4">
         {[
           ["mine", "Của tôi"],
@@ -121,7 +130,6 @@ export default function Vocabulary() {
         ))}
       </div>
 
-      {/* Search */}
       <div className="relative mb-6">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <input
@@ -132,15 +140,10 @@ export default function Vocabulary() {
         />
       </div>
 
-      {/* Sets Grid */}
       {displayed.length === 0 ? (
         <div className="text-center py-16">
           <BookOpen className="w-16 h-16 mx-auto text-muted-foreground/30 mb-4" />
-          <p className="text-muted-foreground font-semibold">
-            {tab === "mine"
-              ? "Bạn chưa có bộ từ vựng nào"
-              : "Chưa có bộ từ vựng công khai"}
-          </p>
+          <p className="text-muted-foreground font-semibold">Chưa có dữ liệu</p>
           {tab === "mine" && (
             <button
               onClick={() => setShowCreate(true)}
@@ -168,9 +171,7 @@ export default function Vocabulary() {
                   {set.title}
                 </h3>
                 <div className="flex items-center gap-1">
-                  {set.is_ai_generated && (
-                    <Sparkles className="w-4 h-4 text-violet-400" />
-                  )}
+                  {set.is_ai_generated && <Sparkles className="w-4 h-4 text-violet-400" />}
                   {set.is_public ? (
                     <Globe className="w-4 h-4 text-blue-400" />
                   ) : (
@@ -213,7 +214,7 @@ export default function Vocabulary() {
         <CreateSetModal
           onClose={() => setShowCreate(false)}
           onCreated={(s) => {
-            setSets([s, ...sets]);
+            setSets((current) => [s, ...current]);
             setShowCreate(false);
             setSelectedSet(s);
           }}

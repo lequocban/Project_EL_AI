@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import base44 from "@/api/base44Client";
 import {
   ArrowLeft,
   Plus,
@@ -15,6 +14,7 @@ import MatchGame from "./MatchGame";
 import MultipleChoiceGame from "./MultipleChoiceGame";
 import TypingGame from "./TypingGame";
 import DictationGame from "./DictationGame";
+import { vocabularyApi } from "@/api/vocabularyApi";
 
 const MODES = [
   {
@@ -66,71 +66,82 @@ export default function SetDetail({ set, onBack }) {
     part_of_speech: "",
   });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     loadWords();
   }, [set.id]);
 
   const loadWords = async () => {
-    const ws = await base44.entities.VocabularyWord.filter(
-      { set_id: set.id },
-      "word",
-      100,
-    );
-    setWords(ws);
+    try {
+      const detail = await vocabularyApi.getSetById(set.id);
+      setWords(detail.words || []);
+      setError("");
+    } catch (err) {
+      setWords([]);
+      setError(err.message || "Không thể tải danh sách từ");
+    }
   };
 
   const addWord = async () => {
     if (!newWord.word.trim() || !newWord.meaning.trim()) return;
-    setLoading(true);
-    const w = await base44.entities.VocabularyWord.create({
-      ...newWord,
-      set_id: set.id,
-    });
-    await base44.entities.VocabularySet.update(set.id, {
-      word_count: words.length + 1,
-    });
-    setWords([...words, w]);
-    setNewWord({
-      word: "",
-      meaning: "",
-      pronunciation: "",
-      example: "",
-      part_of_speech: "",
-    });
-    setLoading(false);
-    setShowAddWord(false);
+
+    try {
+      setLoading(true);
+      const lookedUp = await vocabularyApi.lookupWord(newWord.word.trim());
+      await vocabularyApi.addWordsToSet(set.id, [newWord.word.trim()]);
+      const detail = await vocabularyApi.getSetById(set.id);
+      setWords(detail.words || []);
+      setNewWord({
+        word: "",
+        meaning: "",
+        pronunciation: lookedUp.pronunciation || "",
+        example: "",
+        part_of_speech: lookedUp.part_of_speech || "",
+      });
+      setNewWord({
+        word: "",
+        meaning: "",
+        pronunciation: "",
+        example: "",
+        part_of_speech: "",
+      });
+      setShowAddWord(false);
+      setError("");
+    } catch (err) {
+      setError(err.message || "Không thể thêm từ");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const deleteWord = async (id) => {
-    await base44.entities.VocabularyWord.delete(id);
-    const updated = words.filter((w) => w.id !== id);
-    setWords(updated);
-    await base44.entities.VocabularySet.update(set.id, {
-      word_count: updated.length,
-    });
+    try {
+      await vocabularyApi.deleteWordsFromSet(set.id, [id]);
+      setWords((current) => current.filter((w) => w.id !== id));
+      setError("");
+    } catch (err) {
+      setError(err.message || "Không thể xóa từ");
+    }
   };
 
-  if (mode === "flashcard")
-    return (
-      <FlashcardGame words={words} set={set} onBack={() => setMode(null)} />
-    );
-  if (mode === "match")
+  if (mode === "flashcard") {
+    return <FlashcardGame words={words} set={set} onBack={() => setMode(null)} />;
+  }
+  if (mode === "match") {
     return <MatchGame words={words} set={set} onBack={() => setMode(null)} />;
-  if (mode === "quiz")
+  }
+  if (mode === "quiz") {
     return (
-      <MultipleChoiceGame
-        words={words}
-        set={set}
-        onBack={() => setMode(null)}
-      />
+      <MultipleChoiceGame words={words} set={set} onBack={() => setMode(null)} />
     );
-  if (mode === "typing")
+  }
+  if (mode === "typing") {
     return <TypingGame words={words} set={set} onBack={() => setMode(null)} />;
-  if (mode === "dictation")
-    return (
-      <DictationGame words={words} set={set} onBack={() => setMode(null)} />
-    );
+  }
+  if (mode === "dictation") {
+    return <DictationGame words={words} set={set} onBack={() => setMode(null)} />;
+  }
 
   return (
     <div className="min-h-screen bg-background p-6 lg:p-8">
@@ -144,21 +155,20 @@ export default function SetDetail({ set, onBack }) {
       <div className="mb-6">
         <h1 className="text-2xl font-black text-foreground">{set.title}</h1>
         {set.description && (
-          <p className="text-muted-foreground text-sm mt-1">
-            {set.description}
-          </p>
+          <p className="text-muted-foreground text-sm mt-1">{set.description}</p>
         )}
-        <p className="text-sm font-semibold text-primary mt-1">
-          {words.length} từ vựng
-        </p>
+        <p className="text-sm font-semibold text-primary mt-1">{words.length} từ vựng</p>
       </div>
 
-      {/* Practice Modes */}
+      {error && (
+        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-600">
+          {error}
+        </div>
+      )}
+
       {words.length >= 4 && (
         <div className="mb-8">
-          <h2 className="text-base font-black text-foreground mb-3">
-            Luyện tập
-          </h2>
+          <h2 className="text-base font-black text-foreground mb-3">Luyện tập</h2>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             {MODES.map((m) => (
               <button
@@ -179,7 +189,6 @@ export default function SetDetail({ set, onBack }) {
         </div>
       )}
 
-      {/* Word List */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-base font-black text-foreground">Danh sách từ</h2>
         <button
@@ -201,9 +210,7 @@ export default function SetDetail({ set, onBack }) {
             />
             <input
               value={newWord.meaning}
-              onChange={(e) =>
-                setNewWord({ ...newWord, meaning: e.target.value })
-              }
+              onChange={(e) => setNewWord({ ...newWord, meaning: e.target.value })}
               placeholder="Nghĩa tiếng Việt *"
               className="px-3 py-2 rounded-xl border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
@@ -226,9 +233,7 @@ export default function SetDetail({ set, onBack }) {
           </div>
           <input
             value={newWord.example}
-            onChange={(e) =>
-              setNewWord({ ...newWord, example: e.target.value })
-            }
+            onChange={(e) => setNewWord({ ...newWord, example: e.target.value })}
             placeholder="Câu ví dụ..."
             className="w-full px-3 py-2 rounded-xl border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 mb-3"
           />
@@ -252,9 +257,7 @@ export default function SetDetail({ set, onBack }) {
 
       {words.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-2xl border border-border">
-          <p className="text-muted-foreground font-semibold">
-            Chưa có từ nào. Hãy thêm từ đầu tiên!
-          </p>
+          <p className="text-muted-foreground font-semibold">Chưa có dữ liệu</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -267,9 +270,7 @@ export default function SetDetail({ set, onBack }) {
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-foreground">{w.word}</span>
                   {w.pronunciation && (
-                    <span className="text-xs text-muted-foreground">
-                      /{w.pronunciation}/
-                    </span>
+                    <span className="text-xs text-muted-foreground">/{w.pronunciation}/</span>
                   )}
                   {w.part_of_speech && (
                     <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">
@@ -277,13 +278,9 @@ export default function SetDetail({ set, onBack }) {
                     </span>
                   )}
                 </div>
-                <p className="text-sm text-muted-foreground mt-1 font-medium">
-                  {w.meaning}
-                </p>
+                <p className="text-sm text-muted-foreground mt-1 font-medium">{w.meaning}</p>
                 {w.example && (
-                  <p className="text-xs text-muted-foreground/70 mt-1 italic">
-                    "{w.example}"
-                  </p>
+                  <p className="text-xs text-muted-foreground/70 mt-1 italic">"{w.example}"</p>
                 )}
               </div>
               <button

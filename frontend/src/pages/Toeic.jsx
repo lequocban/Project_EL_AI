@@ -1,6 +1,5 @@
 import { useState, useRef } from "react";
 import {
-  Trophy,
   Clock,
   ArrowLeft,
   RotateCcw,
