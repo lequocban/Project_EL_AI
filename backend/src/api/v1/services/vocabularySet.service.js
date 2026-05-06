@@ -1,5 +1,6 @@
 const vocabularySetModel = require("../repositories/vocabularySet.model");
 const vocabularyService = require("./vocabulary.service");
+const { generateVocabularyByAI } = require("./ai.service");
 const { AppError } = require("../../../utils/appError");
 
 /**
@@ -278,6 +279,58 @@ const getDetail = async (setId, userId) => {
   };
 };
 
+/**
+ * Tạo bộ từ vựng mới rồi sinh từ vựng bằng AI và thêm vào bộ vừa tạo.
+ * - Tạo bộ từ vựng mới với title, description
+ * - Gọi AI (OpenRouter) để sinh danh sách từ theo chủ đề
+ * - Với mỗi từ: nếu chưa có trong DB → gọi API lookup → lưu vào DB
+ * - Sau đó lưu các word_id vào bảng vocabulary_set_words
+ *
+ * @param {string} userId - ID của user (để kiểm tra quyền sở hữu)
+ * @param {string} title - Tiêu đề bộ từ vựng
+ * @param {string|null} description - Mô tả bộ từ vựng
+ * @param {string} topic - Chủ đề từ vựng người dùng mô tả
+ * @param {number} [wordCount] - Số từ muốn sinh (mặc định: 10)
+ * @returns {Promise<Object>}
+ */
+const generateWordsByTopic = async (userId, title, description, topic, wordCount) => {
+  if (!title || !title.trim()) {
+    throw new AppError("Vui lòng nhập tiêu đề bộ từ vựng", 400);
+  }
+
+  if (title.trim().length > 255) {
+    throw new AppError("Tiêu đề không được dài quá 255 ký tự", 400);
+  }
+
+  if (description && description.length > 1000) {
+    throw new AppError("Mô tả không được dài quá 1000 ký tự", 400);
+  }
+
+  if (!topic || !topic.trim()) {
+    throw new AppError("Vui lòng nhập chủ đề từ vựng", 400);
+  }
+
+  if (topic.trim().length > 500) {
+    throw new AppError("Chủ đề từ vựng không được dài quá 500 ký tự", 400);
+  }
+
+  // Tạo bộ từ vựng mới
+  const vocabularySet = await vocabularySetModel.create({
+    title: title.trim(),
+    description: description?.trim() || null,
+    status: "private",
+    created_by: userId,
+  });
+
+  const setId = vocabularySet.id;
+
+  // Gọi AI sinh từ vựng theo chủ đề
+  const words = await generateVocabularyByAI(topic, wordCount);
+
+  // Thêm từ vựng vào bộ vừa tạo
+  return await addWordsToSet(setId, userId, words);
+};
+
 module.exports = {
   createVocabularySet,
   updateVocabularySet,
@@ -288,4 +341,5 @@ module.exports = {
   getPublicSets,
   addWordsToSet,
   getDetail,
+  generateWordsByTopic,
 };

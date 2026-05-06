@@ -138,6 +138,29 @@ const getDetail = async (req, res, next) => {
   }
 };
 
+/**
+ * POST /api/v1/vocabulary-sets/generate-words
+ * Tạo bộ từ vựng mới rồi sinh từ vựng bằng AI và thêm vào bộ vừa tạo.
+ */
+const generateWords = async (req, res, next) => {
+  try {
+    const { title, description, topic, wordCount } = req.body;
+    const userId = req.user.id;
+
+    const result = await vocabularySetService.generateWordsByTopic(
+      userId,
+      title,
+      description,
+      topic,
+      wordCount
+    );
+
+    return success(res, result, "Tạo bộ từ vựng và sinh từ bằng AI thành công", 201);
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   createVocabularySet,
   updateVocabularySet,
@@ -146,4 +169,5 @@ module.exports = {
   getMyVocabularySets,
   getPublicVocabularySets,
   getDetail,
+  generateWords,
 };

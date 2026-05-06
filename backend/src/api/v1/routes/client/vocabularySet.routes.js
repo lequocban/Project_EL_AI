@@ -4,6 +4,7 @@ const {
   createVocabularySetSchema,
   updateVocabularySetSchema,
   addWordsSchema,
+  generateWordsSchema,
 } = require("../../validations/vocabularySet.validation");
 const { validateBody } = require("../../validations/validate");
 const { verifyToken, requireAuth } = require("../../middlewares/auth.middleware");
@@ -53,6 +54,15 @@ router.delete(
   verifyToken,
   requireAuth,
   vocabularySetController.deleteVocabularySet
+);
+
+// POST /api/v1/vocabulary-sets/generate-words — Tạo bộ từ vựng mới rồi sinh từ bằng AI
+router.post(
+  "/generate-words",
+  verifyToken,
+  requireAuth,
+  validateBody(generateWordsSchema),
+  vocabularySetController.generateWords
 );
 
 // POST /api/v1/vocabulary-sets/:id/words — Thêm từ vào bộ từ vựng
