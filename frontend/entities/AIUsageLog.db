@@ -1,0 +1,20 @@
+{
+  "name": "AIUsageLog",
+  "type": "object",
+  "properties": {
+    "feature": {
+      "type": "string"
+    },
+    "usage_date": {
+      "type": "string"
+    },
+    "count": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "feature",
+    "usage_date"
+  ]
+}
