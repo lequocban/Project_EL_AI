@@ -331,6 +331,42 @@ const generateWordsByTopic = async (userId, title, description, topic, wordCount
   return await addWordsToSet(setId, userId, words);
 };
 
+/**
+ * Xóa một hoặc nhiều từ vựng khỏi bộ từ vựng.
+ * - Kiểm tra bộ từ vựng có tồn tại và thuộc về user không
+ * - Xóa các word_id khỏi bảng vocabulary_set_words
+ *
+ * @param {string} setId - ID của bộ từ vựng
+ * @param {string} userId - ID của user (để kiểm tra quyền sở hữu)
+ * @param {Array<string>} wordIds - Mảng ID từ vựng cần xóa
+ * @returns {Promise<Object>}
+ */
+const removeWordsFromSet = async (setId, userId, wordIds) => {
+  if (!wordIds || wordIds.length === 0) {
+    throw new AppError("Vui lòng gửi danh sách ID từ vựng cần xóa", 400);
+  }
+
+  const vocabularySet = await vocabularySetModel.findById(setId);
+
+  if (!vocabularySet) {
+    throw new AppError("Không tìm thấy bộ từ vựng", 404);
+  }
+
+  if (vocabularySet.created_by !== userId) {
+    throw new AppError("Bạn không có quyền xóa từ khỏi bộ từ vựng này", 403);
+  }
+
+  await vocabularySetModel.removeWordsFromSet(setId, wordIds);
+
+  const totalWords = await vocabularySetModel.countWordsInSet(setId);
+
+  return {
+    setId,
+    removedCount: wordIds.length,
+    totalWords,
+  };
+};
+
 module.exports = {
   createVocabularySet,
   updateVocabularySet,
@@ -342,4 +378,5 @@ module.exports = {
   addWordsToSet,
   getDetail,
   generateWordsByTopic,
+  removeWordsFromSet,
 };

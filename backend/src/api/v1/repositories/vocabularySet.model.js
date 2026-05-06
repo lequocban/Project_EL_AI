@@ -314,7 +314,28 @@ const getWordsInSet = async (setId) => {
   }));
 };
 
+/**
+ * Xóa nhiều từ khỏi một bộ từ vựng.
+ * @param {string} setId - vocabulary_sets.id
+ * @param {Array<string>} wordIds - mảng words.id cần xóa
+ * @returns {Promise<void>}
+ */
+const removeWordsFromSet = async (setId, wordIds) => {
+  if (!wordIds || wordIds.length === 0) return;
+
+  const { error } = await supabase
+    .from("vocabulary_set_words")
+    .delete()
+    .eq("vocabulary_id", setId)
+    .in("word_id", wordIds);
+
+  if (error) {
+    throw new AppError(error.message, 500);
+  }
+};
+
 module.exports = {
   create, update, softDelete, getMySets, getPublicSets, countWordsInSet,
   findWordByText, createWord, addWordsToSet, findById, getWordsInSet,
+  removeWordsFromSet,
 };

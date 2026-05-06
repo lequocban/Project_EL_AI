@@ -73,9 +73,21 @@ const generateWordsSchema = z.object({
     .default(10),
 });
 
+/**
+ * Schema validate body cho DELETE /api/v1/vocabulary-sets/:id/words/remove
+ * Xóa một hoặc nhiều từ vựng khỏi bộ từ vựng.
+ */
+const removeWordsSchema = z.object({
+  wordIds: z
+    .array(z.string().uuid("ID từ vựng không hợp lệ").min(1))
+    .min(1, "Vui lòng gửi danh sách ID từ vựng cần xóa")
+    .max(100, "Số từ vựng xóa không được vượt quá 100 từ mỗi lần"),
+});
+
 module.exports = {
   createVocabularySetSchema,
   updateVocabularySetSchema,
   addWordsSchema,
   generateWordsSchema,
+  removeWordsSchema,
 };

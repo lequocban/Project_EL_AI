@@ -161,6 +161,24 @@ const generateWords = async (req, res, next) => {
   }
 };
 
+/**
+ * DELETE /api/v1/vocabulary-sets/:id/words/remove
+ * Xóa một hoặc nhiều từ vựng khỏi bộ từ vựng.
+ */
+const removeWords = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { wordIds } = req.body;
+    const userId = req.user.id;
+
+    const result = await vocabularySetService.removeWordsFromSet(id, userId, wordIds);
+
+    return success(res, result, "Xóa từ vựng khỏi bộ thành công");
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   createVocabularySet,
   updateVocabularySet,
@@ -170,4 +188,5 @@ module.exports = {
   getPublicVocabularySets,
   getDetail,
   generateWords,
+  removeWords,
 };

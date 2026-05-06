@@ -5,6 +5,7 @@ const {
   updateVocabularySetSchema,
   addWordsSchema,
   generateWordsSchema,
+  removeWordsSchema,
 } = require("../../validations/vocabularySet.validation");
 const { validateBody } = require("../../validations/validate");
 const { verifyToken, requireAuth } = require("../../middlewares/auth.middleware");
@@ -72,6 +73,15 @@ router.post(
   requireAuth,
   validateBody(addWordsSchema),
   vocabularySetController.addWords
+);
+
+// DELETE /api/v1/vocabulary-sets/:id/words/remove — Xóa một hoặc nhiều từ khỏi bộ từ vựng
+router.delete(
+  "/:id/words/remove",
+  verifyToken,
+  requireAuth,
+  validateBody(removeWordsSchema),
+  vocabularySetController.removeWords
 );
 
 module.exports = router;
