@@ -394,8 +394,31 @@ const getPendingPublicSets = async ({ keyword, page = 1, limit = 15 }) => {
   return { data: data || [], total: count || 0 };
 };
 
+/**
+ * Lấy thông tin cơ bản của vocabulary set (id, title, description).
+ * Dùng khi cần join với bảng khác, không cần full data.
+ * @param {string} setId
+ * @returns {Promise<Object|null>}
+ */
+const getVocabularySetById = async (setId) => {
+  const { data, error } = await supabase
+    .from("vocabulary_sets")
+    .select("id, title, description")
+    .eq("id", setId)
+    .eq("deleted", false)
+    .maybeSingle();
+
+  if (error) {
+    if (error.code === "PGRST116") return null;
+    throw new AppError(error.message, 500);
+  }
+
+  return data;
+};
+
 module.exports = {
   create, update, softDelete, getMySets, getPublicSets, countWordsInSet,
   findWordByText, createWord, addWordsToSet, findById, getWordsInSet,
   removeWordsFromSet, updateStatus, getPendingPublicSets,
+  getVocabularySetById,
 };

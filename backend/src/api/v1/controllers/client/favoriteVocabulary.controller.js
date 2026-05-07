@@ -1,14 +1,6 @@
 const favoriteVocabularyService = require("../../services/favoriteVocabulary.service");
+const { parsePagination } = require("../../../../utils/pagination");
 const { success } = require("../../../../utils/responseHandler");
-
-/**
- * Parse pagination query params.
- */
-const parsePagination = (query) => {
-  const page = Math.max(1, parseInt(query.page, 10) || 1);
-  const limit = Math.min(15, Math.max(1, parseInt(query.limit, 10) || 15));
-  return { page, limit };
-};
 
 /**
  * POST /api/v1/favorites/vocabulary-sets/:id

@@ -468,6 +468,35 @@ const rejectPublic = async (setId) => {
   return formatVocabularySet(updated);
 };
 
+/**
+ * Chuyển bộ từ vựng từ public về private.
+ * - Chỉ chủ sở hữu mới được chuyển về private
+ * - Chỉ bộ từ vựng ở trạng thái "public" mới có thể chuyển về private
+ *
+ * @param {string} setId - ID của bộ từ vựng
+ * @param {string} userId - ID của user (để kiểm tra quyền sở hữu)
+ * @returns {Promise<Object>}
+ */
+const makePrivate = async (setId, userId) => {
+  const vocabularySet = await vocabularySetModel.findById(setId);
+
+  if (!vocabularySet) {
+    throw new AppError("Không tìm thấy bộ từ vựng", 404);
+  }
+
+  if (vocabularySet.created_by !== userId) {
+    throw new AppError("Bạn không có quyền thay đổi bộ từ vựng này", 403);
+  }
+
+  if (vocabularySet.status !== "public") {
+    throw new AppError("Chỉ bộ từ vựng ở trạng thái public mới có thể chuyển về private", 400);
+  }
+
+  const updated = await vocabularySetModel.updateStatus(setId, "private");
+
+  return formatVocabularySet(updated);
+};
+
 module.exports = {
   createVocabularySet,
   updateVocabularySet,
@@ -484,4 +513,5 @@ module.exports = {
   getPendingPublicSets,
   approvePublic,
   rejectPublic,
+  makePrivate,
 };

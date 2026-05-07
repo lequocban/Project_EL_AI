@@ -83,6 +83,14 @@ router.post(
   vocabularySetController.requestPublic
 );
 
+// POST /api/v1/vocabulary-sets/:id/make-private — Chuyển bộ từ vựng từ public về private
+router.post(
+  "/:id/make-private",
+  verifyToken,
+  requireAuth,
+  vocabularySetController.makePrivate
+);
+
 // DELETE /api/v1/vocabulary-sets/:id/words/remove — Xóa một hoặc nhiều từ khỏi bộ từ vựng
 router.delete(
   "/:id/words/remove",

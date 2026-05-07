@@ -1,14 +1,6 @@
 const vocabularySetService = require("../../services/vocabularySet.service");
+const { parsePagination } = require("../../../../utils/pagination");
 const { success } = require("../../../../utils/responseHandler");
-
-/**
- * Parse pagination query params.
- */
-const parsePagination = (query) => {
-  const page = Math.max(1, parseInt(query.page, 10) || 1);
-  const limit = Math.min(15, Math.max(1, parseInt(query.limit, 10) || 15));
-  return { page, limit };
-};
 
 /**
  * POST /api/v1/vocabulary-sets
@@ -195,6 +187,23 @@ const requestPublic = async (req, res, next) => {
   }
 };
 
+/**
+ * POST /api/v1/vocabulary-sets/:id/make-private
+ * Chuyển bộ từ vựng từ public về private.
+ */
+const makePrivate = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const result = await vocabularySetService.makePrivate(id, userId);
+
+    return success(res, result, "Chuyển bộ từ vựng sang chế độ private thành công");
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   createVocabularySet,
   updateVocabularySet,
@@ -206,4 +215,5 @@ module.exports = {
   generateWords,
   removeWords,
   requestPublic,
+  makePrivate,
 };
