@@ -1,11 +1,32 @@
 const authService = require("../../services/auth.service");
 const otpService = require("../../services/otp.service");
 const { success } = require("../../../../utils/responseHandler");
+const {
+  setRefreshTokenCookie,
+  clearRefreshTokenCookie,
+} = require("../../../../utils/cookie");
 
 const register = async (req, res, next) => {
   try {
     const result = await authService.register(req.body);
-    return success(res, result, "Đăng ký thành công", 201);
+
+    // Set refresh token vào HttpOnly Cookie (nếu có session)
+    if (result.session?.refreshToken) {
+      setRefreshTokenCookie(res, result.session.refreshToken);
+    }
+
+    return success(
+      res,
+      {
+        user: result.user,
+        accessToken: result.session?.accessToken || null,
+        expiresAt: result.session?.expiresAt || null,
+        expiresIn: result.session?.expiresIn || null,
+        tokenType: result.session?.tokenType || null,
+      },
+      "Đăng ký thành công",
+      201
+    );
   } catch (error) {
     return next(error);
   }
@@ -14,7 +35,21 @@ const register = async (req, res, next) => {
 const login = async (req, res, next) => {
   try {
     const result = await authService.login(req.body);
-    return success(res, result, "Đăng nhập thành công");
+
+    // Set refresh token vào HttpOnly Cookie
+    setRefreshTokenCookie(res, result.session.refreshToken);
+
+    return success(
+      res,
+      {
+        user: result.user,
+        accessToken: result.session.accessToken,
+        expiresAt: result.session.expiresAt,
+        expiresIn: result.session.expiresIn,
+        tokenType: result.session.tokenType,
+      },
+      "Đăng nhập thành công"
+    );
   } catch (error) {
     return next(error);
   }
@@ -24,6 +59,10 @@ const logout = async (req, res, next) => {
   try {
     const accessToken = req.headers["authorization"]?.slice(7) || null;
     await authService.logout(accessToken);
+
+    // Xóa refresh token cookie
+    clearRefreshTokenCookie(res);
+
     return success(res, null, "Đăng xuất thành công");
   } catch (error) {
     return next(error);
@@ -32,9 +71,24 @@ const logout = async (req, res, next) => {
 
 const refreshToken = async (req, res, next) => {
   try {
-    const { refreshToken: token } = req.body;
-    const result = await authService.refreshToken(token);
-    return success(res, result, "Làm mới token thành công");
+    const refreshTokenValue =
+      req.cookies?.refresh_token || req.body?.refreshToken || null;
+
+    const result = await authService.refreshToken(refreshTokenValue);
+
+    // Set refresh token mới vào HttpOnly Cookie
+    setRefreshTokenCookie(res, result.session.refreshToken);
+
+    return success(
+      res,
+      {
+        accessToken: result.session.accessToken,
+        expiresAt: result.session.expiresAt,
+        expiresIn: result.session.expiresIn,
+        tokenType: result.session.tokenType,
+      },
+      "Làm mới token thành công"
+    );
   } catch (error) {
     return next(error);
   }

@@ -1,6 +1,7 @@
 const express = require("express");
 const helmet = require("helmet");
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
 const v1Routes = require("./api/v1/routes/index");
 const { errorHandler } = require("./utils/errorHandler");
 const { verifyToken } = require("./api/v1/middlewares/auth.middleware");
@@ -15,7 +16,11 @@ app.use(cors({
   origin: "*",
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
 }));
+
+// Parse cookies để đọc refresh token từ HttpOnly Cookie
+app.use(cookieParser());
 
 // Parse request body
 app.use(express.json());
