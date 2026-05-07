@@ -1,5 +1,6 @@
 const readingLessonModel = require("../repositories/readingLesson.model");
 const readingQuestionModel = require("../repositories/readingQuestion.model");
+const aiService = require("../services/ai.service");
 const { AppError } = require("../../../utils/appError");
 const { buildPaginationResponse } = require("../../../utils/paginationResponse");
 
@@ -62,6 +63,50 @@ const formatListItem = (item) => ({
  * @param {string} status
  */
 const isValidStatus = (status) => ["private", "req_public", "public"].includes(status);
+
+/**
+ * Tạo bài luyện đọc bằng AI.
+ * Luồng:
+ * 1. Gọi AI sinh bài đọc tiếng Anh + bản dịch tiếng Việt
+ * 2. Lưu bài đọc vào database
+ * 3. Gọi AI sinh câu hỏi dựa trên bài đọc
+ * 4. Lưu câu hỏi vào database
+ */
+const generateWithAI = async ({ title, topic, questionCount, createdBy }) => {
+  if (!title || !title.trim()) {
+    throw new AppError("Vui lòng nhập tiêu đề bài luyện đọc", 400);
+  }
+
+  if (!topic || !topic.trim()) {
+    throw new AppError("Vui lòng nhập chủ đề bài đọc", 400);
+  }
+
+  if (title.trim().length > 255) {
+    throw new AppError("Tiêu đề không được dài quá 255 ký tự", 400);
+  }
+
+  const safeCount = Math.min(Math.max(1, parseInt(questionCount, 10) || 5), 5);
+
+  // Bước 1: Gọi AI sinh bài đọc
+  const { content, viTranslation } = await aiService.generateReadingLessonByAI(title, topic);
+
+  // Bước 2: Tạo bài luyện đọc trong database
+  const lesson = await readingLessonModel.create({
+    title: title.trim(),
+    content: content,
+    vi_translation: viTranslation,
+    status: "private",
+    created_by: createdBy,
+  });
+
+  // Bước 3: Gọi AI sinh câu hỏi
+  const questions = await aiService.generateReadingQuestionsByAI(content, viTranslation, safeCount);
+
+  // Bước 4: Lưu câu hỏi vào database
+  const savedQuestions = await readingQuestionModel.createMany(lesson.id, questions);
+
+  return formatLessonDetail(lesson, savedQuestions);
+};
 
 /**
  * Tạo bài luyện đọc mới.
@@ -275,6 +320,7 @@ const rejectPublic = async (id) => {
 };
 
 module.exports = {
+  generateWithAI,
   createLesson,
   updateLesson,
   deleteLesson,

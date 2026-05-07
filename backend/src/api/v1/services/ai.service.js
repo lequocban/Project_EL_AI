@@ -180,8 +180,378 @@ const callOpenRouter = async (apiKey, model, systemPrompt, userPrompt, safeCount
   return [...new Set(normalizedWords)];
 };
 
+/**
+ * Gọi OpenRouter API chung.
+ * @param {string} apiKey
+ * @param {string} model
+ * @param {string} systemPrompt
+ * @param {string} userPrompt
+ * @param {number} maxTokens
+ * @returns {Promise<string>}
+ */
+const callOpenRouterRaw = async (apiKey, model, systemPrompt, userPrompt, maxTokens = 2000) => {
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: model,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      temperature: 0.7,
+      max_tokens: maxTokens,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    console.error(`OpenRouter API error (${model}):`, response.status, errorBody);
+
+    let errorDetail = "Vui lòng thử lại sau.";
+    try {
+      const errorJson = JSON.parse(errorBody);
+      errorDetail = errorJson.error?.message || errorJson.error || errorDetail;
+    } catch {
+      errorDetail = errorBody.substring(0, 200);
+    }
+
+    const err = new AppError(`Lỗi từ dịch vụ AI (${response.status}): ${errorDetail}`, 502);
+    err.statusCode = response.status;
+    throw err;
+  }
+
+  const data = await response.json();
+
+  if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+    throw new AppError("Phản hồi từ AI không hợp lệ", 502);
+  }
+
+  return data.choices[0].message.content.trim();
+};
+
+/**
+ * Sinh bài đọc hiểu bằng AI từ OpenRouter.
+ * Trả về { content, viTranslation }
+ *
+ * @param {string} title - Tiêu đề bài đọc
+ * @param {string} topic - Chủ đề bài đọc
+ * @returns {Promise<{content: string, viTranslation: string}>}
+ */
+const generateReadingLessonByAI = async (title, topic) => {
+  if (!topic || !topic.trim()) {
+    throw new AppError("Vui lòng nhập chủ đề bài đọc", 400);
+  }
+
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    throw new AppError("API_KEY chưa được cấu hình", 500);
+  }
+
+  const systemPrompt = `Bạn là một giáo viên tiếng Anh chuyên nghiệp, có khả năng viết bài đọc hiểu cho người học.
+
+YÊU CẦU:
+- Viết một bài đọc hiểu hoàn chỉnh BẰNG TIẾNG ANH theo chủ đề mà người dùng yêu cầu.
+- Bài đọc phải phù hợp với người học tiếng Anh trung cấp (B1-B2).
+- Độ dài bài đọc từ 200 đến 350 từ.
+- Bài đọc phải có cấu trúc rõ ràng, có ít nhất 3 đoạn văn.
+- Không đánh số đoạn văn, không in đậm, không in nghiêng, chỉ viết văn bản thuần túy.
+- KHÔNG trả lời bằng markdown code block, chỉ trả về văn bản thuần túy.
+
+ĐỊNH DẠNG TRẢ VỀ:
+Trả về JSON object với 2 trường:
+{
+  "content": "<bài đọc bằng tiếng Anh, không có markdown>",
+  "viTranslation": "<bản dịch tiếng Việt của bài đọc trên>"
+}
+
+QUAN TRỌNG:
+- Chỉ trả về JSON object thuần túy, không có markdown code block, không có giải thích gì thêm.
+- Trường "content" chứa bài đọc TIẾNG ANH.
+- Trường "viTranslation" chứa bản dịch TIẾNG VIỆT của bài đọc đó.
+- Bản dịch tiếng Việt phải sát nghĩa, rõ ràng, tự nhiên.`;
+
+  const userPrompt = `Hãy viết một bài đọc hiểu tiếng Anh theo chủ đề sau:
+
+Tiêu đề bài đọc: "${title.trim()}"
+Chủ đề: "${topic.trim()}"
+
+Trả về đúng định dạng JSON với "content" (tiếng Anh) và "viTranslation" (tiếng Việt).`;
+
+  const models = AI_MODELS;
+  let lastError = null;
+
+  for (const model of models) {
+    try {
+      const rawContent = await callOpenRouterRaw(apiKey, model, systemPrompt, userPrompt, 3000);
+      return parseJSONResponse(rawContent);
+    } catch (error) {
+      lastError = error;
+      if (error.statusCode === 429 || error.statusCode === 503) {
+        console.warn(`Model ${model} bị rate limit, thử model tiếp theo...`);
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  throw lastError;
+};
+
+/**
+ * Sinh câu hỏi đọc hiểu bằng AI từ OpenRouter.
+ * Trả về mảng các câu hỏi.
+ *
+ * @param {string} content - Nội dung bài đọc tiếng Anh
+ * @param {string} viTranslation - Bản dịch tiếng Việt của bài đọc
+ * @param {number} questionCount - Số câu hỏi muốn sinh (1-5)
+ * @returns {Promise<Array>}
+ */
+const generateReadingQuestionsByAI = async (content, viTranslation, questionCount) => {
+  if (!content || !content.trim()) {
+    throw new AppError("Nội dung bài đọc không hợp lệ", 400);
+  }
+
+  if (!viTranslation || !viTranslation.trim()) {
+    throw new AppError("Bản dịch tiếng Việt không hợp lệ", 400);
+  }
+
+  const safeCount = Math.min(Math.max(1, parseInt(questionCount, 10) || 5), 5);
+
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    throw new AppError("API_KEY chưa được cấu hình", 500);
+  }
+
+  const systemPrompt = `Bạn là một giáo viên tiếng Anh chuyên nghiệp, có khả năng tạo câu hỏi đọc hiểu.
+
+YÊU CẦU:
+- Tạo đúng ${safeCount} câu hỏi trắc nghiệm (4 lựa chọn) dựa trên bài đọc được cung cấp.
+- Mỗi câu hỏi phải kiểm tra kỹ năng đọc hiểu: chi tiết, suy luận, từ vựng, hoặc mục đích tác giả.
+- Các đáp án (A, B, C, D) phải có độ dài tương đương, không quá 200 ký tự mỗi đáp án.
+- Đáp án đúng phải rõ ràng, không mơ hồ.
+
+ĐỊNH DẠNG TRẢ VỀ:
+Trả về JSON array các câu hỏi, mỗi câu hỏi có format:
+{
+  "question": "<câu hỏi bằng tiếng Anh>",
+  "option_a": "<đáp án A tiếng Anh>",
+  "option_b": "<đáp án B tiếng Anh>",
+  "option_c": "<đáp án C tiếng Anh>",
+  "option_d": "<đáp án D tiếng Anh>",
+  "correct_answer": "<A hoặc B hoặc C hoặc D>",
+  "explain": "<giải thích bằng TIẾNG VIỆT: dịch câu hỏi + các đáp án ra tiếng Việt, chỉ rõ đáp án đúng, giải thích ngắn gọn tại sao đúng/sai>"
+}
+
+QUAN TRỌNG:
+- Chỉ trả về JSON array thuần túy, không có markdown code block, không có giải thích gì thêm.
+- Trường "question" và các option phải bằng TIẾNG ANH.
+- Trường "explain" phải bằng TIẾNG VIỆT, có format: [Dịch câu hỏi và đáp án] → Đáp án đúng: [giải thích]
+- Ví dụ explain: "Câu hỏi: 'What is the main topic of the passage?' | A: 'Technology' | B: 'Health' | C: 'Education' | D: 'Business' → Đáp án đúng: C. Giải thích: Bài viết chủ yếu nói về giáo dục vì..."
+- Đáp án đúng phải nằm trong phần giải thích.`;
+
+  const userPrompt = `Dựa trên bài đọc sau, hãy tạo ${safeCount} câu hỏi trắc nghiệm:
+
+=== BÀI ĐỌC TIẾNG ANH ===
+${content.trim()}
+=== HẾT BÀI ĐỌC ===
+
+=== BẢN DỊCH TIẾNG VIỆT ===
+${viTranslation.trim()}
+=== HẾT BẢN DỊCH ===
+
+Tạo đúng ${safeCount} câu hỏi theo định dạng JSON array đã mô tả.`;
+
+  const models = AI_MODELS;
+  let lastError = null;
+
+  for (const model of models) {
+    try {
+      const rawContent = await callOpenRouterRaw(apiKey, model, systemPrompt, userPrompt, 3000);
+      return await parseQuestionsResponse(rawContent, safeCount);
+    } catch (error) {
+      lastError = error;
+      if (error.statusCode === 429 || error.statusCode === 503) {
+        console.warn(`Model ${model} bị rate limit, thử model tiếp theo...`);
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  throw lastError;
+};
+
+/**
+ * Parse JSON response từ AI cho bài đọc.
+ * @param {string} rawContent
+ * @returns {{content: string, viTranslation: string}}
+ */
+const parseJSONResponse = (rawContent) => {
+  try {
+    const parsed = JSON.parse(rawContent);
+    if (parsed.content && parsed.viTranslation) {
+      return {
+        content: parsed.content.trim(),
+        viTranslation: parsed.viTranslation.trim(),
+      };
+    }
+  } catch {
+    // Thử extract JSON từ markdown
+  }
+
+  // Thử extract JSON từ markdown code block
+  const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    try {
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (parsed.content && parsed.viTranslation) {
+        return {
+          content: parsed.content.trim(),
+          viTranslation: parsed.viTranslation.trim(),
+        };
+      }
+    } catch {
+      // continue
+    }
+  }
+
+  throw new AppError("AI trả về định dạng không hợp lệ cho bài đọc", 502);
+};
+
+/**
+ * Dịch explain sang tiếng Việt bằng AI.
+ * Dịch toàn bộ nội dung, bao gồm cả phần trong dấu nháy.
+ * @param {string} explain
+ * @param {string} apiKey
+ * @returns {Promise<string>}
+ */
+const translateExplainToVietnamese = async (explain, apiKey) => {
+  // Kiểm tra sơ bộ: nếu có dấu tiếng Việt ở cả nhãn lẫn nội dung trong nháy thì coi như đã là tiếng Việt
+  const vietnameseChars = /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i;
+  // Trích nội dung trong nháy đơn hoặc nháy kép
+  const quotedMatches = explain.match(/['"][^'"]+['"]/g) || [];
+  const hasVietnameseInQuotes = quotedMatches.some((m) => vietnameseChars.test(m));
+
+  if (vietnameseChars.test(explain) && hasVietnameseInQuotes) {
+    return explain;
+  }
+
+  const systemPrompt = `Bạn là một dịch giả chuyên nghiệp. Dịch toàn bộ đoạn văn bản sau sang tiếng Việt.
+CHỈ trả về bản dịch tiếng Việt, không giải thích gì thêm, không có markdown.
+
+YÊU CẦU:
+- Dịch TẤT CẢ nội dung, bao gồm cả phần trong dấu nháy đơn '\'' và nháy kép "\"".
+- Giữ nguyên format và cấu trúc của đoạn gốc (các nhãn như "Câu hỏi:", "Đáp án đúng:", "Giải thích:", các ký hiệu như "|", "→", v.v.)
+- Nếu đoạn gốc có dạng: Câu hỏi: '...' | A: '...' | B: '...' → Đáp án đúng: C. Giải thích: ...'
+  Thì bản dịch phải có dạng: Câu hỏi: '...' | A: '...' | B: '...' → Đáp án đúng: C. Giải thích: ...
+  trong đó '...' là bản dịch tiếng Việt của câu hỏi và các đáp án.
+
+VÍ DỤ:
+Đầu vào: "Câu hỏi: 'What is the main topic?' | A: 'Technology' | B: 'Health' → Đáp án đúng: B."
+Đầu ra:  "Câu hỏi: 'Chủ đề chính là gì?' | A: 'Công nghệ' | B: 'Sức khỏe' → Đáp án đúng: B."`;
+
+  const userPrompt = `Dịch đoạn sau sang tiếng Việt:\n\n${explain}`;
+
+  for (const model of AI_MODELS) {
+    try {
+      const translated = await callOpenRouterRaw(apiKey, model, systemPrompt, userPrompt, 800);
+      const cleaned = translated.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
+      if (cleaned.length > 0) {
+        return cleaned;
+      }
+    } catch {
+      // Thử model khác
+    }
+  }
+
+  return explain;
+};
+
+/**
+ * Parse JSON response từ AI cho câu hỏi.
+ * Tự động dịch trường explain sang tiếng Việt nếu chưa phải.
+ * @param {string} rawContent
+ * @param {number} expectedCount
+ * @returns {Promise<Array>}
+ */
+const parseQuestionsResponse = async (rawContent, expectedCount) => {
+  let questions = [];
+
+  // Thử parse trực tiếp
+  try {
+    questions = JSON.parse(rawContent);
+  } catch {
+    // Thử extract JSON array từ markdown
+    const arrayMatch = rawContent.match(/\[[\s\S]*\]/);
+    if (arrayMatch) {
+      try {
+        questions = JSON.parse(arrayMatch[0]);
+      } catch {
+        // Thử cách khác: loại bỏ markdown code block
+        const cleaned = rawContent
+          .replace(/```json\n?/gi, "")
+          .replace(/```\n?/gi, "")
+          .trim();
+        try {
+          questions = JSON.parse(cleaned);
+        } catch {
+          throw new AppError("AI trả về định dạng không hợp lệ cho câu hỏi", 502);
+        }
+      }
+    } else {
+      throw new AppError("AI trả về định dạng không hợp lệ cho câu hỏi", 502);
+    }
+  }
+
+  if (!Array.isArray(questions) || questions.length === 0) {
+    throw new AppError("AI không trả về danh sách câu hỏi hợp lệ", 502);
+  }
+
+  const apiKey = process.env.API_KEY;
+
+  // Chuẩn hóa từng câu hỏi
+  const normalized = questions
+    .slice(0, expectedCount)
+    .map((q, idx) => {
+      const normalizedQ = {
+        question: String(q.question || "").trim(),
+        option_a: String(q.option_a || q.optionA || "").trim(),
+        option_b: String(q.option_b || q.optionB || "").trim(),
+        option_c: String(q.option_c || q.optionC || "").trim(),
+        option_d: String(q.option_d || q.optionD || "").trim(),
+        correct_answer: String(q.correct_answer || q.correctAnswer || "A").toUpperCase().trim(),
+        explain: String(q.explain || "").trim(),
+      };
+
+      // Đảm bảo correct_answer chỉ là A/B/C/D
+      if (!["A", "B", "C", "D"].includes(normalizedQ.correct_answer)) {
+        normalizedQ.correct_answer = "A";
+      }
+
+      return normalizedQ;
+    })
+    .filter((q) => q.question.length > 0 && q.option_a.length > 0 && q.option_b.length > 0);
+
+  if (normalized.length === 0) {
+    throw new AppError("AI không trả về câu hỏi hợp lệ", 502);
+  }
+
+  // Dịch explain sang tiếng Việt cho từng câu hỏi
+  for (const q of normalized) {
+    q.explain = await translateExplainToVietnamese(q.explain, apiKey);
+  }
+
+  return normalized;
+};
+
 module.exports = {
   generateVocabularyByAI,
+  generateReadingLessonByAI,
+  generateReadingQuestionsByAI,
   DEFAULT_WORD_COUNT,
   AI_MODELS,
 };

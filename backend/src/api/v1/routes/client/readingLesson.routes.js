@@ -1,11 +1,21 @@
 const router = require("express").Router();
 const readingLessonController = require("../../controllers/client/readingLesson.controller");
 const {
+  generateWithAISchema,
   createReadingLessonSchema,
   updateReadingLessonSchema,
 } = require("../../validations/readingLesson.validation");
 const { validateBody } = require("../../validations/validate");
 const { verifyToken, requireAuth } = require("../../middlewares/auth.middleware");
+
+// POST /api/v1/reading-lessons/generate-with-ai — Tạo bài luyện đọc bằng AI
+router.post(
+  "/generate-with-ai",
+  verifyToken,
+  requireAuth,
+  validateBody(generateWithAISchema),
+  readingLessonController.generateWithAI
+);
 
 // POST /api/v1/reading-lessons — Tạo bài luyện đọc mới
 router.post(

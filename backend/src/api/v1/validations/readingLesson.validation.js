@@ -1,6 +1,31 @@
 const { z } = require("zod");
 
 /**
+ * Schema validate body cho POST /api/v1/reading-lessons/generate-with-ai
+ * Tạo bài luyện đọc bằng AI.
+ */
+const generateWithAISchema = z.object({
+  title: z
+    .string()
+    .min(1, "Vui lòng nhập tiêu đề bài luyện đọc")
+    .max(255, "Tiêu đề không được dài quá 255 ký tự")
+    .trim(),
+  topic: z
+    .string()
+    .min(1, "Vui lòng nhập chủ đề bài đọc")
+    .max(500, "Chủ đề không được dài quá 500 ký tự")
+    .trim(),
+  questionCount: z
+    .number({
+      invalid_type_error: "Số câu hỏi phải là số",
+    })
+    .int("Số câu hỏi phải là số nguyên")
+    .min(1, "Số câu hỏi tối thiểu là 1")
+    .max(5, "Số câu hỏi tối đa là 5")
+    .default(5),
+});
+
+/**
  * Schema validate body cho POST /api/v1/reading-lessons
  * Tạo mới bài luyện đọc.
  */
@@ -46,6 +71,7 @@ const updateReadingLessonSchema = z.object({
 });
 
 module.exports = {
+  generateWithAISchema,
   createReadingLessonSchema,
   updateReadingLessonSchema,
 };

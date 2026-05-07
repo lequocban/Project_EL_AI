@@ -3,8 +3,30 @@ const { parsePagination } = require("../../../../utils/pagination");
 const { success } = require("../../../../utils/responseHandler");
 
 /**
+ * POST /api/v1/reading-lessons/generate-with-ai
+ * Tạo bài luyện đọc bằng AI.
+ */
+const generateWithAI = async (req, res, next) => {
+  try {
+    const { title, topic, questionCount } = req.body;
+    const createdBy = req.user.id;
+
+    const result = await readingLessonService.generateWithAI({
+      title,
+      topic,
+      questionCount,
+      createdBy,
+    });
+
+    return success(res, result, "Tạo bài luyện đọc bằng AI thành công", 201);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
  * POST /api/v1/reading-lessons
- * Tạo mới một bài luyện đọc.
+ * Tạo bài luyện đọc mới.
  */
 const createLesson = async (req, res, next) => {
   try {
@@ -134,6 +156,7 @@ const requestPublic = async (req, res, next) => {
 };
 
 module.exports = {
+  generateWithAI,
   createLesson,
   updateLesson,
   removeLesson,
