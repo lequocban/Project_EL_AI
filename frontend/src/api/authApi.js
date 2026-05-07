@@ -53,7 +53,7 @@ export const fetchWithAuth = async (url, options = {}) => {
 export const authApi = {
   login: async (email, password) => {
     const data = await postJson(`${AUTH_URL}/login`, { email, password });
-    saveSession(data.data?.session);
+    saveSession(data.data);
     return data;
   },
 
@@ -63,7 +63,7 @@ export const authApi = {
       password,
       userName,
     });
-    saveSession(data.data?.session);
+    saveSession(data.data);
     return data;
   },
 
@@ -71,10 +71,23 @@ export const authApi = {
     return fetchWithAuth(`${PROFILE_URL}/me`, { method: "GET" });
   },
 
+  updateProfile: async ({ userName, dayOfBirth }) => {
+    return fetchWithAuth(`${PROFILE_URL}/me`, {
+      method: "PATCH",
+      body: JSON.stringify({ userName, dayOfBirth }),
+    });
+  },
+
   requestOtp: (email) => postJson(`${AUTH_URL}/request-otp`, { email }),
 
   resetPassword: (email, otp, newPassword) =>
     postJson(`${AUTH_URL}/reset-password`, { email, otp, newPassword }),
+
+  changePassword: (currentPassword, newPassword) =>
+    fetchWithAuth(`${AUTH_URL}/change-password`, {
+      method: "PATCH",
+      body: JSON.stringify({ currentPassword, newPassword }),
+    }),
 
   logout: async () => {
     const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
