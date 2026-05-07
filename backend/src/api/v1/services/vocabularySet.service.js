@@ -2,24 +2,24 @@ const vocabularySetModel = require("../repositories/vocabularySet.model");
 const vocabularyService = require("./vocabulary.service");
 const { generateVocabularyByAI } = require("./ai.service");
 const { AppError } = require("../../../utils/appError");
+const { buildPaginationResponse } = require("../../../utils/paginationResponse");
+const { validateTitle, validateDescription, validateTopic } = require("../../../utils/validationHelpers");
 
 /**
  * Format response vocabulary set.
  * @param {Object} vocabularySet
  * @returns {Object}
  */
-const formatVocabularySet = (vocabularySet) => {
-  return {
-    id: vocabularySet.id,
-    title: vocabularySet.title,
-    description: vocabularySet.description,
-    status: vocabularySet.status,
-    createdBy: vocabularySet.created_by,
-    createdAt: vocabularySet.created_at,
-    updatedAt: vocabularySet.updated_at,
-    deleted: vocabularySet.deleted,
-  };
-};
+const formatVocabularySet = (vocabularySet) => ({
+  id: vocabularySet.id,
+  title: vocabularySet.title,
+  description: vocabularySet.description,
+  status: vocabularySet.status,
+  createdBy: vocabularySet.created_by,
+  createdAt: vocabularySet.created_at,
+  updatedAt: vocabularySet.updated_at,
+  deleted: vocabularySet.deleted,
+});
 
 /**
  * Format response danh sách bộ từ vựng (có số từ).
@@ -27,31 +27,28 @@ const formatVocabularySet = (vocabularySet) => {
  * @param {number} wordCount
  * @returns {Object}
  */
-const formatListItem = (item, wordCount) => {
-  return {
-    id: item.id,
-    title: item.title,
-    description: item.description,
-    wordCount,
-  };
-};
+const formatListItem = (item, wordCount) => ({
+  id: item.id,
+  title: item.title,
+  description: item.description,
+  wordCount,
+});
+
+/**
+ * Enrich danh sách items với wordCount.
+ * @param {Array} data
+ * @param {Function} countFn - Hàm đếm từ (setId) => Promise<number>
+ * @returns {Promise<Array>}
+ */
+const enrichWithWordCount = async (data, countFn) =>
+  Promise.all(data.map(async (item) => formatListItem(item, await countFn(item.id))));
 
 /**
  * Tạo vocabulary set mới.
- * @param {Object} params
- * @param {string} params.title
- * @param {string} params.description
- * @param {string} params.createdBy
- * @returns {Promise<Object>}
  */
 const createVocabularySet = async ({ title, description, createdBy }) => {
-  if (!title || !title.trim()) {
-    throw new AppError("Vui lòng nhập tiêu đề bộ từ vựng", 400);
-  }
-
-  if (title.trim().length > 255) {
-    throw new AppError("Tiêu đề không được dài quá 255 ký tự", 400);
-  }
+  validateTitle(title);
+  validateDescription(description);
 
   const vocabularySet = await vocabularySetModel.create({
     title: title.trim(),
@@ -65,25 +62,10 @@ const createVocabularySet = async ({ title, description, createdBy }) => {
 
 /**
  * Cập nhật vocabulary set.
- * @param {string} id
- * @param {Object} params
- * @param {string} params.title
- * @param {string} params.description
- * @returns {Promise<Object>}
  */
 const updateVocabularySet = async (id, { title, description }) => {
-  if (title !== undefined) {
-    if (!title || !title.trim()) {
-      throw new AppError("Vui lòng nhập tiêu đề bộ từ vựng", 400);
-    }
-    if (title.trim().length > 255) {
-      throw new AppError("Tiêu đề không được dài quá 255 ký tự", 400);
-    }
-  }
-
-  if (description !== undefined && description?.length > 1000) {
-    throw new AppError("Mô tả không được dài quá 1000 ký tự", 400);
-  }
+  if (title !== undefined) validateTitle(title);
+  if (description !== undefined) validateDescription(description);
 
   const vocabularySet = await vocabularySetModel.update(id, {
     title: title?.trim(),
@@ -95,8 +77,6 @@ const updateVocabularySet = async (id, { title, description }) => {
 
 /**
  * Xóa mềm vocabulary set.
- * @param {string} id
- * @returns {Promise<Object>}
  */
 const softDeleteVocabularySet = async (id) => {
   const vocabularySet = await vocabularySetModel.softDelete(id);
@@ -104,80 +84,25 @@ const softDeleteVocabularySet = async (id) => {
 };
 
 /**
- * Lấy danh sách bộ từ vựng của user (có phân trang, tìm kiếm, số từ trong bộ).
- * @param {string} userId
- * @param {Object} options
- * @param {string} options.keyword
- * @param {number} options.page
- * @param {number} options.limit
- * @returns {Promise<Object>}
+ * Lấy danh sách bộ từ vựng của user (có phân trang, tìm kiếm).
  */
 const getMySets = async (userId, { keyword, page = 1, limit = 15 }) => {
   const { data, total } = await vocabularySetModel.getMySets(userId, { keyword, page, limit });
-
-  const items = await Promise.all(
-    data.map(async (item) => {
-      const wordCount = await vocabularySetModel.countWordsInSet(item.id);
-      return formatListItem(item, wordCount);
-    })
-  );
-
-  const safeLimit = Math.min(Math.max(1, limit), 15);
-  const totalPages = Math.ceil(total / safeLimit);
-
-  return {
-    items,
-    pagination: {
-      page,
-      limit: safeLimit,
-      total,
-      totalPages,
-    },
-  };
+  const items = await enrichWithWordCount(data, (setId) => vocabularySetModel.countWordsInSet(setId));
+  return buildPaginationResponse(items, { page, limit, total });
 };
 
 /**
- * Lấy danh sách bộ từ vựng public (có phân trang, tìm kiếm, số từ trong bộ).
- * @param {Object} options
- * @param {string} options.keyword
- * @param {number} options.page
- * @param {number} options.limit
- * @returns {Promise<Object>}
+ * Lấy danh sách bộ từ vựng public (có phân trang, tìm kiếm).
  */
 const getPublicSets = async ({ keyword, page = 1, limit = 15 }) => {
   const { data, total } = await vocabularySetModel.getPublicSets({ keyword, page, limit });
-
-  const items = await Promise.all(
-    data.map(async (item) => {
-      const wordCount = await vocabularySetModel.countWordsInSet(item.id);
-      return formatListItem(item, wordCount);
-    })
-  );
-
-  const safeLimit = Math.min(Math.max(1, limit), 15);
-  const totalPages = Math.ceil(total / safeLimit);
-
-  return {
-    items,
-    pagination: {
-      page,
-      limit: safeLimit,
-      total,
-      totalPages,
-    },
-  };
+  const items = await enrichWithWordCount(data, (setId) => vocabularySetModel.countWordsInSet(setId));
+  return buildPaginationResponse(items, { page, limit, total });
 };
 
 /**
  * Thêm nhiều từ vào một bộ từ vựng.
- * - Kiểm tra bộ từ vựng có tồn tại và thuộc về user không
- * - Với mỗi từ: nếu chưa có trong DB → gọi API lookup → lưu vào DB
- * - Sau đó lưu các word_id vào bảng vocabulary_set_words
- *
- * @param {string} setId - ID của bộ từ vựng
- * @param {string} userId - ID của user (để kiểm tra quyền sở hữu)
- * @param {Array<string>} words - Mảng từ tiếng Anh cần thêm
- * @returns {Promise<Object>}
  */
 const addWordsToSet = async (setId, userId, words) => {
   if (!words || words.length === 0) {
@@ -229,21 +154,13 @@ const addWordsToSet = async (setId, userId, words) => {
   }
 
   await vocabularySetModel.addWordsToSet(setId, wordIds);
-
   const totalWords = await vocabularySetModel.countWordsInSet(setId);
 
-  return {
-    setId,
-    addedCount: wordIds.length,
-    totalWords,
-  };
+  return { setId, addedCount: wordIds.length, totalWords };
 };
 
 /**
  * Lấy chi tiết một bộ từ vựng kèm danh sách từ vựng bên trong.
- * @param {string} setId
- * @param {string} userId - để kiểm tra bộ private có thuộc về user không
- * @returns {Promise<Object>}
  */
 const getDetail = async (setId, userId) => {
   const vocabularySet = await vocabularySetModel.findById(setId);
@@ -272,41 +189,13 @@ const getDetail = async (setId, userId) => {
 };
 
 /**
- * Tạo bộ từ vựng mới rồi sinh từ vựng bằng AI và thêm vào bộ vừa tạo.
- * - Tạo bộ từ vựng mới với title, description
- * - Gọi AI (OpenRouter) để sinh danh sách từ theo chủ đề
- * - Với mỗi từ: nếu chưa có trong DB → gọi API lookup → lưu vào DB
- * - Sau đó lưu các word_id vào bảng vocabulary_set_words
- *
- * @param {string} userId - ID của user (để kiểm tra quyền sở hữu)
- * @param {string} title - Tiêu đề bộ từ vựng
- * @param {string|null} description - Mô tả bộ từ vựng
- * @param {string} topic - Chủ đề từ vựng người dùng mô tả
- * @param {number} [wordCount] - Số từ muốn sinh (mặc định: 10)
- * @returns {Promise<Object>}
+ * Tạo bộ từ vựng mới rồi sinh từ vựng bằng AI.
  */
 const generateWordsByTopic = async (userId, title, description, topic, wordCount) => {
-  if (!title || !title.trim()) {
-    throw new AppError("Vui lòng nhập tiêu đề bộ từ vựng", 400);
-  }
+  validateTitle(title);
+  validateDescription(description);
+  validateTopic(topic);
 
-  if (title.trim().length > 255) {
-    throw new AppError("Tiêu đề không được dài quá 255 ký tự", 400);
-  }
-
-  if (description && description.length > 1000) {
-    throw new AppError("Mô tả không được dài quá 1000 ký tự", 400);
-  }
-
-  if (!topic || !topic.trim()) {
-    throw new AppError("Vui lòng nhập chủ đề từ vựng", 400);
-  }
-
-  if (topic.trim().length > 500) {
-    throw new AppError("Chủ đề từ vựng không được dài quá 500 ký tự", 400);
-  }
-
-  // Tạo bộ từ vựng mới
   const vocabularySet = await vocabularySetModel.create({
     title: title.trim(),
     description: description?.trim() || null,
@@ -314,24 +203,12 @@ const generateWordsByTopic = async (userId, title, description, topic, wordCount
     created_by: userId,
   });
 
-  const setId = vocabularySet.id;
-
-  // Gọi AI sinh từ vựng theo chủ đề
   const words = await generateVocabularyByAI(topic, wordCount);
-
-  // Thêm từ vựng vào bộ vừa tạo
-  return await addWordsToSet(setId, userId, words);
+  return addWordsToSet(vocabularySet.id, userId, words);
 };
 
 /**
  * Xóa một hoặc nhiều từ vựng khỏi bộ từ vựng.
- * - Kiểm tra bộ từ vựng có tồn tại và thuộc về user không
- * - Xóa các word_id khỏi bảng vocabulary_set_words
- *
- * @param {string} setId - ID của bộ từ vựng
- * @param {string} userId - ID của user (để kiểm tra quyền sở hữu)
- * @param {Array<string>} wordIds - Mảng ID từ vựng cần xóa
- * @returns {Promise<Object>}
  */
 const removeWordsFromSet = async (setId, userId, wordIds) => {
   if (!wordIds || wordIds.length === 0) {
@@ -349,24 +226,13 @@ const removeWordsFromSet = async (setId, userId, wordIds) => {
   }
 
   await vocabularySetModel.removeWordsFromSet(setId, wordIds);
-
   const totalWords = await vocabularySetModel.countWordsInSet(setId);
 
-  return {
-    setId,
-    removedCount: wordIds.length,
-    totalWords,
-  };
+  return { setId, removedCount: wordIds.length, totalWords };
 };
 
 /**
- * Yêu cầu public một bộ từ vựng (chuyển status thành req_public).
- * - Chỉ chủ sở hữu mới được yêu cầu public
- * - Chỉ bộ từ vựng ở trạng thái "private" mới được yêu cầu public
- *
- * @param {string} setId - ID của bộ từ vựng
- * @param {string} userId - ID của user (để kiểm tra quyền sở hữu)
- * @returns {Promise<Object>}
+ * Yêu cầu public một bộ từ vựng.
  */
 const requestPublic = async (setId, userId) => {
   const vocabularySet = await vocabularySetModel.findById(setId);
@@ -384,49 +250,20 @@ const requestPublic = async (setId, userId) => {
   }
 
   const updated = await vocabularySetModel.updateStatus(setId, "req_public");
-
   return formatVocabularySet(updated);
 };
 
 /**
- * Lấy danh sách bộ từ vựng đang chờ duyệt public (phân trang, tìm kiếm).
- * @param {Object} options
- * @param {string} options.keyword
- * @param {number} options.page
- * @param {number} options.limit
- * @returns {Promise<Object>}
+ * Lấy danh sách bộ từ vựng đang chờ duyệt public.
  */
 const getPendingPublicSets = async ({ keyword, page = 1, limit = 15 }) => {
   const { data, total } = await vocabularySetModel.getPendingPublicSets({ keyword, page, limit });
-
-  const items = await Promise.all(
-    data.map(async (item) => {
-      const wordCount = await vocabularySetModel.countWordsInSet(item.id);
-      return formatListItem(item, wordCount);
-    })
-  );
-
-  const safeLimit = Math.min(Math.max(1, limit), 15);
-  const totalPages = Math.ceil(total / safeLimit);
-
-  return {
-    items,
-    pagination: {
-      page,
-      limit: safeLimit,
-      total,
-      totalPages,
-    },
-  };
+  const items = await enrichWithWordCount(data, (setId) => vocabularySetModel.countWordsInSet(setId));
+  return buildPaginationResponse(items, { page, limit, total });
 };
 
 /**
- * Duyệt public một bộ từ vựng (chuyển status từ req_public thành public).
- * - Chỉ content_manager (role_id = 2) hoặc admin (role_id = 3) mới được duyệt
- * - Chỉ bộ từ vựng ở trạng thái "req_public" mới được duyệt
- *
- * @param {string} setId - ID của bộ từ vựng
- * @returns {Promise<Object>}
+ * Duyệt public một bộ từ vựng.
  */
 const approvePublic = async (setId) => {
   const vocabularySet = await vocabularySetModel.findById(setId);
@@ -440,17 +277,11 @@ const approvePublic = async (setId) => {
   }
 
   const updated = await vocabularySetModel.updateStatus(setId, "public");
-
   return formatVocabularySet(updated);
 };
 
 /**
- * Từ chối duyệt public một bộ từ vựng (chuyển status từ req_public thành private).
- * - Chỉ content_manager (role_id = 2) hoặc admin (role_id = 3) mới được từ chối
- * - Chỉ bộ từ vựng ở trạng thái "req_public" mới được từ chối
- *
- * @param {string} setId - ID của bộ từ vựng
- * @returns {Promise<Object>}
+ * Từ chối duyệt public một bộ từ vựng.
  */
 const rejectPublic = async (setId) => {
   const vocabularySet = await vocabularySetModel.findById(setId);
@@ -464,18 +295,11 @@ const rejectPublic = async (setId) => {
   }
 
   const updated = await vocabularySetModel.updateStatus(setId, "private");
-
   return formatVocabularySet(updated);
 };
 
 /**
  * Chuyển bộ từ vựng từ public về private.
- * - Chỉ chủ sở hữu mới được chuyển về private
- * - Chỉ bộ từ vựng ở trạng thái "public" mới có thể chuyển về private
- *
- * @param {string} setId - ID của bộ từ vựng
- * @param {string} userId - ID của user (để kiểm tra quyền sở hữu)
- * @returns {Promise<Object>}
  */
 const makePrivate = async (setId, userId) => {
   const vocabularySet = await vocabularySetModel.findById(setId);
@@ -493,7 +317,6 @@ const makePrivate = async (setId, userId) => {
   }
 
   const updated = await vocabularySetModel.updateStatus(setId, "private");
-
   return formatVocabularySet(updated);
 };
 

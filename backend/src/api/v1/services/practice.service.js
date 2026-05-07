@@ -1,11 +1,10 @@
 const vocabularySetModel = require("../repositories/vocabularySet.model");
 const practiceModel = require("../repositories/practice.model");
 const { AppError } = require("../../../utils/appError");
+const { buildPaginationResponse } = require("../../../utils/paginationResponse");
 
 /**
  * Chuẩn hóa đáp án để so sánh (bỏ dấu, khoảng trắng thừa, lowercase).
- * @param {string} answer
- * @returns {string}
  */
 const normalizeAnswer = (answer) => {
   if (!answer) return "";
@@ -20,8 +19,6 @@ const normalizeAnswer = (answer) => {
 
 /**
  * Lấy danh sách từ trong bộ từ vựng để đối chiếu đáp án.
- * @param {string} setId
- * @returns {Promise<Map<string, Object>>} - Map từ wordId -> { id, word, meaning, phonetic }
  */
 const getWordMap = async (setId) => {
   const words = await vocabularySetModel.getWordsInSet(setId);
@@ -34,9 +31,6 @@ const getWordMap = async (setId) => {
 
 /**
  * So sánh đáp án user với đáp án đúng (bỏ dấu, không phân biệt hoa thường).
- * @param {string} userAnswer
- * @param {string} correctAnswer
- * @returns {boolean}
  */
 const gradeTextAnswer = (userAnswer, correctAnswer) => {
   const normalizedUser = normalizeAnswer(userAnswer);
@@ -52,13 +46,6 @@ const gradeTextAnswer = (userAnswer, correctAnswer) => {
  * - listening_quiz: Audio → đáp án nghĩa tiếng Việt
  * - translate_write: Câu hỏi tiếng Việt → nhập từ tiếng Anh
  * - listen_write: Nghe audio → nhập từ tiếng Anh
- *
- * @param {string} userId - ID người dùng
- * @param {string} setId - ID bộ từ vựng
- * @param {string} type - Loại bài luyện tập
- * @param {number} timeSpent - Thời gian hoàn thành (giây)
- * @param {Array} answers - Danh sách đáp án [{ wordId, answer }]
- * @returns {Promise<Object>}
  */
 const submitPractice = async (userId, setId, type, timeSpent, answers) => {
   const vocabularySet = await vocabularySetModel.findById(setId);
@@ -75,13 +62,11 @@ const submitPractice = async (userId, setId, type, timeSpent, answers) => {
   let correctCount = 0;
 
   if (type === "quiz" || type === "listening_quiz") {
-    // quiz/listening_quiz: đáp án là nghĩa tiếng Việt → so sánh với meaning
     for (const item of answers) {
       const wordData = wordMap.get(item.wordId);
       if (!wordData) continue;
 
-      const isCorrect = gradeTextAnswer(item.answer, wordData.meaning);
-      if (isCorrect) {
+      if (gradeTextAnswer(item.answer, wordData.meaning)) {
         correctCount++;
       } else {
         wrongWords.push({
@@ -93,13 +78,11 @@ const submitPractice = async (userId, setId, type, timeSpent, answers) => {
       }
     }
   } else if (type === "translate_write" || type === "listen_write") {
-    // translate_write/listen_write: nhập từ tiếng Anh → so sánh với word
     for (const item of answers) {
       const wordData = wordMap.get(item.wordId);
       if (!wordData) continue;
 
-      const isCorrect = gradeTextAnswer(item.answer, wordData.word);
-      if (isCorrect) {
+      if (gradeTextAnswer(item.answer, wordData.word)) {
         correctCount++;
       } else {
         wrongWords.push({
@@ -139,17 +122,9 @@ const submitPractice = async (userId, setId, type, timeSpent, answers) => {
 
 /**
  * Lấy lịch sử luyện tập của user (có phân trang).
- * @param {string} userId
- * @param {Object} options
- * @param {number} options.page
- * @param {number} options.limit
- * @returns {Promise<Object>}
  */
 const getPracticeHistory = async (userId, { page = 1, limit = 10 } = {}) => {
   const { data, total } = await practiceModel.getUserPracticeHistory(userId, { page, limit });
-
-  const safeLimit = Math.min(Math.max(1, limit), 20);
-  const totalPages = Math.ceil(total / safeLimit);
 
   const items = await Promise.all(
     data.map(async (item) => {
@@ -170,15 +145,7 @@ const getPracticeHistory = async (userId, { page = 1, limit = 10 } = {}) => {
     })
   );
 
-  return {
-    items,
-    pagination: {
-      page,
-      limit: safeLimit,
-      total,
-      totalPages,
-    },
-  };
+  return buildPaginationResponse(items, { page, limit, total, maxLimit: 20 });
 };
 
 module.exports = {

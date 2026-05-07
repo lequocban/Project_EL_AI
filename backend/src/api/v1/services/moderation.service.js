@@ -1,4 +1,7 @@
 const moderationModel = require("../repositories/moderation.model");
+const vocabularySetModel = require("../repositories/vocabularySet.model");
+const { AppError } = require("../../../utils/appError");
+
 let readingLessonModel = null;
 let listeningLessonModel = null;
 
@@ -14,21 +17,31 @@ try {
   // listeningLesson.model chưa tồn tại
 }
 
-const vocabularySetModel = require("../repositories/vocabularySet.model");
-const { AppError } = require("../../../utils/appError");
-
-// Các loại content được hỗ trợ kiểm duyệt
 const SUPPORTED_CONTENT_TYPES = ["vocabulary_set", "reading_lesson", "listening_lesson"];
 
-// -------------------------------------------------------
-// Tạo yêu cầu kiểm duyệt nội dung
-// -------------------------------------------------------
+/**
+ * Định dạng yêu cầu kiểm duyệt từ DB row.
+ */
+const formatModerationRequest = (request, contentInfo = null) => ({
+  id: request.id,
+  contentType: request.content_type,
+  contentId: request.content_id,
+  status: request.status,
+  requestedBy: request.requested_by,
+  reviewedBy: request.reviewed_by || null,
+  reviewedAt: request.reviewed_at || null,
+  createdAt: request.created_at,
+  content: contentInfo || null,
+});
+
+/**
+ * Tạo yêu cầu kiểm duyệt nội dung.
+ */
 const createModerationRequest = async (accessToken, userId, { contentType, contentId }) => {
   if (!contentType || !contentId) {
     throw new AppError("contentType và contentId là bắt buộc", 400);
   }
 
-  // Kiểm tra content type có được hỗ trợ
   if (!SUPPORTED_CONTENT_TYPES.includes(contentType)) {
     throw new AppError(
       `Loại nội dung '${contentType}' chưa được hỗ trợ kiểm duyệt. Các loại được hỗ trợ: ${SUPPORTED_CONTENT_TYPES.join(", ")}`,
@@ -36,7 +49,6 @@ const createModerationRequest = async (accessToken, userId, { contentType, conte
     );
   }
 
-  // Kiểm tra content tồn tại và user có quyền
   const contentOwnership = await verifyContentOwnership(contentType, contentId, userId);
   if (!contentOwnership.exists) {
     throw new AppError("Không tìm thấy nội dung", 404);
@@ -51,7 +63,6 @@ const createModerationRequest = async (accessToken, userId, { contentType, conte
     );
   }
 
-  // Kiểm tra đã có yêu cầu pending hoặc approved chưa
   const existingRequest = await moderationModel.existsPendingRequest(
     accessToken,
     contentId,
@@ -74,9 +85,9 @@ const createModerationRequest = async (accessToken, userId, { contentType, conte
   return formatModerationRequest(request, contentOwnership.content);
 };
 
-// -------------------------------------------------------
-// Lấy danh sách yêu cầu kiểm duyệt của user
-// -------------------------------------------------------
+/**
+ * Lấy danh sách yêu cầu kiểm duyệt của user.
+ */
 const getMyRequests = async (accessToken, userId, { keyword, status, page, limit }) => {
   const { data, total } = await moderationModel.getRequestsByUser(accessToken, userId, {
     keyword,
@@ -85,11 +96,10 @@ const getMyRequests = async (accessToken, userId, { keyword, status, page, limit
     limit,
   });
 
-  // Lấy thông tin content cho mỗi request
   const enrichedData = await Promise.all(
     (data || []).map(async (req) => {
       const contentInfo = await getContentInfo(req.content_type, req.content_id);
-      return formatModerationRequestListItem(req, contentInfo);
+      return formatModerationRequest(req, contentInfo);
     })
   );
 
@@ -101,15 +111,8 @@ const getMyRequests = async (accessToken, userId, { keyword, status, page, limit
   };
 };
 
-// -------------------------------------------------------
-// Kiểm tra quyền sở hữu content theo từng loại
-// -------------------------------------------------------
 /**
- * Xác minh user có quyền yêu cầu kiểm duyệt content không.
- * @param {string} contentType
- * @param {string} contentId
- * @param {string} userId
- * @returns {Promise<{exists: boolean, isOwner: boolean, isPrivate: boolean, currentStatus: string, content: Object|null}>}
+ * Kiểm tra quyền sở hữu content theo từng loại.
  */
 const verifyContentOwnership = async (contentType, contentId, userId) => {
   switch (contentType) {
@@ -172,9 +175,9 @@ const verifyListeningLessonOwnership = async (lessonId, userId) => {
   };
 };
 
-// -------------------------------------------------------
-// Lấy thông tin content theo type
-// -------------------------------------------------------
+/**
+ * Lấy thông tin content theo type.
+ */
 const getContentInfo = async (contentType, contentId) => {
   switch (contentType) {
     case "vocabulary_set": {
@@ -199,41 +202,9 @@ const getContentInfo = async (contentType, contentId) => {
   }
 };
 
-// -------------------------------------------------------
-// Formatters
-// -------------------------------------------------------
-const formatModerationRequest = (request, contentInfo = null) => {
-  return {
-    id: request.id,
-    contentType: request.content_type,
-    contentId: request.content_id,
-    status: request.status,
-    requestedBy: request.requested_by,
-    reviewedBy: request.reviewed_by || null,
-    reviewedAt: request.reviewed_at || null,
-    createdAt: request.created_at,
-    content: contentInfo || null,
-  };
-};
-
-const formatModerationRequestListItem = (request, contentInfo = null) => {
-  return {
-    id: request.id,
-    contentType: request.content_type,
-    contentId: request.content_id,
-    status: request.status,
-    requestedBy: request.requested_by,
-    reviewedBy: request.reviewed_by || null,
-    reviewedAt: request.reviewed_at || null,
-    createdAt: request.created_at,
-    content: contentInfo || null,
-  };
-};
-
 module.exports = {
   createModerationRequest,
   getMyRequests,
   formatModerationRequest,
-  formatModerationRequestListItem,
   SUPPORTED_CONTENT_TYPES,
 };
