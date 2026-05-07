@@ -1,7 +1,7 @@
-import { API_BASE_URL, fetchWithAuth } from "@/api/authApi";
+import { fetchWithAuth } from "@/api/authApi";
 
-const VOCABULARY_SET_URL = `${API_BASE_URL}/api/v1/vocabulary-sets`;
-const VOCABULARY_URL = `${API_BASE_URL}/api/v1/vocabulary`;
+const VOCABULARY_SET_URL = `/api/v1/vocabulary-sets`;
+const VOCABULARY_URL = `/api/v1/vocabulary`;
 
 const normalizeSet = (set) => ({
   ...set,

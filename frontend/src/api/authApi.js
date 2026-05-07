@@ -1,10 +1,10 @@
 import { appParams } from "@/lib/app-params";
 
-const API_BASE_URL = appParams.appBaseUrl || "http://localhost:3000";
+// Dùng relative path để Vite proxy bắt request, fallback về absolute URL khi build
+const API_BASE_URL = import.meta.env.VITE_BASE_URL || appParams.appBaseUrl || "";
 const AUTH_URL = `${API_BASE_URL}/api/v1/auth`;
 const PROFILE_URL = `${API_BASE_URL}/api/v1/profile`;
 const ACCESS_TOKEN_KEY = "base44_access_token";
-const REFRESH_TOKEN_KEY = "base44_refresh_token";
 
 const handleResponse = async (res) => {
   const data = await res.json().catch(() => ({}));
@@ -13,14 +13,14 @@ const handleResponse = async (res) => {
 };
 
 const saveSession = (session) => {
-  if (!session) return;
+  if (!session?.accessToken) return;
   localStorage.setItem(ACCESS_TOKEN_KEY, session.accessToken);
-  localStorage.setItem(REFRESH_TOKEN_KEY, session.refreshToken);
 };
 
 const postJson = async (url, body, options = {}) => {
   const res = await fetch(url, {
     method: "POST",
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...options.headers,
@@ -30,21 +30,49 @@ const postJson = async (url, body, options = {}) => {
   return handleResponse(res);
 };
 
-export const fetchWithAuth = async (url, options = {}) => {
-  const token = localStorage.getItem(ACCESS_TOKEN_KEY);
-  const headers = {
-    "Content-Type": "application/json",
-    ...options.headers,
-  };
-  if (token) headers.Authorization = `Bearer ${token}`;
+const requestRefreshToken = async () => {
+  const res = await fetch(`${AUTH_URL}/refresh-token`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+  const data = await handleResponse(res);
+  saveSession(data.data);
+  return data;
+};
 
-  const res = await fetch(url, { ...options, headers });
+export const fetchWithAuth = async (url, options = {}) => {
+  const buildHeaders = (token) => {
+    const headers = {
+      "Content-Type": "application/json",
+      ...options.headers,
+    };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    return headers;
+  };
+
+  const token = localStorage.getItem(ACCESS_TOKEN_KEY);
+  let res = await fetch(url, {
+    ...options,
+    credentials: "include",
+    headers: buildHeaders(token),
+  });
 
   if (res.status === 401) {
-    localStorage.removeItem(ACCESS_TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
-    window.location.href = "/login";
-    throw new Error("Unauthorized");
+    try {
+      const refreshData = await requestRefreshToken();
+      res = await fetch(url, {
+        ...options,
+        credentials: "include",
+        headers: buildHeaders(refreshData.data?.accessToken),
+      });
+    } catch {
+      localStorage.removeItem(ACCESS_TOKEN_KEY);
+      window.location.href = "/login";
+      throw new Error("Unauthorized");
+    }
   }
 
   return handleResponse(res);
@@ -83,6 +111,8 @@ export const authApi = {
   resetPassword: (email, otp, newPassword) =>
     postJson(`${AUTH_URL}/reset-password`, { email, otp, newPassword }),
 
+  refreshToken: requestRefreshToken,
+
   changePassword: (currentPassword, newPassword) =>
     fetchWithAuth(`${AUTH_URL}/change-password`, {
       method: "PATCH",
@@ -94,13 +124,13 @@ export const authApi = {
     if (accessToken) {
       await fetch(`${AUTH_URL}/logout`, {
         method: "POST",
+        credentials: "include",
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
       }).catch(() => {});
     }
     localStorage.removeItem(ACCESS_TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
   },
 };
 
