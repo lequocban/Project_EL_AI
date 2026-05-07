@@ -152,8 +152,8 @@ const verifyReadingLessonOwnership = async (lessonId, userId) => {
   return {
     exists: true,
     isOwner: lesson.created_by === userId,
-    isPrivate: lesson.is_public === false,
-    currentStatus: lesson.is_public ? "public" : "private",
+    isPrivate: lesson.status === "private",
+    currentStatus: lesson.status,
     content: { id: lesson.id, title: lesson.title },
   };
 };
@@ -169,8 +169,8 @@ const verifyListeningLessonOwnership = async (lessonId, userId) => {
   return {
     exists: true,
     isOwner: lesson.created_by === userId,
-    isPrivate: lesson.is_public === false,
-    currentStatus: lesson.is_public ? "public" : "private",
+    isPrivate: lesson.status === "private",
+    currentStatus: lesson.status,
     content: { id: lesson.id, title: lesson.title },
   };
 };
