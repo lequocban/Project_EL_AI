@@ -7,6 +7,10 @@ const practiceRoutes = require("./client/practice.routes");
 const favoriteVocabularyRoutes = require("./client/favoriteVocabulary.routes");
 const moderationRoutes = require("./client/moderation.routes");
 const adminVocabularySetRoutes = require("./admin/vocabularySet.routes");
+const adminReadingLessonRoutes = require("./admin/readingLesson.routes");
+const readingLessonRoutes = require("./client/readingLesson.routes");
+const readingQuestionRoutes = require("./client/readingQuestion.routes");
+const readingQuestionItemRoutes = require("./client/readingQuestionItem.routes");
 
 router.get("/health", (req, res) => {
   res.json({ status: "ok" });
@@ -22,6 +26,14 @@ router.use("/moderation-requests", moderationRoutes);
 
 // Admin routes
 router.use("/admin/vocabulary-sets", adminVocabularySetRoutes);
+router.use("/admin", adminReadingLessonRoutes);
+
+// Reading lessons
+router.use("/reading-lessons", readingLessonRoutes);
+
+// Reading questions (nested under reading-lessons)
+router.use("/reading-lessons", readingQuestionRoutes);
+router.use("/reading-questions", readingQuestionItemRoutes);
 
 module.exports = router;
 
