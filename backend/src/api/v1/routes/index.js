@@ -10,6 +10,7 @@ const adminVocabularySetRoutes = require("./admin/vocabularySet.routes");
 const adminReadingLessonRoutes = require("./admin/readingLesson.routes");
 const readingLessonRoutes = require("./client/readingLesson.routes");
 const readingQuestionRoutes = require("./client/readingQuestion.routes");
+const readingPracticeRoutes = require("./client/readingPractice.routes");
 
 router.get("/health", (req, res) => {
   res.json({ status: "ok" });
@@ -29,6 +30,9 @@ router.use("/admin", adminReadingLessonRoutes);
 
 // Reading lessons
 router.use("/reading-lessons", readingLessonRoutes);
+
+// Reading practice
+router.use("/reading-lessons", readingPracticeRoutes);
 
 // Reading questions — gộp nested & standalone vào 1 router duy nhất
 // Mount 2 lần: /reading-lessons (nested) + /reading-questions (standalone)
