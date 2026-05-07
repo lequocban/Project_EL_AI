@@ -58,13 +58,8 @@ export default function SetDetail({ set, onBack }) {
   const [words, setWords] = useState([]);
   const [mode, setMode] = useState(null);
   const [showAddWord, setShowAddWord] = useState(false);
-  const [newWord, setNewWord] = useState({
-    word: "",
-    meaning: "",
-    pronunciation: "",
-    example: "",
-    part_of_speech: "",
-  });
+  // Mỗi phần tử: { word, meaning, pronunciation, isLoading }
+  const [pendingWords, setPendingWords] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -83,29 +78,86 @@ export default function SetDetail({ set, onBack }) {
     }
   };
 
-  const addWord = async () => {
-    if (!newWord.word.trim() || !newWord.meaning.trim()) return;
+  // Thêm một ô nhập từ mới vào danh sách chờ
+  const addWordField = () => {
+    setPendingWords((current) => [
+      ...current,
+      { word: "", meaning: "", pronunciation: "", isLoading: false },
+    ]);
+  };
+
+  // Cập nhật từ tiếng Anh trong ô chờ, tự động tra cứu nghĩa khi có từ
+  const updatePendingWord = async (index, field, value) => {
+    setPendingWords((current) => {
+      const updated = [...current];
+      updated[index] = { ...updated[index], [field]: value };
+
+      // Khi từ tiếng Anh thay đổi và có nội dung, tự động tra cứu
+      if (field === "word" && value.trim()) {
+        updated[index].isLoading = true;
+        updated[index].meaning = "";
+        updated[index].pronunciation = "";
+      } else if (field === "word" && !value.trim()) {
+        // Xóa trắng từ thì reset thông tin
+        updated[index].meaning = "";
+        updated[index].pronunciation = "";
+        updated[index].isLoading = false;
+      }
+
+      return updated;
+    });
+
+    // Gọi API tra cứu nếu từ tiếng Anh được nhập
+    if (field === "word" && value.trim()) {
+      try {
+        const lookedUp = await vocabularyApi.lookupWord(value.trim());
+        setPendingWords((current) => {
+          const updated = [...current];
+          if (updated[index]) {
+            updated[index] = {
+              ...updated[index],
+              meaning: lookedUp.meaning || "",
+              pronunciation: lookedUp.pronunciation || "",
+              isLoading: false,
+            };
+          }
+          return updated;
+        });
+      } catch {
+        setPendingWords((current) => {
+          const updated = [...current];
+          if (updated[index]) {
+            updated[index].isLoading = false;
+          }
+          return updated;
+        });
+      }
+    }
+  };
+
+  // Xóa một ô nhập từ khỏi danh sách chờ
+  const removePendingWord = (index) => {
+    setPendingWords((current) => current.filter((_, i) => i !== index));
+  };
+
+  // Lưu tất cả từ đã tra cứu vào bộ từ vựng
+  const saveAllWords = async () => {
+    // Lọc ra các từ có nghĩa hợp lệ
+    const validWords = pendingWords
+      .filter((w) => w.word.trim() && w.meaning.trim())
+      .map((w) => w.word.trim());
+
+    if (validWords.length === 0) return;
 
     try {
       setLoading(true);
-      const lookedUp = await vocabularyApi.lookupWord(newWord.word.trim());
-      await vocabularyApi.addWordsToSet(set.id, [newWord.word.trim()]);
+      // Gửi tất cả từ cùng lúc
+      await vocabularyApi.addWordsToSet(set.id, validWords);
+      // Tải lại danh sách từ
       const detail = await vocabularyApi.getSetById(set.id);
       setWords(detail.words || []);
-      setNewWord({
-        word: "",
-        meaning: "",
-        pronunciation: lookedUp.pronunciation || "",
-        example: "",
-        part_of_speech: lookedUp.part_of_speech || "",
-      });
-      setNewWord({
-        word: "",
-        meaning: "",
-        pronunciation: "",
-        example: "",
-        part_of_speech: "",
-      });
+      // Reset trạng thái
+      setPendingWords([]);
       setShowAddWord(false);
       setError("");
     } catch (err) {
@@ -113,6 +165,12 @@ export default function SetDetail({ set, onBack }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Đóng phần thêm từ và xóa toàn bộ ô chờ
+  const cancelAddWords = () => {
+    setPendingWords([]);
+    setShowAddWord(false);
   };
 
   const deleteWord = async (id) => {
@@ -192,7 +250,12 @@ export default function SetDetail({ set, onBack }) {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-base font-black text-foreground">Danh sách từ</h2>
         <button
-          onClick={() => setShowAddWord(true)}
+          onClick={() => {
+            if (!showAddWord) {
+              setPendingWords([{ word: "", meaning: "", pronunciation: "", example: "", part_of_speech: "", isLoading: false }]);
+            }
+            setShowAddWord(true);
+          }}
           className="flex items-center gap-2 bg-primary text-white px-3 py-2 rounded-xl font-bold text-sm hover:opacity-90 transition-all"
         >
           <Plus className="w-4 h-4" /> Thêm từ
@@ -200,56 +263,103 @@ export default function SetDetail({ set, onBack }) {
       </div>
 
       {showAddWord && (
-        <div className="bg-white border border-border rounded-2xl p-4 mb-4">
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            <input
-              value={newWord.word}
-              onChange={(e) => setNewWord({ ...newWord, word: e.target.value })}
-              placeholder="Từ tiếng Anh *"
-              className="px-3 py-2 rounded-xl border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
-            <input
-              value={newWord.meaning}
-              onChange={(e) => setNewWord({ ...newWord, meaning: e.target.value })}
-              placeholder="Nghĩa tiếng Việt *"
-              className="px-3 py-2 rounded-xl border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
-            <input
-              value={newWord.pronunciation}
-              onChange={(e) =>
-                setNewWord({ ...newWord, pronunciation: e.target.value })
-              }
-              placeholder="/phiên âm/"
-              className="px-3 py-2 rounded-xl border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
-            <input
-              value={newWord.part_of_speech}
-              onChange={(e) =>
-                setNewWord({ ...newWord, part_of_speech: e.target.value })
-              }
-              placeholder="Từ loại (n, v, adj...)"
-              className="px-3 py-2 rounded-xl border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
+        <div className="bg-white border border-border rounded-2xl p-4 mb-4 space-y-3">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-sm font-bold text-muted-foreground">
+              Nhập từ tiếng Anh — nghĩa và âm vị sẽ tự động tra cứu
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {pendingWords.filter((w) => w.word.trim() && w.meaning.trim()).length} / {pendingWords.length} từ hợp lệ
+            </span>
           </div>
-          <input
-            value={newWord.example}
-            onChange={(e) => setNewWord({ ...newWord, example: e.target.value })}
-            placeholder="Câu ví dụ..."
-            className="w-full px-3 py-2 rounded-xl border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 mb-3"
-          />
-          <div className="flex gap-2">
+
+          {pendingWords.map((item, index) => (
+            <div key={index} className="relative">
+              {/* Nút xóa từng ô */}
+              <button
+                onClick={() => removePendingWord(index)}
+                className="absolute -top-2 -right-2 w-5 h-5 bg-red-100 text-red-500 rounded-full flex items-center justify-center hover:bg-red-200 transition-colors z-10"
+                title="Xóa ô này"
+              >
+                <span className="text-xs font-bold">×</span>
+              </button>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="relative">
+                  <input
+                    value={item.word}
+                    onChange={(e) => updatePendingWord(index, "word", e.target.value)}
+                    placeholder="Từ tiếng Anh"
+                    className="w-full px-3 py-2 rounded-xl border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 pr-8"
+                  />
+                  {item.isLoading && (
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                      <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  )}
+                </div>
+                <input
+                  value={item.pronunciation}
+                  onChange={(e) => updatePendingWord(index, "pronunciation", e.target.value)}
+                  placeholder="/phiên âm/"
+                  className="px-3 py-2 rounded-xl border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+              <input
+                value={item.meaning}
+                onChange={(e) => updatePendingWord(index, "meaning", e.target.value)}
+                placeholder="Nghĩa tiếng Việt"
+                className="w-full px-3 py-2 rounded-xl border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 mt-3"
+              />
+              {/* Thông tin đã tra cứu */}
+              {item.word.trim() && item.meaning && (
+                <div className="mt-1 text-xs text-green-600 font-medium flex items-center gap-1">
+                  <span>✓</span> Đã tra cứu: <strong>{item.word}</strong> — {item.meaning}
+                </div>
+              )}
+              {item.word.trim() && !item.meaning && !item.isLoading && (
+                <div className="mt-1 text-xs text-amber-600 font-medium flex items-center gap-1">
+                  <span>⚠</span> Nghĩa trống — từ này sẽ không được thêm
+                </div>
+              )}
+            </div>
+          ))}
+
+          <div className="flex gap-2 flex-wrap">
             <button
-              onClick={() => setShowAddWord(false)}
+              onClick={addWordField}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-dashed border-border font-bold text-sm hover:bg-muted transition-all"
+            >
+              <Plus className="w-4 h-4" /> Thêm ô nhập
+            </button>
+          </div>
+
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={cancelAddWords}
               className="px-4 py-2 rounded-xl border border-border font-bold text-sm hover:bg-muted"
             >
               Hủy
             </button>
             <button
-              onClick={addWord}
-              disabled={loading}
-              className="gradient-primary text-white px-4 py-2 rounded-xl font-bold text-sm hover:opacity-90 disabled:opacity-50"
+              onClick={saveAllWords}
+              disabled={
+                loading ||
+                pendingWords.filter((w) => w.word.trim() && w.meaning.trim()).length === 0
+              }
+              className="gradient-primary text-white px-6 py-2 rounded-xl font-bold text-sm hover:opacity-90 disabled:opacity-50 flex items-center gap-2"
             >
-              {loading ? "Đang thêm..." : "Thêm từ"}
+              {loading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Đang lưu...
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4" />
+                  Lưu tất cả ({pendingWords.filter((w) => w.word.trim() && w.meaning.trim()).length})
+                </>
+              )}
             </button>
           </div>
         </div>
