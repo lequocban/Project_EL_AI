@@ -1,4 +1,5 @@
 const listeningLessonModel = require("../repositories/listeningLesson.model");
+const listeningQuestionService = require("./listeningQuestion.service");
 const { AppError } = require("../../../utils/appError");
 const { buildPaginationResponse } = require("../../../utils/paginationResponse");
 
@@ -134,7 +135,36 @@ const deleteLesson = async (id, userId) => {
 };
 
 /**
- * Lấy chi tiết bài luyện nghe.
+ * Format response cho detail (full, có questions).
+ * @param {Object} lesson
+ * @param {Array} questions - đã được format sẵn từ listeningQuestionService
+ * @returns {Object}
+ */
+const formatLessonDetail = (lesson, questions) => ({
+  id: lesson.id,
+  title: lesson.title,
+  audioUrl: lesson.audio_url,
+  transcript: lesson.transcript,
+  viTranslation: lesson.vi_translation,
+  status: lesson.status,
+  createdBy: lesson.created_by,
+  createdAt: lesson.created_at,
+  questions: questions.map((q) => ({
+    id: q.id,
+    lessonId: q.lessonId,
+    question: q.question,
+    optionA: q.optionA,
+    optionB: q.optionB,
+    optionC: q.optionC,
+    optionD: q.optionD,
+    correctAnswer: q.correctAnswer,
+    explain: q.explain,
+    createdAt: q.createdAt,
+  })),
+});
+
+/**
+ * Lấy chi tiết bài luyện nghe (kèm danh sách câu hỏi).
  * Bài public: ai cũng xem được.
  * Bài private / req_public: chỉ chủ sở hữu xem được.
  */
@@ -149,7 +179,9 @@ const getDetail = async (id, userId) => {
     throw new AppError("Bạn không có quyền xem bài luyện nghe này", 403);
   }
 
-  return formatLesson(lesson);
+  const questions = await listeningQuestionService.getQuestionsByLesson(userId, id);
+
+  return formatLessonDetail(lesson, questions);
 };
 
 /**
@@ -228,5 +260,6 @@ module.exports = {
   requestPublic,
   makePrivate,
   formatLesson,
+  formatLessonDetail,
   formatListItem,
 };

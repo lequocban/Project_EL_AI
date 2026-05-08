@@ -12,6 +12,7 @@ const readingLessonRoutes = require("./client/readingLesson.routes");
 const listeningLessonRoutes = require("./client/listeningLesson.routes");
 const readingQuestionRoutes = require("./client/readingQuestion.routes");
 const readingPracticeRoutes = require("./client/readingPractice.routes");
+const listeningQuestionRoutes = require("./client/listeningQuestion.routes");
 
 router.get("/health", (req, res) => {
   res.json({ status: "ok" });
@@ -34,6 +35,11 @@ router.use("/reading-lessons", readingLessonRoutes);
 
 // Listening lessons
 router.use("/listening-lessons", listeningLessonRoutes);
+
+// Listening questions — gộp nested & standalone vào 1 router duy nhất
+// Mount 2 lần: /listening-lessons (nested) + /listening-questions (standalone)
+router.use("/listening-lessons", listeningQuestionRoutes);
+router.use("/listening-questions", listeningQuestionRoutes);
 
 // Reading practice
 router.use("/reading-lessons", readingPracticeRoutes);
