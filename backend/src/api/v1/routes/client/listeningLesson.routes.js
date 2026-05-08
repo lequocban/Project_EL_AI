@@ -1,11 +1,22 @@
 const router = require("express").Router();
 const listeningLessonController = require("../../controllers/client/listeningLesson.controller");
+const generateListeningController = require("../../controllers/client/generateListening.controller");
 const {
   createListeningLessonSchema,
   updateListeningLessonSchema,
 } = require("../../validations/listeningLesson.validation");
+const { createListeningByAISchema } = require("../../validations/generateListening.validation");
 const { validateBody } = require("../../validations/validate");
 const { verifyToken, requireAuth } = require("../../middlewares/auth.middleware");
+
+// POST /api/v1/listening-lessons/generate-ai — Tạo bài luyện nghe bằng AI
+router.post(
+  "/generate-ai",
+  verifyToken,
+  requireAuth,
+  validateBody(createListeningByAISchema),
+  generateListeningController.generateListeningByAI
+);
 
 // POST /api/v1/listening-lessons — Tạo bài luyện nghe mới
 router.post(
