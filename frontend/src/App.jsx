@@ -7,7 +7,7 @@ import { AuthProvider, useAuth } from "@/lib/AuthContext";
 import Layout from "./components/Layout";
 import Home from "./pages/Home";
 import Vocabulary from "./pages/Vocabulary";
-import Translate from "./pages/Translate";
+import LookUp from "./pages/LookUp";
 import Listening from "./pages/Listening";
 import Reading from "./pages/Reading";
 import Toeic from "./pages/Toeic";
@@ -62,7 +62,7 @@ const AuthenticatedApp = () => {
       <Route element={<ProtectedRoute />}>
         <Route path="/home" element={<Home />} />
         <Route path="/vocabulary" element={<Vocabulary />} />
-        <Route path="/translate" element={<Translate />} />
+        <Route path="/grammar" element={<LookUp />} />
         <Route path="/listening" element={<Listening />} />
         <Route path="/reading" element={<Reading />} />
         <Route path="/toeic" element={<Toeic />} />
