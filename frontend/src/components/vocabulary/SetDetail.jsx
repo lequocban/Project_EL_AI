@@ -7,14 +7,18 @@ import {
   Layers,
   ListChecks,
   Keyboard,
-  Headphones,
   Volume2,
+  Languages,
+  PencilLine,
+  Mic,
+  Headphones,
 } from "lucide-react";
 import FlashcardGame from "./FlashcardGame";
 import MatchGame from "./MatchGame";
 import MultipleChoiceGame from "./MultipleChoiceGame";
 import TypingGame from "./TypingGame";
 import DictationGame from "./DictationGame";
+import ExamGame from "./ExamGame";
 import { vocabularyApi } from "@/api/vocabularyApi";
 
 const MODES = [
@@ -58,6 +62,7 @@ const MODES = [
 export default function SetDetail({ set, onBack }) {
   const [words, setWords] = useState([]);
   const [mode, setMode] = useState(null);
+  const [examType, setExamType] = useState(null);
   const [showAddWord, setShowAddWord] = useState(false);
   // Mỗi phần tử: { word, meaning, pronunciation, isLoading }
   const [pendingWords, setPendingWords] = useState([]);
@@ -232,6 +237,9 @@ export default function SetDetail({ set, onBack }) {
   if (mode === "dictation") {
     return <DictationGame words={words} set={set} onBack={() => setMode(null)} />;
   }
+  if (mode === "exam") {
+    return <ExamGame words={words} onBack={() => setMode(null)} examType={examType} />;
+  }
 
   return (
     <div className="min-h-screen bg-background p-6 lg:p-8">
@@ -276,6 +284,49 @@ export default function SetDetail({ set, onBack }) {
       {words.length < 4 && words.length > 0 && (
         <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 text-amber-700 text-sm font-medium">
           ⚠️ Cần ít nhất 4 từ để bắt đầu luyện tập. Hãy thêm thêm từ vựng!
+        </div>
+      )}
+
+      {words.length >= 4 && (
+        <div className="mb-8">
+          <h2 className="text-base font-black text-foreground mb-3">Kiểm tra</h2>
+          <p className="text-xs text-muted-foreground mb-3">
+            Làm hết bài rồi bấm nộp để biết kết quả
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <button
+              onClick={() => { setExamType("translate_quiz"); setMode("exam"); }}
+              className="bg-gradient-to-br from-emerald-500 to-teal-500 text-white rounded-2xl p-4 flex flex-col items-center gap-2 shadow-md card-hover"
+            >
+              <Languages className="w-7 h-7" />
+              <span className="font-bold text-sm text-center">Translate quiz</span>
+              <span className="text-xs text-white/70">EN → VI</span>
+            </button>
+            <button
+              onClick={() => { setExamType("listening_quiz"); setMode("exam"); }}
+              className="bg-gradient-to-br from-violet-500 to-purple-500 text-white rounded-2xl p-4 flex flex-col items-center gap-2 shadow-md card-hover"
+            >
+              <Headphones className="w-7 h-7" />
+              <span className="font-bold text-sm text-center">Listening quiz</span>
+              <span className="text-xs text-white/70">Nghe → VI</span>
+            </button>
+            <button
+              onClick={() => { setExamType("translate_write"); setMode("exam"); }}
+              className="bg-gradient-to-br from-amber-500 to-orange-500 text-white rounded-2xl p-4 flex flex-col items-center gap-2 shadow-md card-hover"
+            >
+              <PencilLine className="w-7 h-7" />
+              <span className="font-bold text-sm text-center">Translate write</span>
+              <span className="text-xs text-white/70">VI → EN</span>
+            </button>
+            <button
+              onClick={() => { setExamType("listening_write"); setMode("exam"); }}
+              className="bg-gradient-to-br from-cyan-500 to-blue-500 text-white rounded-2xl p-4 flex flex-col items-center gap-2 shadow-md card-hover"
+            >
+              <Mic className="w-7 h-7" />
+              <span className="font-bold text-sm text-center">Listening write</span>
+              <span className="text-xs text-white/70">Nghe → EN</span>
+            </button>
+          </div>
         </div>
       )}
 
