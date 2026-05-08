@@ -2,6 +2,7 @@ import { Outlet, Link, useLocation } from "react-router-dom";
 import {
   Home,
   BookOpen,
+  BookText,
   Headphones,
   FileText,
   Trophy,
@@ -27,9 +28,9 @@ const navItems = [
     activeClass: "from-violet-500 to-indigo-500",
   },
   {
-    path: "/grammar",
+    path: "/lookup",
     label: "Tra cứu",
-    icon: BookOpen,
+    icon: BookText,
     activeClass: "from-blue-500 to-cyan-500",
   },
   {

@@ -62,7 +62,7 @@ const AuthenticatedApp = () => {
       <Route element={<ProtectedRoute />}>
         <Route path="/home" element={<Home />} />
         <Route path="/vocabulary" element={<Vocabulary />} />
-        <Route path="/grammar" element={<LookUp />} />
+        <Route path="/lookup" element={<LookUp />} />
         <Route path="/listening" element={<Listening />} />
         <Route path="/reading" element={<Reading />} />
         <Route path="/toeic" element={<Toeic />} />
