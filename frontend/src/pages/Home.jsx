@@ -1,11 +1,15 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
+import { useState, useEffect } from "react";
 import {
   BookOpen,
   Headphones,
   FileText,
   Trophy,
+  ChevronRight,
+  BookText,
 } from "lucide-react";
+import { vocabularyApi } from "@/api/vocabularyApi";
 
 const MODULE_COLORS = {
   vocabulary: "from-violet-500 to-indigo-500",
@@ -17,6 +21,67 @@ const MODULE_COLORS = {
 
 export default function Home() {
   const { user } = useAuth();
+  const [mySets, setMySets] = useState([]);
+  const [listeningLessons, setListeningLessons] = useState([]);
+  const [readingLessons, setReadingLessons] = useState([]);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      const sets = await vocabularyApi.getMySets();
+      setMySets(sets);
+    } catch {
+      setMySets([]);
+    }
+    // Luyện nghe và Luyện đọc hiện dùng sample data
+    setListeningLessons([
+      { id: "l1", title: "At the Airport", level: "beginner", topic: "travel", questions: [{ id: 1 }, { id: 2 }] },
+      { id: "l2", title: "Job Interview", level: "intermediate", topic: "business", questions: [{ id: 1 }, { id: 2 }] },
+    ]);
+    setReadingLessons([
+      { id: "r1", title: "The Benefits of Exercise", level: "beginner", topic: "health", questions: [{ id: 1 }, { id: 2 }] },
+      { id: "r2", title: "Social Media and Modern Life", level: "intermediate", topic: "technology", questions: [{ id: 1 }, { id: 2 }] },
+    ]);
+  };
+
+  const SET_COLORS = [
+    "from-violet-500 to-indigo-500",
+    "from-blue-500 to-cyan-500",
+    "from-green-500 to-teal-500",
+    "from-orange-500 to-amber-500",
+    "from-pink-500 to-rose-500",
+  ];
+
+  const LEVEL_LABELS = { beginner: "Cơ bản", intermediate: "Trung cấp", advanced: "Nâng cao" };
+  const LEVEL_BADGE = {
+    beginner: "bg-green-100 text-green-700",
+    intermediate: "bg-blue-100 text-blue-700",
+    advanced: "bg-purple-100 text-purple-700",
+  };
+
+  // Tính số cột hiển thị theo kích thước màn hình để slice items vừa 1 hàng
+  const [cols, setCols] = useState(2);
+  useEffect(() => {
+    const update = () => {
+      const w = window.innerWidth;
+      if (w >= 1280) setCols(6);
+      else if (w >= 1024) setCols(5);
+      else if (w >= 768) setCols(4);
+      else if (w >= 640) setCols(3);
+      else setCols(2);
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
+  // Lấy items mới nhất vừa đủ 1 hàng
+  const recentSets = [...mySets].reverse().slice(0, cols);
+  const recentListening = [...listeningLessons].reverse().slice(0, cols);
+  const recentReading = [...readingLessons].reverse().slice(0, cols);
 
   return (
     <div className="min-h-screen bg-background p-6 lg:p-8">
@@ -63,7 +128,120 @@ export default function Home() {
           ))}
         </div>
       </div>
-      
+
+      {/* Bộ từ của tôi */}
+      {mySets.length > 0 && (
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-black text-foreground">Bộ từ của tôi</h2>
+            <Link
+              to="/vocabulary"
+              className="flex items-center gap-1 text-sm font-bold text-primary hover:text-primary/80 transition-colors"
+            >
+              Xem tất cả <ChevronRight className="w-4 h-4" />
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+            {recentSets.map((set, i) => (
+              <Link
+                key={set.id}
+                to={`/vocabulary?set=${set.id}`}
+                className="bg-white rounded-2xl p-4 border border-border card-hover cursor-pointer min-w-0"
+              >
+                <div
+                  className={`w-10 h-10 bg-gradient-to-br ${SET_COLORS[i % SET_COLORS.length]} rounded-xl flex items-center justify-center mb-3 shadow-sm`}
+                >
+                  <BookOpen className="w-5 h-5 text-white" />
+                </div>
+                <h3 className="font-bold text-sm text-foreground line-clamp-2 leading-snug">
+                  {set.title}
+                </h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {set.word_count || 0} từ
+                </p>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Luyện nghe */}
+      {listeningLessons.length > 0 && (
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-black text-foreground">Luyện nghe</h2>
+            <Link
+              to="/listening"
+              className="flex items-center gap-1 text-sm font-bold text-primary hover:text-primary/80 transition-colors"
+            >
+              Xem tất cả <ChevronRight className="w-4 h-4" />
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+            {recentListening.map((lesson) => (
+              <Link
+                key={lesson.id}
+                to="/listening"
+                className="bg-white rounded-2xl p-4 border border-border card-hover cursor-pointer min-w-0"
+              >
+                <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-teal-600 rounded-xl flex items-center justify-center mb-3 shadow-sm">
+                  <Headphones className="w-5 h-5 text-white" />
+                </div>
+                <h3 className="font-bold text-sm text-foreground line-clamp-2 leading-snug">
+                  {lesson.title}
+                </h3>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${LEVEL_BADGE[lesson.level]}`}>
+                    {LEVEL_LABELS[lesson.level]}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {lesson.questions.length} câu
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Luyện đọc */}
+      {readingLessons.length > 0 && (
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-black text-foreground">Luyện đọc</h2>
+            <Link
+              to="/reading"
+              className="flex items-center gap-1 text-sm font-bold text-primary hover:text-primary/80 transition-colors"
+            >
+              Xem tất cả <ChevronRight className="w-4 h-4" />
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+            {recentReading.map((lesson) => (
+              <Link
+                key={lesson.id}
+                to="/reading"
+                className="bg-white rounded-2xl p-4 border border-border card-hover cursor-pointer min-w-0"
+              >
+                <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl flex items-center justify-center mb-3 shadow-sm">
+                  <BookText className="w-5 h-5 text-white" />
+                </div>
+                <h3 className="font-bold text-sm text-foreground line-clamp-2 leading-snug">
+                  {lesson.title}
+                </h3>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${LEVEL_BADGE[lesson.level]}`}>
+                    {LEVEL_LABELS[lesson.level]}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {lesson.questions.length} câu
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
