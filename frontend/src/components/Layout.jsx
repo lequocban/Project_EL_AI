@@ -28,8 +28,8 @@ const navItems = [
   },
   {
     path: "/grammar",
-    label: "Ngữ pháp",
-    icon: FileText,
+    label: "Tra cứu",
+    icon: BookOpen,
     activeClass: "from-blue-500 to-cyan-500",
   },
   {
