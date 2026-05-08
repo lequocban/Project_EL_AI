@@ -77,4 +77,16 @@ export const vocabularyApi = {
     });
     return normalizeWord(response.data);
   },
+
+  generateWordsWithAI: async ({ title, description, topic, wordCount }) => {
+    const response = await fetchWithAuth(`${VOCABULARY_SET_URL}/generate-words`, {
+      method: "POST",
+      body: JSON.stringify({ title, description, topic, wordCount }),
+    });
+    const { setId } = response.data;
+    if (!setId) {
+      throw new Error("Không nhận được ID bộ từ vựng từ server");
+    }
+    return vocabularyApi.getSetById(setId);
+  },
 };

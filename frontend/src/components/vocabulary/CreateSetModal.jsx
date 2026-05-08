@@ -7,6 +7,7 @@ export default function CreateSetModal({ onClose, onCreated }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [aiPrompt, setAiPrompt] = useState("");
+  const [aiDescription, setAiDescription] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -33,11 +34,29 @@ export default function CreateSetModal({ onClose, onCreated }) {
 
   const createWithAI = async () => {
     if (!aiPrompt.trim()) {
-      setError("Vui lòng nhập chủ đề");
+      setError("Vui lòng nhập chủ đề từ vựng");
+      return;
+    }
+    if (!title.trim()) {
+      setError("Vui lòng nhập tên bộ từ vựng");
       return;
     }
 
-    setError("Backend hiện chưa có API AI cho chức năng này");
+    try {
+      setError("");
+      setLoading(true);
+      const set = await vocabularyApi.generateWordsWithAI({
+        title: title.trim(),
+        description: aiDescription.trim() || undefined,
+        topic: aiPrompt.trim(),
+        wordCount: 10,
+      });
+      onCreated(set);
+    } catch (err) {
+      setError(err.message || "Không thể tạo bộ từ vựng bằng AI");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -101,8 +120,16 @@ export default function CreateSetModal({ onClose, onCreated }) {
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="bg-violet-50 rounded-xl p-3 text-xs text-violet-700 font-medium">
-                Chức năng AI hiện chưa có dữ liệu từ backend.
+              <div>
+                <label className="text-sm font-bold text-foreground mb-1 block">
+                  Tên bộ từ vựng *
+                </label>
+                <input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="VD: Từ vựng về công nghệ"
+                  className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
               </div>
               <div>
                 <label className="text-sm font-bold text-foreground mb-1 block">
@@ -111,8 +138,20 @@ export default function CreateSetModal({ onClose, onCreated }) {
                 <input
                   value={aiPrompt}
                   onChange={(e) => setAiPrompt(e.target.value)}
-                  placeholder="VD: Từ vựng về công nghệ, thể thao, ẩm thực..."
+                  placeholder="VD: công nghệ AI, thể thao, ẩm thực Việt Nam..."
                   className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-bold text-foreground mb-1 block">
+                  Mô tả ngắn
+                </label>
+                <textarea
+                  value={aiDescription}
+                  onChange={(e) => setAiDescription(e.target.value)}
+                  rows={2}
+                  placeholder="Mô tả ngắn về chủ đề (không bắt buộc)..."
+                  className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
                 />
               </div>
             </div>
