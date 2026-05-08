@@ -8,6 +8,7 @@ import {
   ListChecks,
   Keyboard,
   Headphones,
+  Volume2,
 } from "lucide-react";
 import FlashcardGame from "./FlashcardGame";
 import MatchGame from "./MatchGame";
@@ -62,6 +63,8 @@ export default function SetDetail({ set, onBack }) {
   const [pendingWords, setPendingWords] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  // Id của từ đang được phát âm (để hiện icon loading/spinning)
+  const [speakingId, setSpeakingId] = useState(null);
 
   useEffect(() => {
     loadWords();
@@ -180,6 +183,35 @@ export default function SetDetail({ set, onBack }) {
       setError("");
     } catch (err) {
       setError(err.message || "Không thể xóa từ");
+    }
+  };
+
+  // Phát âm từ vựng. Nếu từ chưa có audioUrl thì gọi lookup để lấy từ backend.
+  const playAudio = async (word) => {
+    // Nếu đang phát từ này rồi thì dừng
+    if (speakingId === word.id) {
+      window.speechSynthesis?.cancel();
+      setSpeakingId(null);
+      return;
+    }
+    window.speechSynthesis?.cancel();
+    setSpeakingId(word.id);
+    try {
+      let audioUrl = word.audioUrl;
+      if (!audioUrl) {
+        const lookedUp = await vocabularyApi.lookupWord(word.word);
+        audioUrl = lookedUp.audioUrl;
+      }
+      if (audioUrl) {
+        const audio = new Audio(audioUrl);
+        audio.onended = () => setSpeakingId(null);
+        audio.onerror = () => setSpeakingId(null);
+        audio.play();
+      } else {
+        setSpeakingId(null);
+      }
+    } catch {
+      setSpeakingId(null);
     }
   };
 
@@ -393,12 +425,30 @@ export default function SetDetail({ set, onBack }) {
                   <p className="text-xs text-muted-foreground/70 mt-1 italic">"{w.example}"</p>
                 )}
               </div>
-              <button
-                onClick={() => deleteWord(w.id)}
-                className="p-1.5 rounded-lg hover:bg-red-50 text-muted-foreground/30 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all ml-2"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              <div className="flex items-center gap-1 ml-2">
+                <button
+                  onClick={() => playAudio(w)}
+                  disabled={speakingId === w.id}
+                  className={`p-1.5 rounded-lg transition-all ${
+                    speakingId === w.id
+                      ? "text-primary bg-primary/10"
+                      : "text-muted-foreground/30 hover:text-primary hover:bg-primary/5 opacity-0 group-hover:opacity-100"
+                  }`}
+                  title="Phát âm"
+                >
+                  {speakingId === w.id ? (
+                    <div className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Volume2 className="w-3.5 h-3.5" />
+                  )}
+                </button>
+                <button
+                  onClick={() => deleteWord(w.id)}
+                  className="p-1.5 rounded-lg hover:bg-red-50 text-muted-foreground/30 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
           ))}
         </div>

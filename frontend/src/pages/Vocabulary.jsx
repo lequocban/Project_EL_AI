@@ -74,10 +74,12 @@ export default function Vocabulary() {
 
   const loadData = async () => {
     try {
-      const [mine, pub] = await Promise.all([
+      const [mineRaw, pub] = await Promise.all([
         vocabularyApi.getMySets(),
         vocabularyApi.getPublicSets(),
       ]);
+      // Gọi getSetById để lấy status thực (getMySets không trả status)
+      const mine = await Promise.all(mineRaw.map((s) => vocabularyApi.getSetById(s.id)));
       setSets(mine);
       setPublicSets(pub);
       setError("");
@@ -121,16 +123,19 @@ export default function Vocabulary() {
     if (tab === "mine") data = sets;
     else if (tab === "public") data = publicSets;
     else if (tab === "favorites") {
-      const allSets = [...sets, ...publicSets];
-      data = allSets.filter((s) => favoriteIds.has(String(s.id)));
+      // Deduplicate theo id trước khi filter. Ưu tiên giữ item từ publicSets
+      // để tránh trường hợp cùng 1 bộ từ xuất hiện ở cả "Của tôi" và "Cộng đồng"
+      // thì tab "Yêu thích" chỉ hiện 1 card, không trùng lặp.
+      const seen = new Map();
+      [...sets, ...publicSets].forEach((s) => seen.set(s.id, s));
+      data = [...seen.values()].filter((s) => favoriteIds.has(String(s.id)));
     }
 
-    // Backend getMySets / getPublicSets không trả field `status` trong SELECT,
-    // nên cần gán lại đúng status dựa trên tab đang hiển thị
+    // Backend getMySets không trả status, nhưng giờ loadData đã gọi getSetById
+    // nên sets đã có status thực. Chỉ gán public cho tab public.
     return data.map((s) => {
       const enriched = { ...s };
-      if (tab === "mine") enriched.status = "private";
-      else if (tab === "public") enriched.status = "public";
+      if (tab === "public") enriched.status = "public";
       return normalizeSetForDisplay(enriched);
     }).filter((s) =>
       s.title?.toLowerCase().includes(search.toLowerCase()),
