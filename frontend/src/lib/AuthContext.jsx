@@ -19,9 +19,13 @@ export const AuthProvider = ({ children }) => {
       setIsLoadingAuth(true);
       const token = localStorage.getItem(ACCESS_TOKEN_KEY);
       if (!token) {
-        setUser(null);
-        setIsAuthenticated(false);
-        return;
+        try {
+          await authApi.refreshToken();
+        } catch {
+          setUser(null);
+          setIsAuthenticated(false);
+          return;
+        }
       }
 
       const response = await authApi.me();

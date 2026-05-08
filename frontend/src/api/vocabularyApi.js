@@ -1,12 +1,14 @@
-import { API_BASE_URL, fetchWithAuth } from "@/api/authApi";
+import { fetchWithAuth } from "@/api/authApi";
 
-const VOCABULARY_SET_URL = `${API_BASE_URL}/api/v1/vocabulary-sets`;
-const VOCABULARY_URL = `${API_BASE_URL}/api/v1/vocabulary`;
+const VOCABULARY_SET_URL = `/api/v1/vocabulary-sets`;
+const VOCABULARY_URL = `/api/v1/vocabulary`;
 
 const normalizeSet = (set) => ({
   ...set,
   word_count: set.wordCount ?? set.word_count ?? set.words?.length ?? 0,
-  is_public: set.status === "PUBLIC" || set.is_public || false,
+  status: set.status || "private",
+  is_public: set.status === "public",
+  is_pending: set.status === "req_public",
 });
 
 const normalizeWord = (word) => ({
