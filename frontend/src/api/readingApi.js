@@ -9,6 +9,7 @@ const normalizeLesson = (lesson) => ({
   status: lesson.status || "private",
   is_public: lesson.status === "public",
   is_pending: lesson.status === "req_public",
+  questionCount: lesson.question_count ?? lesson.questionCount ?? lesson.num_questions ?? 0,
 });
 
 const normalizeQuestion = (q) => ({
