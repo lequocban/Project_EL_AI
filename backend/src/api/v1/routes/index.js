@@ -11,6 +11,7 @@ const adminReadingLessonRoutes = require("./admin/readingLesson.routes");
 const readingLessonRoutes = require("./client/readingLesson.routes");
 const listeningLessonRoutes = require("./client/listeningLesson.routes");
 const readingQuestionRoutes = require("./client/readingQuestion.routes");
+const listeningPracticeRoutes = require("./client/listeningPractice.routes");
 const readingPracticeRoutes = require("./client/readingPractice.routes");
 const listeningQuestionRoutes = require("./client/listeningQuestion.routes");
 
@@ -40,6 +41,9 @@ router.use("/listening-lessons", listeningLessonRoutes);
 // Mount 2 lần: /listening-lessons (nested) + /listening-questions (standalone)
 router.use("/listening-lessons", listeningQuestionRoutes);
 router.use("/listening-questions", listeningQuestionRoutes);
+
+// Listening practice
+router.use("/listening-lessons", listeningPracticeRoutes);
 
 // Reading practice
 router.use("/reading-lessons", readingPracticeRoutes);
