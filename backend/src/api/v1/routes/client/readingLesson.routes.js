@@ -75,4 +75,12 @@ router.post(
   readingLessonController.requestPublic
 );
 
+// POST /api/v1/reading-lessons/:id/make-private — Chuyển bài luyện đọc về chế độ riêng tư
+router.post(
+  "/:id/make-private",
+  verifyToken,
+  requireAuth,
+  readingLessonController.makePrivate
+);
+
 module.exports = router;

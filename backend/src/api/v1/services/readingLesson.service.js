@@ -274,6 +274,30 @@ const requestPublic = async (id, userId) => {
 };
 
 /**
+ * Chuyển bài luyện đọc về chế độ riêng tư.
+ * Bài phải ở trạng thái 'public' hoặc 'req_public' mới được chuyển về private.
+ * Chỉ chủ sở hữu mới thực hiện được.
+ */
+const makePrivate = async (id, userId) => {
+  const lesson = await readingLessonModel.findById(id);
+
+  if (!lesson) {
+    throw new AppError("Không tìm thấy bài luyện đọc", 404);
+  }
+
+  if (lesson.created_by !== userId) {
+    throw new AppError("Bạn không có quyền thay đổi trạng thái bài luyện đọc này", 403);
+  }
+
+  if (lesson.status === "private") {
+    throw new AppError("Bài luyện đọc đã ở chế độ riêng tư", 400);
+  }
+
+  const updated = await readingLessonModel.updateStatus(id, "private");
+  return formatLesson(updated);
+};
+
+/**
  * Lấy danh sách bài đang chờ duyệt public (dùng cho content_manager/admin).
  */
 const getPendingPublicLessons = async ({ keyword, page, limit }) => {
@@ -328,6 +352,7 @@ module.exports = {
   getPublicLessons,
   getMyLessons,
   requestPublic,
+  makePrivate,
   getPendingPublicLessons,
   approvePublic,
   rejectPublic,

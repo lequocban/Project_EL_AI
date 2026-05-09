@@ -155,6 +155,23 @@ const requestPublic = async (req, res, next) => {
   }
 };
 
+/**
+ * POST /api/v1/reading-lessons/:id/make-private
+ * Chuyển bài luyện đọc về chế độ riêng tư.
+ */
+const makePrivate = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const result = await readingLessonService.makePrivate(id, userId);
+
+    return success(res, result, "Chuyển bài luyện đọc về chế độ riêng tư thành công");
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   generateWithAI,
   createLesson,
@@ -164,4 +181,5 @@ module.exports = {
   getMyLessons,
   getDetail,
   requestPublic,
+  makePrivate,
 };
