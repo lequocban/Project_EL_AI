@@ -1,61 +1,57 @@
-import { useState } from "react";
-import { FileText, ArrowLeft } from "lucide-react";
+import { useState, useEffect } from "react";
+import { FileText, ArrowLeft, BookOpen, Globe, Lock, Search } from "lucide-react";
+import { readingApi } from "@/api/readingApi";
 
-const SAMPLE_LESSONS = [
-  {
-    id: "r1",
-    title: "The Benefits of Exercise",
-    level: "beginner",
-    topic: "health",
-    passage: `Regular exercise is important for good health. When we exercise, our bodies become stronger and we feel better. Exercise helps our heart pump blood more efficiently and strengthens our muscles and bones.\n\nThere are many types of exercise. Walking and swimming are gentle exercises that almost everyone can do. Running and cycling are more intense and help burn calories faster. Yoga and stretching improve flexibility and reduce stress.\n\nExperts recommend at least 30 minutes of moderate exercise five days a week. Even small changes like taking the stairs instead of the elevator can make a big difference to your health.`,
-    questions: [
-      {
-        question: "What does exercise help our heart do?",
-        options: ["Pump blood more efficiently","Grow bigger","Beat slower","Work less"],
-        correct: 0,
-      },
-      {
-        question: "How much exercise do experts recommend per week?",
-        options: ["15 minutes, 3 days","20 minutes, 4 days","30 minutes, 5 days","60 minutes, 2 days"],
-        correct: 2,
-      },
-    ],
-  },
-  {
-    id: "r2",
-    title: "Social Media and Modern Life",
-    level: "intermediate",
-    topic: "technology",
-    passage: `Social media has transformed the way we communicate, share information, and connect with others. Platforms like Facebook, Instagram, and Twitter have billions of users worldwide, making them among the most influential technologies of our time.\n\nThe benefits of social media are undeniable. It allows people to maintain relationships with friends and family across great distances, provides a platform for businesses to reach customers, and enables the rapid spread of important information during emergencies.\n\nHowever, social media also presents significant challenges. Research suggests that excessive use can lead to feelings of anxiety, depression, and loneliness. The spread of misinformation is another serious concern, as false news can circulate rapidly before it can be corrected.\n\nStriking a healthy balance is key. Experts recommend limiting screen time, being critical of information sources, and taking regular breaks from social media to maintain mental wellbeing.`,
-    questions: [
-      {
-        question: "What is one benefit of social media mentioned in the passage?",
-        options: [
-          "It replaces face-to-face communication",
-          "It allows people to maintain long-distance relationships",
-          "It eliminates the need for traditional media",
-          "It always spreads accurate information",
-        ],
-        correct: 1,
-      },
-      {
-        question: "What challenge does social media present according to the text?",
-        options: [
-          "It is too expensive",
-          "Excessive use can cause anxiety and depression",
-          "It is difficult to use",
-          "It has too few users",
-        ],
-        correct: 1,
-      },
-    ],
-  },
-];
+const LEVEL_LABELS = {
+  beginner: "Cơ bản",
+  intermediate: "Trung cấp",
+  advanced: "Nâng cao",
+};
+const LEVEL_COLORS = {
+  beginner: "bg-green-100 text-green-700",
+  intermediate: "bg-blue-100 text-blue-700",
+  advanced: "bg-purple-100 text-purple-700",
+};
 
 export default function Reading() {
+  const [lessons, setLessons] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [tab, setTab] = useState("mine");
+  const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
-  if (selected) return <ReadingPlayer lesson={selected} onBack={() => setSelected(null)} />;
+  useEffect(() => {
+    loadData();
+  }, [tab]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadData();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const loadData = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const data = tab === "mine"
+        ? await readingApi.getMyLessons({ search })
+        : await readingApi.getPublicLessons({ search });
+      setLessons(data.items || []);
+    } catch (err) {
+      setError(err.message || "Không thể tải dữ liệu luyện đọc");
+      setLessons([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (selected) {
+    return <ReadingPlayer lesson={selected} onBack={() => setSelected(null)} />;
+  }
 
   return (
     <div className="min-h-screen bg-background p-6 lg:p-8">
@@ -66,37 +62,120 @@ export default function Reading() {
         </div>
       </div>
 
-      <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-amber-700">
-        Chưa có dữ liệu từ backend — hiện đang hiển thị bài mẫu.
+      {/* Tabs */}
+      <div className="flex gap-2 mb-4">
+        {[
+          ["mine", "Của tôi"],
+          ["public", "Cộng đồng"],
+        ].map(([val, label]) => (
+          <button
+            key={val}
+            onClick={() => setTab(val)}
+            className={`px-4 py-2 rounded-xl font-bold text-sm transition-all ${
+              tab === val
+                ? "gradient-primary text-white shadow-md"
+                : "bg-white border border-border text-muted-foreground hover:bg-muted"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {SAMPLE_LESSONS.map((lesson) => (
-          <div
-            key={lesson.id}
-            onClick={() => setSelected(lesson)}
-            className="bg-white rounded-2xl p-5 border border-border card-hover cursor-pointer group"
-          >
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
-                <FileText className="w-6 h-6 text-white" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-bold text-foreground group-hover:text-primary transition-colors">{lesson.title}</h3>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
-                    lesson.level === "beginner" ? "bg-green-100 text-green-700" :
-                    lesson.level === "intermediate" ? "bg-blue-100 text-blue-700" : "bg-purple-100 text-purple-700"
-                  }`}>
-                    {lesson.level === "beginner" ? "Cơ bản" : lesson.level === "intermediate" ? "Trung cấp" : "Nâng cao"}
-                  </span>
-                  <span className="text-xs text-muted-foreground">{lesson.questions?.length || 0} câu hỏi</span>
+      {/* Search */}
+      <div className="relative mb-6">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Tìm kiếm bài luyện đọc..."
+          className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
+        />
+      </div>
+
+      {error && (
+        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-600">
+          {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-white rounded-2xl p-5 border border-border animate-pulse">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-muted rounded-xl flex-shrink-0" />
+                <div className="flex-1">
+                  <div className="h-4 bg-muted rounded w-3/4 mb-2" />
+                  <div className="h-3 bg-muted rounded w-1/2" />
                 </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : lessons.length === 0 ? (
+        <div className="text-center py-16">
+          <BookOpen className="w-16 h-16 mx-auto text-muted-foreground/30 mb-4" />
+          <p className="text-muted-foreground font-semibold">Chưa có bài luyện đọc nào</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {lessons.map((lesson) => (
+            <div
+              key={lesson.id}
+              onClick={async () => {
+                setDetailLoading(true);
+                try {
+                  const detail = await readingApi.getLessonById(lesson.id);
+                  setSelected(detail);
+                } catch (err) {
+                  setError(err.message || "Không thể tải chi tiết bài luyện đọc");
+                } finally {
+                  setDetailLoading(false);
+                }
+              }}
+              className="bg-white rounded-2xl p-5 border border-border card-hover cursor-pointer group"
+            >
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
+                  <FileText className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-foreground group-hover:text-primary transition-colors">
+                    {lesson.title}
+                  </h3>
+                  <div className="flex items-center gap-2 mt-1">
+                    {lesson.level && (
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${LEVEL_COLORS[lesson.level] || "bg-gray-100 text-gray-700"}`}>
+                        {LEVEL_LABELS[lesson.level] || lesson.level}
+                      </span>
+                    )}
+                    {tab === "mine" ? (
+                      <>
+                        <span className="text-xs text-muted-foreground">
+                          {lesson.questionCount ?? lesson.questions?.length ?? 0} câu hỏi
+                        </span>
+                        {lesson.is_public ? (
+                          <Globe className="w-3.5 h-3.5 text-blue-400" title="Công khai" />
+                        ) : (
+                          <Lock className="w-3.5 h-3.5 text-muted-foreground/50" title="Riêng tư" />
+                        )}
+                      </>
+                    ) : (
+                      <Globe className="w-3.5 h-3.5 text-blue-400" title="Cộng đồng" />
+                    )}
+                  </div>
+                  {lesson.description && (
+                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                      {lesson.description}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -104,8 +183,37 @@ export default function Reading() {
 function ReadingPlayer({ lesson, onBack }) {
   const [answers, setAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [result, setResult] = useState(null);
+  const [submitError, setSubmitError] = useState("");
+
   const questions = lesson.questions || [];
-  const score = submitted ? questions.filter((q, i) => answers[i] === q.correct).length : 0;
+
+  const handleSubmit = async () => {
+    if (Object.keys(answers).length < questions.length) return;
+    setSubmitting(true);
+    setSubmitError("");
+    try {
+      const answerList = questions.map((q, i) => ({
+        questionId: q.id,
+        answer: ["A", "B", "C", "D"][answers[i]] || "",
+      }));
+      const data = await readingApi.submitReadingPractice(lesson.id, answerList);
+      setResult(data);
+      setSubmitted(true);
+    } catch (err) {
+      setSubmitError(err.message || "Không thể nộp bài");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Tính kết quả
+  const correctCount = submitted && result
+    ? (result.correctCount ?? result.details?.filter(d => d.isCorrect).length ?? 0)
+    : 0;
+  const wrongCount = questions.length - correctCount;
+  const percentage = questions.length > 0 ? Math.round((correctCount / questions.length) * 100) : 0;
 
   return (
     <div className="min-h-screen bg-background p-6 lg:p-8">
@@ -115,50 +223,93 @@ function ReadingPlayer({ lesson, onBack }) {
       <div className="max-w-2xl mx-auto">
         <h1 className="text-2xl font-black text-foreground mb-6">{lesson.title}</h1>
         <div className="bg-white rounded-2xl border border-border p-6 mb-6 shadow-sm">
-          <p className="text-sm text-foreground leading-relaxed whitespace-pre-line font-medium">{lesson.passage}</p>
+          <p className="text-sm text-foreground leading-relaxed whitespace-pre-line font-medium">
+            {lesson.content || lesson.passage || ""}
+          </p>
         </div>
+
+        {submitError && (
+          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-600">
+            {submitError}
+          </div>
+        )}
+
         {questions.length > 0 && (
           <div>
             <h2 className="font-black text-foreground mb-4">Câu hỏi đọc hiểu</h2>
             <div className="space-y-4">
               {questions.map((q, qi) => (
-                <div key={qi} className="bg-white rounded-2xl border border-border p-5">
+                <div key={q.id ?? qi} className="bg-white rounded-2xl border border-border p-5">
                   <p className="font-bold text-foreground mb-3">{qi + 1}. {q.question}</p>
                   <div className="space-y-2">
                     {q.options?.map((opt, oi) => {
                       const chosen = answers[qi] === oi;
-                      const correct = q.correct === oi;
+                      const correctIndex = ["A", "B", "C", "D"].indexOf(q.correct_answer);
+                      const isCorrect = submitted && oi === correctIndex;
+                      const isWrongChosen = submitted && chosen && oi !== correctIndex;
                       return (
                         <button key={oi}
                           onClick={() => !submitted && setAnswers({ ...answers, [qi]: oi })}
+                          disabled={submitted}
                           className={`w-full text-left px-4 py-2.5 rounded-xl border text-sm font-medium transition-all ${
                             submitted
-                              ? correct ? "bg-green-100 border-green-500 text-green-700"
-                                : chosen ? "bg-red-100 border-red-500 text-red-700"
+                              ? isCorrect
+                                ? "bg-green-100 border-green-500 text-green-700"
+                                : isWrongChosen
+                                ? "bg-red-100 border-red-500 text-red-700"
                                 : "bg-white border-border opacity-50"
-                              : chosen ? "gradient-primary text-white border-transparent shadow-md"
+                              : chosen
+                              ? "gradient-primary text-white border-transparent shadow-md"
                               : "bg-white border-border hover:border-primary/40"
                           }`}
                         >{opt}</button>
                       );
                     })}
                   </div>
+                  {submitted && q.explain && (
+                    <div className="mt-3 p-3 bg-blue-50 rounded-xl text-sm text-blue-700">
+                      <strong>Giải thích:</strong> {q.explain}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
             {!submitted ? (
-              <button onClick={() => setSubmitted(true)}
-                disabled={Object.keys(answers).length < questions.length}
-                className="w-full mt-6 gradient-primary text-white py-3 rounded-xl font-bold shadow-md hover:opacity-90 disabled:opacity-40">
-                Nộp bài
+              <button
+                onClick={handleSubmit}
+                disabled={Object.keys(answers).length < questions.length || submitting}
+                className="w-full mt-6 gradient-primary text-white py-3 rounded-xl font-bold shadow-md hover:opacity-90 disabled:opacity-40"
+              >
+                {submitting ? "Đang nộp bài..." : "Nộp bài"}
               </button>
             ) : (
-              <div className="mt-4 bg-white rounded-2xl border border-border p-5 text-center">
-                <p className="text-2xl font-black text-primary">{score}/{questions.length}</p>
-                <p className="text-muted-foreground font-medium mt-1">câu trả lời đúng</p>
-                <button onClick={onBack}
-                  className="mt-4 px-6 py-2.5 border border-border rounded-xl font-bold text-sm hover:bg-muted">
-                  Quay lại
+              <div className="space-y-4">
+                {/* Kết quả chi tiết */}
+                <div className="bg-white rounded-2xl border border-border p-6">
+                  <h3 className="font-black text-foreground mb-4 text-center text-lg">Kết quả bài luyện đọc</h3>
+                  <div className="grid grid-cols-3 gap-4 mb-4">
+                    <div className="text-center p-3 bg-green-50 rounded-xl">
+                      <p className="text-2xl font-black text-green-600">{correctCount}</p>
+                      <p className="text-xs text-green-600 font-medium">Câu đúng</p>
+                    </div>
+                    <div className="text-center p-3 bg-red-50 rounded-xl">
+                      <p className="text-2xl font-black text-red-600">{wrongCount}</p>
+                      <p className="text-xs text-red-600 font-medium">Câu sai</p>
+                    </div>
+                    <div className="text-center p-3 bg-blue-50 rounded-xl">
+                      <p className="text-2xl font-black text-blue-600">{percentage}%</p>
+                      <p className="text-xs text-blue-600 font-medium">Tỷ lệ đúng</p>
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-3xl font-black text-primary">{correctCount}/{questions.length}</p>
+                    <p className="text-sm text-muted-foreground font-medium mt-1">Điểm số</p>
+                  </div>
+                </div>
+                <button
+                  onClick={onBack}
+                  className="w-full mt-4 px-6 py-3 border border-border rounded-xl font-bold text-sm hover:bg-muted bg-white">
+                  Quay lại danh sách bài
                 </button>
               </div>
             )}
