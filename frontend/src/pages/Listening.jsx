@@ -9,8 +9,10 @@ import {
   XCircle,
   Volume2,
   Play,
+  Sparkles,
 } from "lucide-react";
 import { listeningApi } from "@/api/listeningApi";
+import CreateListeningModal from "@/components/listening/CreateListeningModal";
 
 const LEVEL_LABELS = {
   beginner: "Cơ bản",
@@ -31,6 +33,7 @@ export default function Listening() {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -60,6 +63,18 @@ export default function Listening() {
     }
   };
 
+  const handleCreated = async (lesson) => {
+    setShowCreateModal(false);
+    setTab("mine");
+    await loadData();
+    try {
+      const detail = await listeningApi.getLessonById(lesson.id);
+      setSelected(detail);
+    } catch {
+      // Neu khong lay duoc chi tiet, van reload danh sach binh thuong
+    }
+  };
+
   if (selected) {
     return (
       <LessonPlayer
@@ -81,6 +96,13 @@ export default function Listening() {
             Cải thiện kỹ năng nghe tiếng Anh
           </p>
         </div>
+        <button
+          onClick={() => setShowCreateModal(true)}
+          className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-teal-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-md hover:opacity-90 transition-all"
+        >
+          <Sparkles className="w-4 h-4" />
+          Tạo bài nghe
+        </button>
       </div>
 
       {/* Tabs */}
@@ -221,6 +243,13 @@ export default function Listening() {
             </div>
           ))}
         </div>
+      )}
+
+      {showCreateModal && (
+        <CreateListeningModal
+          onClose={() => setShowCreateModal(false)}
+          onCreated={handleCreated}
+        />
       )}
     </div>
   );

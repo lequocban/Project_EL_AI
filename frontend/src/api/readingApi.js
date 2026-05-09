@@ -121,4 +121,13 @@ export const readingApi = {
     });
     return response.data || {};
   },
+
+  // Tạo bài luyện đọc bằng AI
+  generateWithAI: async ({ title, topic, level, questionCount }) => {
+    const response = await fetchWithAuth(`${READING_LESSON_URL}/generate-with-ai`, {
+      method: "POST",
+      body: JSON.stringify({ title, topic, level, questionCount }),
+    });
+    return normalizeLesson(response.data || {});
+  },
 };

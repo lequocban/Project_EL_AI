@@ -7,8 +7,10 @@ import {
   AlertTriangle,
   CheckCircle,
   XCircle,
+  Sparkles,
 } from "lucide-react";
 import { readingApi } from "@/api/readingApi";
+import CreateReadingModal from "@/components/reading/CreateReadingModal";
 
 const LEVEL_LABELS = {
   beginner: "Cơ bản",
@@ -29,6 +31,7 @@ export default function Reading() {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -58,6 +61,18 @@ export default function Reading() {
     }
   };
 
+  const handleCreated = async (lesson) => {
+    setShowCreateModal(false);
+    setTab("mine");
+    await loadData();
+    try {
+      const detail = await readingApi.getLessonById(lesson.id);
+      setSelected(detail);
+    } catch {
+      // Neu khong lay duoc chi tiet, van reload danh sach binh thuong
+    }
+  };
+
   if (selected) {
     return (
       <ReadingPlayer
@@ -79,6 +94,13 @@ export default function Reading() {
             Nâng cao kỹ năng đọc hiểu tiếng Anh
           </p>
         </div>
+        <button
+          onClick={() => setShowCreateModal(true)}
+          className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-md hover:opacity-90 transition-all"
+        >
+          <Sparkles className="w-4 h-4" />
+          Tạo bài đọc
+        </button>
       </div>
 
       {/* Tabs */}
@@ -219,6 +241,13 @@ export default function Reading() {
             </div>
           ))}
         </div>
+      )}
+
+      {showCreateModal && (
+        <CreateReadingModal
+          onClose={() => setShowCreateModal(false)}
+          onCreated={handleCreated}
+        />
       )}
     </div>
   );

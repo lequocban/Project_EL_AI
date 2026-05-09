@@ -121,4 +121,13 @@ export const listeningApi = {
     });
     return response.data || {};
   },
+
+  // Tạo bài luyện nghe bằng AI
+  generateWithAI: async ({ title, topic, level, questionCount }) => {
+    const response = await fetchWithAuth(`${LISTENING_LESSON_URL}/generate-with-ai`, {
+      method: "POST",
+      body: JSON.stringify({ title, topic, level, questionCount }),
+    });
+    return normalizeLesson(response.data || {});
+  },
 };
