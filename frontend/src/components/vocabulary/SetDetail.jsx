@@ -232,6 +232,16 @@ export default function SetDetail({ set, onBack }) {
     }
   };
 
+  // Gửi kết quả bài kiểm tra lên backend để lưu lịch sử
+  const handlePracticeSubmit = async ({ setId, type, answers, timeSpent }) => {
+    try {
+      await vocabularyApi.submitPractice({ setId, type, answers, timeSpent });
+    } catch (err) {
+      // Lỗi không ảnh hưởng trải nghiệm người dùng
+      console.error("Không thể lưu lịch sử bài kiểm tra:", err.message);
+    }
+  };
+
   // Phát âm từ vựng. Nếu từ chưa có audioUrl thì gọi lookup để lấy từ backend.
   const playAudio = async (word) => {
     // Nếu đang phát từ này rồi thì dừng
@@ -282,7 +292,7 @@ export default function SetDetail({ set, onBack }) {
     return <DictationGame words={words} set={set} onBack={() => setMode(null)} />;
   }
   if (mode === "exam") {
-    return <ExamGame words={words} onBack={() => setMode(null)} examType={examType} />;
+    return <ExamGame words={words} onBack={() => setMode(null)} examType={examType} setId={set.id} onSubmit={handlePracticeSubmit} />;
   }
 
   return (
@@ -343,11 +353,11 @@ export default function SetDetail({ set, onBack }) {
           </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <button
-              onClick={() => { setExamType("translate_quiz"); setMode("exam"); }}
+              onClick={() => { setExamType("quiz"); setMode("exam"); }}
               className="bg-gradient-to-br from-emerald-500 to-teal-500 text-white rounded-2xl p-4 flex flex-col items-center gap-2 shadow-md card-hover"
             >
               <Languages className="w-7 h-7" />
-              <span className="font-bold text-sm text-center">Translate quiz</span>
+              <span className="font-bold text-sm text-center">Quiz</span>
               <span className="text-xs text-white/70">EN → VI</span>
             </button>
             <button

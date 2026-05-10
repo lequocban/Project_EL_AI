@@ -156,4 +156,14 @@ export const vocabularyApi = {
     });
     return response.data || {};
   },
+
+  // Nộp bài luyện tập từ vựng (gồm 4 loại: quiz, listening_quiz, translate_write, listen_write)
+  // Khi nộp bài, backend sẽ lưu lịch sử vào database
+  submitPractice: async ({ setId, type, answers, timeSpent }) => {
+    const response = await fetchWithAuth(`${VOCABULARY_PRACTICE_URL}/submit`, {
+      method: "POST",
+      body: JSON.stringify({ setId, type, answers, timeSpent }),
+    });
+    return response.data || {};
+  },
 };

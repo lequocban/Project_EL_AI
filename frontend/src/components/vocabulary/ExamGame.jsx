@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   ArrowLeft,
   CheckCircle,
@@ -17,8 +17,8 @@ function shuffle(arr) {
 
 const EXAM_TYPES = [
   {
-    id: "translate_quiz",
-    label: "Translate quiz",
+    id: "quiz",
+    label: "Quiz",
     sub: "EN → VI",
     icon: Languages,
     color: "from-emerald-500 to-teal-500",
@@ -48,7 +48,7 @@ const EXAM_TYPES = [
 
 function buildQuestions(words, type) {
   const shuffled = shuffle(words);
-  if (type === "translate_quiz") {
+  if (type === "quiz") {
     return shuffled.map((w) => {
       const distractors = shuffle(
         words.filter((x) => x.id !== w.id),
@@ -56,6 +56,7 @@ function buildQuestions(words, type) {
         .slice(0, 3)
         .map((x) => x.meaning);
       return {
+        wordId: w.id,
         word: w.word,
         correct: w.meaning,
         choices: shuffle([w.meaning, ...distractors]),
@@ -71,6 +72,7 @@ function buildQuestions(words, type) {
         .slice(0, 3)
         .map((x) => x.meaning);
       return {
+        wordId: w.id,
         word: w.word,
         audioUrl: w.audioUrl,
         correct: w.meaning,
@@ -81,6 +83,7 @@ function buildQuestions(words, type) {
   }
   if (type === "translate_write") {
     return shuffled.map((w) => ({
+      wordId: w.id,
       word: w.word,
       correct: w.word,
       meaning: w.meaning,
@@ -89,6 +92,7 @@ function buildQuestions(words, type) {
   }
   if (type === "listening_write") {
     return shuffled.map((w) => ({
+      wordId: w.id,
       word: w.word,
       audioUrl: w.audioUrl,
       correct: w.word,
@@ -107,7 +111,7 @@ function speakWord(text) {
   window.speechSynthesis.speak(utt);
 }
 
-export default function ExamGame({ words, onBack, examType: initialExamType = null }) {
+export default function ExamGame({ words, onBack, examType: initialExamType = null, setId = null, onSubmit = null }) {
   const [phase, setPhase] = useState(
     initialExamType ? "doing" : "select",
   );
@@ -120,6 +124,20 @@ export default function ExamGame({ words, onBack, examType: initialExamType = nu
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   // Chỉ hiển thị 1 câu tại một thời điểm
   const [currentIndex, setCurrentIndex] = useState(0);
+  // Đếm thời gian làm bài (giây)
+  const startTimeRef = useRef(null);
+  const [elapsed, setElapsed] = useState(0);
+
+  // Timer đếm thời gian khi đang làm bài
+  useEffect(() => {
+    if (phase === "doing" && !submitted) {
+      startTimeRef.current = Date.now();
+      const interval = setInterval(() => {
+        setElapsed(Math.floor((Date.now() - startTimeRef.current) / 1000));
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [phase, submitted]);
 
   const startExam = (type) => {
     setExamType(type);
@@ -130,12 +148,12 @@ export default function ExamGame({ words, onBack, examType: initialExamType = nu
     setCurrentIndex(0);
   };
 
-  const submitExam = () => {
+  const submitExam = async () => {
     let correctCount = 0;
     const updated = questions.map((q) => {
       let isCorrect = false;
       if (
-        examType === "translate_quiz" ||
+        examType === "quiz" ||
         examType === "listening_quiz"
       ) {
         isCorrect = q.userAnswer === q.correct;
@@ -150,6 +168,19 @@ export default function ExamGame({ words, onBack, examType: initialExamType = nu
     setScore(correctCount);
     setSubmitted(true);
     setPhase("results");
+
+    // Gửi kết quả lên backend để lưu lịch sử
+    if (setId && onSubmit) {
+      const answers = questions.map((q) => ({
+        wordId: q.wordId,
+        answer: q.userAnswer ?? "",
+      }));
+      try {
+        await onSubmit({ setId, type: examType, answers, timeSpent: elapsed });
+      } catch {
+        // Lỗi không ảnh hưởng đến việc hiển thị kết quả
+      }
+    }
   };
 
   const allAnswered = questions.every((q) => {
@@ -577,7 +608,7 @@ function ResultCard({ q, index, examType }) {
   const Icon = q.isCorrect ? CheckCircle : XCircle;
 
   if (
-    examType === "translate_quiz" ||
+    examType === "quiz" ||
     examType === "listening_quiz"
   ) {
     return (
