@@ -10,6 +10,7 @@ const adminVocabularySetRoutes = require("./admin/vocabularySet.routes");
 const adminReadingLessonRoutes = require("./admin/readingLesson.routes");
 const adminAuthRoutes = require("./admin/auth.routes");
 const adminUserRoutes = require("./admin/user.routes");
+const adminListeningLessonRoutes = require("./admin/listeningLesson.routes");
 const readingLessonRoutes = require("./client/readingLesson.routes");
 const listeningLessonRoutes = require("./client/listeningLesson.routes");
 const readingQuestionRoutes = require("./client/readingQuestion.routes");
@@ -35,6 +36,7 @@ router.use("/admin/auth", adminAuthRoutes);
 router.use("/admin/users", adminUserRoutes);
 router.use("/admin/vocabulary-sets", adminVocabularySetRoutes);
 router.use("/admin", adminReadingLessonRoutes);
+router.use("/admin", adminListeningLessonRoutes);
 
 // Reading lessons
 router.use("/reading-lessons", readingLessonRoutes);

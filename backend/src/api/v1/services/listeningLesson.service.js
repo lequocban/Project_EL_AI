@@ -250,6 +250,52 @@ const makePrivate = async (id, userId) => {
   return formatLesson(updated);
 };
 
+/**
+ * Lấy danh sách bài đang chờ duyệt public (content_manager/admin).
+ */
+const getPendingPublicLessons = async ({ keyword, page, limit }) => {
+  const { data, total } = await listeningLessonModel.getPendingPublicLessons({ keyword, page, limit });
+
+  const items = data.map(formatListItem);
+  return buildPaginationResponse(items, { page, limit, total });
+};
+
+/**
+ * Duyệt public bài luyện nghe (content_manager/admin).
+ */
+const approvePublic = async (id) => {
+  const lesson = await listeningLessonModel.findById(id);
+
+  if (!lesson) {
+    throw new AppError("Không tìm thấy bài luyện nghe", 404);
+  }
+
+  if (lesson.status !== "req_public") {
+    throw new AppError("Bài luyện nghe không ở trạng thái chờ duyệt", 400);
+  }
+
+  const updated = await listeningLessonModel.updateStatus(id, "public");
+  return formatLesson(updated);
+};
+
+/**
+ * Từ chối duyệt public bài luyện nghe (content_manager/admin).
+ */
+const rejectPublic = async (id) => {
+  const lesson = await listeningLessonModel.findById(id);
+
+  if (!lesson) {
+    throw new AppError("Không tìm thấy bài luyện nghe", 404);
+  }
+
+  if (lesson.status !== "req_public") {
+    throw new AppError("Bài luyện nghe không ở trạng thái chờ duyệt", 400);
+  }
+
+  const updated = await listeningLessonModel.updateStatus(id, "private");
+  return formatLesson(updated);
+};
+
 module.exports = {
   createLesson,
   updateLesson,
@@ -259,6 +305,9 @@ module.exports = {
   getMyLessons,
   requestPublic,
   makePrivate,
+  getPendingPublicLessons,
+  approvePublic,
+  rejectPublic,
   formatLesson,
   formatLessonDetail,
   formatListItem,
