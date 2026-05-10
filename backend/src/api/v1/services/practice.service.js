@@ -1,9 +1,7 @@
 const vocabularySetModel = require("../repositories/vocabularySet.model");
 const practiceModel = require("../repositories/practice.model");
 const { AppError } = require("../../../utils/appError");
-const {
-  buildPaginationResponse,
-} = require("../../../utils/paginationResponse");
+const { buildPaginationResponse } = require("../../../utils/paginationResponse");
 
 /**
  * Chuẩn hóa đáp án để so sánh (bỏ dấu, khoảng trắng thừa, lowercase).
@@ -99,8 +97,7 @@ const submitPractice = async (userId, setId, type, timeSpent, answers) => {
   }
 
   const totalQuestions = wordMap.size;
-  const score =
-    totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0;
+  const score = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0;
 
   const result = await practiceModel.createPracticeResult({
     userId,
@@ -127,18 +124,13 @@ const submitPractice = async (userId, setId, type, timeSpent, answers) => {
  * Lấy lịch sử luyện tập của user (có phân trang).
  */
 const getPracticeHistory = async (userId, { page = 1, limit = 10 } = {}) => {
-  const { data, total } = await practiceModel.getUserPracticeHistory(userId, {
-    page,
-    limit,
-  });
+  const { data, total } = await practiceModel.getUserPracticeHistory(userId, { page, limit });
 
   const items = await Promise.all(
     data.map(async (item) => {
       let vocabularyTitle = null;
       if (item.vocabulary_id) {
-        const vocabSet = await vocabularySetModel.getVocabularySetById(
-          item.vocabulary_id,
-        );
+        const vocabSet = await vocabularySetModel.getVocabularySetById(item.vocabulary_id);
         vocabularyTitle = vocabSet?.title || null;
       }
       return {
@@ -150,7 +142,7 @@ const getPracticeHistory = async (userId, { page = 1, limit = 10 } = {}) => {
         completedAt: item.complete_at,
         vocabularySetTitle: vocabularyTitle,
       };
-    }),
+    })
   );
 
   return buildPaginationResponse(items, { page, limit, total, maxLimit: 20 });
