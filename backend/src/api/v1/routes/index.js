@@ -14,6 +14,7 @@ const readingQuestionRoutes = require("./client/readingQuestion.routes");
 const listeningPracticeRoutes = require("./client/listeningPractice.routes");
 const readingPracticeRoutes = require("./client/readingPractice.routes");
 const listeningQuestionRoutes = require("./client/listeningQuestion.routes");
+const learningStatsRoutes = require("./client/learningStats.routes");
 
 router.get("/health", (req, res) => {
   res.json({ status: "ok" });
@@ -52,6 +53,9 @@ router.use("/reading-lessons", readingPracticeRoutes);
 // Mount 2 lần: /reading-lessons (nested) + /reading-questions (standalone)
 router.use("/reading-lessons", readingQuestionRoutes);
 router.use("/reading-questions", readingQuestionRoutes);
+
+// Thống kê học tập
+router.use("/learning-stats", learningStatsRoutes);
 
 module.exports = router;
 
