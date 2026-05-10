@@ -1,5 +1,6 @@
 const { createAuthedClient } = require("../../../config/supabase");
 const { AppError } = require("../../../utils/appError");
+const { parseSortParams, buildSupabaseOrder } = require("../../../utils/sorting");
 
 /**
  * Tạo yêu cầu kiểm duyệt mới.
@@ -47,13 +48,23 @@ const createModerationRequest = async (accessToken, { contentType, contentId, re
  * @param {string} options.status - Lọc theo trạng thái
  * @param {number} options.page - Trang (bắt đầu từ 1)
  * @param {number} options.limit - Số item mỗi trang (max 15)
+ * @param {string} options.sortField - Trường sắp xếp: "created_at"
+ * @param {string} options.sortOrder - Thứ tự sắp xếp: "asc" | "desc"
  * @returns {Promise<{data: Array, total: number}>}
  */
-const getRequestsByUser = async (accessToken, userId, { keyword, status, page = 1, limit = 15 }) => {
+const getRequestsByUser = async (accessToken, userId, { keyword, status, page = 1, limit = 15, sortField, sortOrder } = {}) => {
   const client = createAuthedClient(accessToken);
   const safeLimit = Math.min(Math.max(1, limit), 15);
   const from = (page - 1) * safeLimit;
   const to = from + safeLimit - 1;
+
+  const { sortColumn, ascending } = parseSortParams({
+    sortField,
+    sortOrder,
+    allowedFields: ["created_at"],
+    defaultField: "created_at",
+    defaultOrder: "desc",
+  });
 
   let query = client
     .from("moderation_requests")
@@ -62,7 +73,7 @@ const getRequestsByUser = async (accessToken, userId, { keyword, status, page = 
       { count: "exact" }
     )
     .eq("requested_by", userId)
-    .order("created_at", { ascending: false })
+    .order(sortColumn, buildSupabaseOrder(sortColumn, ascending))
     .range(from, to);
 
   if (status && status.trim()) {

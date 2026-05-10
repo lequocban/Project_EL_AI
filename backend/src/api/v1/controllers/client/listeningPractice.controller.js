@@ -28,7 +28,7 @@ const submitListeningPractice = async (req, res, next) => {
 
 /**
  * GET /api/v1/listening-lessons/practice/history
- * Lấy lịch sử luyện nghe của user (có phân trang).
+ * Lấy lịch sử luyện nghe của user (có phân trang, sắp xếp).
  */
 const getPracticeHistory = async (req, res, next) => {
   try {
@@ -37,8 +37,10 @@ const getPracticeHistory = async (req, res, next) => {
       defaultLimit: 10,
       maxLimit: 20,
     });
+    const sortField = req.query.sortField || "";
+    const sortOrder = req.query.sortOrder || "";
 
-    const result = await listeningPracticeService.getPracticeHistory(userId, { page, limit });
+    const result = await listeningPracticeService.getPracticeHistory(userId, { page, limit, sortField, sortOrder });
 
     return success(res, result, "Lấy lịch sử luyện nghe thành công");
   } catch (error) {

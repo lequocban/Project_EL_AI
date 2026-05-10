@@ -28,7 +28,7 @@ const submitReadingPractice = async (req, res, next) => {
 
 /**
  * GET /api/v1/reading-lessons/practice/history
- * Lấy lịch sử luyện đọc của user (có phân trang).
+ * Lấy lịch sử luyện đọc của user (có phân trang, sắp xếp).
  */
 const getPracticeHistory = async (req, res, next) => {
   try {
@@ -37,8 +37,10 @@ const getPracticeHistory = async (req, res, next) => {
       defaultLimit: 10,
       maxLimit: 20,
     });
+    const sortField = req.query.sortField || "";
+    const sortOrder = req.query.sortOrder || "";
 
-    const result = await readingPracticeService.getPracticeHistory(userId, { page, limit });
+    const result = await readingPracticeService.getPracticeHistory(userId, { page, limit, sortField, sortOrder });
 
     return success(res, result, "Lấy lịch sử luyện đọc thành công");
   } catch (error) {

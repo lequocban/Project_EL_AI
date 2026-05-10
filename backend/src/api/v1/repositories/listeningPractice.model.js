@@ -1,5 +1,6 @@
 const { supabase } = require("../../../config/supabase");
 const { AppError } = require("../../../utils/appError");
+const { parseSortParams, buildSupabaseOrder } = require("../../../utils/sorting");
 
 /**
  * Lưu kết quả luyện nghe vào bảng listening_practice.
@@ -35,23 +36,33 @@ const create = async ({ userId, lessonId, userAnswer, score }) => {
 };
 
 /**
- * Lấy lịch sử luyện nghe của user (phân trang).
+ * Lấy lịch sử luyện nghe của user (phân trang, sắp xếp).
  * @param {string} userId
  * @param {Object} options
  * @param {number} options.page
  * @param {number} options.limit
+ * @param {string} options.sortField - Trường sắp xếp: "created_at" | "complete_at"
+ * @param {string} options.sortOrder - Thứ tự sắp xếp: "asc" | "desc"
  * @returns {Promise<{data: Array, total: number}>}
  */
-const getHistoryByUser = async (userId, { page = 1, limit = 10 } = {}) => {
+const getHistoryByUser = async (userId, { page = 1, limit = 10, sortField, sortOrder } = {}) => {
   const safeLimit = Math.min(Math.max(1, limit), 20);
   const from = (page - 1) * safeLimit;
   const to = from + safeLimit - 1;
+
+  const { sortColumn, ascending } = parseSortParams({
+    sortField,
+    sortOrder,
+    allowedFields: ["created_at", "complete_at"],
+    defaultField: "created_at",
+    defaultOrder: "desc",
+  });
 
   const { data, error, count } = await supabase
     .from("listening_practice")
     .select("id, score, complete_at, lesson_id", { count: "exact" })
     .eq("user_id", userId)
-    .order("complete_at", { ascending: false })
+    .order(sortColumn, buildSupabaseOrder(sortColumn, ascending))
     .range(from, to);
 
   if (error) {

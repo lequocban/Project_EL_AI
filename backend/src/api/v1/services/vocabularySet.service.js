@@ -84,19 +84,19 @@ const softDeleteVocabularySet = async (id) => {
 };
 
 /**
- * Lấy danh sách bộ từ vựng của user (có phân trang, tìm kiếm).
+ * Lấy danh sách bộ từ vựng của user (có phân trang, tìm kiếm, sắp xếp).
  */
-const getMySets = async (userId, { keyword, page = 1, limit = 15 }) => {
-  const { data, total } = await vocabularySetModel.getMySets(userId, { keyword, page, limit });
+const getMySets = async (userId, { keyword, page = 1, limit = 15, sortField, sortOrder }) => {
+  const { data, total } = await vocabularySetModel.getMySets(userId, { keyword, page, limit, sortField, sortOrder });
   const items = await enrichWithWordCount(data, (setId) => vocabularySetModel.countWordsInSet(setId));
   return buildPaginationResponse(items, { page, limit, total });
 };
 
 /**
- * Lấy danh sách bộ từ vựng public (có phân trang, tìm kiếm).
+ * Lấy danh sách bộ từ vựng public (có phân trang, tìm kiếm, sắp xếp).
  */
-const getPublicSets = async ({ keyword, page = 1, limit = 15 }) => {
-  const { data, total } = await vocabularySetModel.getPublicSets({ keyword, page, limit });
+const getPublicSets = async ({ keyword, page = 1, limit = 15, sortField, sortOrder }) => {
+  const { data, total } = await vocabularySetModel.getPublicSets({ keyword, page, limit, sortField, sortOrder });
   const items = await enrichWithWordCount(data, (setId) => vocabularySetModel.countWordsInSet(setId));
   return buildPaginationResponse(items, { page, limit, total });
 };
@@ -160,9 +160,9 @@ const addWordsToSet = async (setId, userId, words) => {
 };
 
 /**
- * Lấy chi tiết một bộ từ vựng kèm danh sách từ vựng bên trong.
+ * Lấy chi tiết một bộ từ vựng kèm danh sách từ vựng bên trong (có sắp xếp).
  */
-const getDetail = async (setId, userId) => {
+const getDetail = async (setId, userId, { sortField, sortOrder } = {}) => {
   const vocabularySet = await vocabularySetModel.findById(setId);
 
   if (!vocabularySet) {
@@ -173,7 +173,7 @@ const getDetail = async (setId, userId) => {
     throw new AppError("Bạn không có quyền xem bộ từ vựng này", 403);
   }
 
-  const words = await vocabularySetModel.getWordsInSet(setId);
+  const words = await vocabularySetModel.getWordsInSet(setId, { sortField, sortOrder });
 
   return {
     id: vocabularySet.id,

@@ -88,14 +88,16 @@ const removeLesson = async (req, res, next) => {
 
 /**
  * GET /api/v1/reading-lessons/public
- * Lấy danh sách bài luyện đọc public (phân trang, tìm kiếm).
+ * Lấy danh sách bài luyện đọc public (phân trang, tìm kiếm, sắp xếp).
  */
 const getPublicLessons = async (req, res, next) => {
   try {
     const { page, limit } = parsePagination(req.query);
     const keyword = req.query.keyword || "";
+    const sortField = req.query.sortField || "";
+    const sortOrder = req.query.sortOrder || "";
 
-    const result = await readingLessonService.getPublicLessons({ keyword, page, limit });
+    const result = await readingLessonService.getPublicLessons({ keyword, page, limit, sortField, sortOrder });
 
     return success(res, result, "Lấy danh sách bài luyện đọc public thành công");
   } catch (error) {
@@ -105,15 +107,17 @@ const getPublicLessons = async (req, res, next) => {
 
 /**
  * GET /api/v1/reading-lessons/my
- * Lấy danh sách bài luyện đọc do user tạo (phân trang, tìm kiếm).
+ * Lấy danh sách bài luyện đọc do user tạo (phân trang, tìm kiếm, sắp xếp).
  */
 const getMyLessons = async (req, res, next) => {
   try {
     const userId = req.user.id;
     const { page, limit } = parsePagination(req.query);
     const keyword = req.query.keyword || "";
+    const sortField = req.query.sortField || "";
+    const sortOrder = req.query.sortOrder || "";
 
-    const result = await readingLessonService.getMyLessons(userId, { keyword, page, limit });
+    const result = await readingLessonService.getMyLessons(userId, { keyword, page, limit, sortField, sortOrder });
 
     return success(res, result, "Lấy danh sách bài luyện đọc thành công");
   } catch (error) {

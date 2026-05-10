@@ -1,5 +1,6 @@
 const { supabase } = require("../../../config/supabase");
 const { AppError } = require("../../../utils/appError");
+const { parseSortParams, buildSupabaseOrder } = require("../../../utils/sorting");
 
 /**
  * Tạo mới một vocabulary set.
@@ -98,19 +99,29 @@ const softDelete = async (id) => {
  * @param {string} options.keyword - Từ khóa tìm kiếm theo title
  * @param {number} options.page - Trang (bắt đầu từ 1)
  * @param {number} options.limit - Số item mỗi trang (max 15)
+ * @param {string} options.sortField - Trường sắp xếp: "created_at" | "title"
+ * @param {string} options.sortOrder - Thứ tự sắp xếp: "asc" | "desc"
  * @returns {Promise<{data: Array, total: number}>}
  */
-const getMySets = async (userId, { keyword, page = 1, limit = 15 }) => {
+const getMySets = async (userId, { keyword, page = 1, limit = 15, sortField, sortOrder } = {}) => {
   const safeLimit = Math.min(Math.max(1, limit), 15);
   const from = (page - 1) * safeLimit;
   const to = from + safeLimit - 1;
+
+  const { sortColumn, ascending } = parseSortParams({
+    sortField,
+    sortOrder,
+    allowedFields: ["created_at", "title"],
+    defaultField: "created_at",
+    defaultOrder: "desc",
+  });
 
   let query = supabase
     .from("vocabulary_sets")
     .select("id, title, description", { count: "exact" })
     .eq("created_by", userId)
     .eq("deleted", false)
-    .order("created_at", { ascending: false })
+    .order(sortColumn, buildSupabaseOrder(sortColumn, ascending))
     .range(from, to);
 
   if (keyword && keyword.trim()) {
@@ -132,19 +143,29 @@ const getMySets = async (userId, { keyword, page = 1, limit = 15 }) => {
  * @param {string} options.keyword - Từ khóa tìm kiếm theo title
  * @param {number} options.page - Trang (bắt đầu từ 1)
  * @param {number} options.limit - Số item mỗi trang (max 15)
+ * @param {string} options.sortField - Trường sắp xếp: "created_at" | "title"
+ * @param {string} options.sortOrder - Thứ tự sắp xếp: "asc" | "desc"
  * @returns {Promise<{data: Array, total: number}>}
  */
-const getPublicSets = async ({ keyword, page = 1, limit = 15 }) => {
+const getPublicSets = async ({ keyword, page = 1, limit = 15, sortField, sortOrder } = {}) => {
   const safeLimit = Math.min(Math.max(1, limit), 15);
   const from = (page - 1) * safeLimit;
   const to = from + safeLimit - 1;
+
+  const { sortColumn, ascending } = parseSortParams({
+    sortField,
+    sortOrder,
+    allowedFields: ["created_at", "title"],
+    defaultField: "created_at",
+    defaultOrder: "desc",
+  });
 
   let query = supabase
     .from("vocabulary_sets")
     .select("id, title, description", { count: "exact" })
     .eq("status", "public")
     .eq("deleted", false)
-    .order("created_at", { ascending: false })
+    .order(sortColumn, buildSupabaseOrder(sortColumn, ascending))
     .range(from, to);
 
   if (keyword && keyword.trim()) {
@@ -282,13 +303,25 @@ const findById = async (setId) => {
 /**
  * Lấy danh sách từ vựng trong một bộ từ vựng.
  * @param {string} setId
+ * @param {Object} options
+ * @param {string} options.sortField - Trường sắp xếp: "created_at" | "word"
+ * @param {string} options.sortOrder - Thứ tự sắp xếp: "asc" | "desc"
  * @returns {Promise<Array>}
  */
-const getWordsInSet = async (setId) => {
+const getWordsInSet = async (setId, { sortField, sortOrder } = {}) => {
+  const { sortColumn, ascending } = parseSortParams({
+    sortField,
+    sortOrder,
+    allowedFields: ["created_at", "word"],
+    defaultField: "word",
+    defaultOrder: "asc",
+  });
+
   const { data, error } = await supabase
     .from("vocabulary_set_words")
     .select(`
       word_id,
+      created_at,
       words (
         id,
         word,
@@ -304,7 +337,7 @@ const getWordsInSet = async (setId) => {
     throw new AppError(error.message, 500);
   }
 
-  return (data || []).map((row) => ({
+  let rows = (data || []).map((row) => ({
     id: row.words.id,
     word: row.words.word,
     meaning: row.words.meaning,
@@ -312,6 +345,16 @@ const getWordsInSet = async (setId) => {
     audioUrl: row.words.audio_url,
     createdAt: row.words.created_at,
   }));
+
+  // Sắp xếp bằng JS (đáng tin cậy hơn foreignTable)
+  rows.sort((a, b) => {
+    const valA = sortColumn === "word" ? a.word : a.createdAt;
+    const valB = sortColumn === "word" ? b.word : b.createdAt;
+    const cmp = valA < valB ? -1 : valA > valB ? 1 : 0;
+    return ascending ? cmp : -cmp;
+  });
+
+  return rows;
 };
 
 /**

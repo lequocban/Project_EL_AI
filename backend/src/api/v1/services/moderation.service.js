@@ -86,14 +86,16 @@ const createModerationRequest = async (accessToken, userId, { contentType, conte
 };
 
 /**
- * Lấy danh sách yêu cầu kiểm duyệt của user.
+ * Lấy danh sách yêu cầu kiểm duyệt của user (có sắp xếp).
  */
-const getMyRequests = async (accessToken, userId, { keyword, status, page, limit }) => {
+const getMyRequests = async (accessToken, userId, { keyword, status, page, limit, sortField, sortOrder }) => {
   const { data, total } = await moderationModel.getRequestsByUser(accessToken, userId, {
     keyword,
     status,
     page,
     limit,
+    sortField,
+    sortOrder,
   });
 
   const enrichedData = await Promise.all(

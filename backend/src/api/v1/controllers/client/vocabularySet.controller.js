@@ -79,15 +79,17 @@ const addWords = async (req, res, next) => {
 
 /**
  * GET /api/v1/vocabulary-sets/my
- * Lấy danh sách bộ từ vựng do user tạo ra (có phân trang, tìm kiếm).
+ * Lấy danh sách bộ từ vựng do user tạo ra (có phân trang, tìm kiếm, sắp xếp).
  */
 const getMyVocabularySets = async (req, res, next) => {
   try {
     const userId = req.user.id;
     const { page, limit } = parsePagination(req.query);
     const keyword = req.query.keyword || "";
+    const sortField = req.query.sortField || "";
+    const sortOrder = req.query.sortOrder || "";
 
-    const result = await vocabularySetService.getMySets(userId, { keyword, page, limit });
+    const result = await vocabularySetService.getMySets(userId, { keyword, page, limit, sortField, sortOrder });
 
     return success(res, result, "Lấy danh sách bộ từ vựng thành công");
   } catch (error) {
@@ -97,14 +99,16 @@ const getMyVocabularySets = async (req, res, next) => {
 
 /**
  * GET /api/v1/vocabulary-sets/public
- * Lấy danh sách bộ từ vựng public (có phân trang, tìm kiếm).
+ * Lấy danh sách bộ từ vựng public (có phân trang, tìm kiếm, sắp xếp).
  */
 const getPublicVocabularySets = async (req, res, next) => {
   try {
     const { page, limit } = parsePagination(req.query);
     const keyword = req.query.keyword || "";
+    const sortField = req.query.sortField || "";
+    const sortOrder = req.query.sortOrder || "";
 
-    const result = await vocabularySetService.getPublicSets({ keyword, page, limit });
+    const result = await vocabularySetService.getPublicSets({ keyword, page, limit, sortField, sortOrder });
 
     return success(res, result, "Lấy danh sách bộ từ vựng public thành công");
   } catch (error) {
@@ -114,14 +118,16 @@ const getPublicVocabularySets = async (req, res, next) => {
 
 /**
  * GET /api/v1/vocabulary-sets/:id
- * Lấy chi tiết bộ từ vựng kèm danh sách từ vựng.
+ * Lấy chi tiết bộ từ vựng kèm danh sách từ vựng (có sắp xếp).
  */
 const getDetail = async (req, res, next) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
+    const sortField = req.query.sortField || "";
+    const sortOrder = req.query.sortOrder || "";
 
-    const result = await vocabularySetService.getDetail(id, userId);
+    const result = await vocabularySetService.getDetail(id, userId, { sortField, sortOrder });
 
     return success(res, result, "Lấy chi tiết bộ từ vựng thành công");
   } catch (error) {

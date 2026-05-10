@@ -1,5 +1,6 @@
 const { supabase } = require("../../../config/supabase");
 const { AppError } = require("../../../utils/appError");
+const { parseSortParams, buildSupabaseOrder } = require("../../../utils/sorting");
 
 /**
  * Tạo mới một reading lesson.
@@ -114,24 +115,34 @@ const findById = async (id) => {
 };
 
 /**
- * Lấy danh sách reading lessons public (phân trang, tìm kiếm).
+ * Lấy danh sách reading lessons public (phân trang, tìm kiếm, sắp xếp).
  * @param {Object} options
  * @param {string} options.keyword
  * @param {number} options.page
  * @param {number} options.limit
+ * @param {string} options.sortField - Trường sắp xếp: "created_at" | "title"
+ * @param {string} options.sortOrder - Thứ tự sắp xếp: "asc" | "desc"
  * @returns {Promise<{data: Array, total: number}>}
  */
-const getPublicLessons = async ({ keyword, page = 1, limit = 15 }) => {
+const getPublicLessons = async ({ keyword, page = 1, limit = 15, sortField, sortOrder } = {}) => {
   const safeLimit = Math.min(Math.max(1, limit), 15);
   const from = (page - 1) * safeLimit;
   const to = from + safeLimit - 1;
+
+  const { sortColumn, ascending } = parseSortParams({
+    sortField,
+    sortOrder,
+    allowedFields: ["created_at", "title"],
+    defaultField: "created_at",
+    defaultOrder: "desc",
+  });
 
   let query = supabase
     .from("reading_lessons")
     .select("id, title, content, vi_translation, status, created_by, created_at", { count: "exact" })
     .eq("status", "public")
     .eq("deleted", false)
-    .order("created_at", { ascending: false })
+    .order(sortColumn, buildSupabaseOrder(sortColumn, ascending))
     .range(from, to);
 
   if (keyword && keyword.trim()) {
@@ -148,25 +159,35 @@ const getPublicLessons = async ({ keyword, page = 1, limit = 15 }) => {
 };
 
 /**
- * Lấy danh sách reading lessons của một user (phân trang, tìm kiếm).
+ * Lấy danh sách reading lessons của một user (phân trang, tìm kiếm, sắp xếp).
  * @param {string} userId
  * @param {Object} options
  * @param {string} options.keyword
  * @param {number} options.page
  * @param {number} options.limit
+ * @param {string} options.sortField - Trường sắp xếp: "created_at" | "title"
+ * @param {string} options.sortOrder - Thứ tự sắp xếp: "asc" | "desc"
  * @returns {Promise<{data: Array, total: number}>}
  */
-const getMyLessons = async (userId, { keyword, page = 1, limit = 15 }) => {
+const getMyLessons = async (userId, { keyword, page = 1, limit = 15, sortField, sortOrder } = {}) => {
   const safeLimit = Math.min(Math.max(1, limit), 15);
   const from = (page - 1) * safeLimit;
   const to = from + safeLimit - 1;
+
+  const { sortColumn, ascending } = parseSortParams({
+    sortField,
+    sortOrder,
+    allowedFields: ["created_at", "title"],
+    defaultField: "created_at",
+    defaultOrder: "desc",
+  });
 
   let query = supabase
     .from("reading_lessons")
     .select("id, title, status, created_at", { count: "exact" })
     .eq("created_by", userId)
     .eq("deleted", false)
-    .order("created_at", { ascending: false })
+    .order(sortColumn, buildSupabaseOrder(sortColumn, ascending))
     .range(from, to);
 
   if (keyword && keyword.trim()) {

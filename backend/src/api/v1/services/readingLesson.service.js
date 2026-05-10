@@ -231,20 +231,20 @@ const getDetail = async (id, userId) => {
 };
 
 /**
- * Lấy danh sách bài luyện đọc public (phân trang, tìm kiếm).
+ * Lấy danh sách bài luyện đọc public (phân trang, tìm kiếm, sắp xếp).
  */
-const getPublicLessons = async ({ keyword, page, limit }) => {
-  const { data, total } = await readingLessonModel.getPublicLessons({ keyword, page, limit });
+const getPublicLessons = async ({ keyword, page, limit, sortField, sortOrder }) => {
+  const { data, total } = await readingLessonModel.getPublicLessons({ keyword, page, limit, sortField, sortOrder });
 
   const items = data.map(formatLesson);
   return buildPaginationResponse(items, { page, limit, total });
 };
 
 /**
- * Lấy danh sách bài luyện đọc của user (phân trang, tìm kiếm).
+ * Lấy danh sách bài luyện đọc của user (phân trang, tìm kiếm, sắp xếp).
  */
-const getMyLessons = async (userId, { keyword, page, limit }) => {
-  const { data, total } = await readingLessonModel.getMyLessons(userId, { keyword, page, limit });
+const getMyLessons = async (userId, { keyword, page, limit, sortField, sortOrder }) => {
+  const { data, total } = await readingLessonModel.getMyLessons(userId, { keyword, page, limit, sortField, sortOrder });
 
   const items = data.map(formatListItem);
   return buildPaginationResponse(items, { page, limit, total });

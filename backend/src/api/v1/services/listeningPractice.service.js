@@ -108,10 +108,10 @@ const submitListeningPractice = async (userId, lessonId, answers) => {
 };
 
 /**
- * Lấy lịch sử luyện nghe của user (có phân trang).
+ * Lấy lịch sử luyện nghe của user (có phân trang, sắp xếp).
  */
-const getPracticeHistory = async (userId, { page = 1, limit = 10 } = {}) => {
-  const { data, total } = await listeningPracticeModel.getHistoryByUser(userId, { page, limit });
+const getPracticeHistory = async (userId, { page = 1, limit = 10, sortField, sortOrder } = {}) => {
+  const { data, total } = await listeningPracticeModel.getHistoryByUser(userId, { page, limit, sortField, sortOrder });
 
   const items = await Promise.all(
     data.map(async (item) => {

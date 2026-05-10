@@ -29,13 +29,15 @@ const removeFavorite = async (accessToken, userId, setId) => {
 };
 
 /**
- * Lấy danh sách bộ từ vựng yêu thích (có phân trang, tìm kiếm, số từ trong bộ).
+ * Lấy danh sách bộ từ vựng yêu thích (có phân trang, tìm kiếm, sắp xếp, số từ trong bộ).
  */
-const getFavorites = async (accessToken, userId, { keyword, page = 1, limit = 15 }) => {
+const getFavorites = async (accessToken, userId, { keyword, page = 1, limit = 15, sortField, sortOrder }) => {
   const { data, total } = await favoriteVocabularyModel.getFavorites(accessToken, userId, {
     keyword,
     page,
     limit,
+    sortField,
+    sortOrder,
   });
 
   const items = await Promise.all(

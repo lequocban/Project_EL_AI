@@ -25,20 +25,22 @@ const createModerationRequest = async (req, res, next) => {
 
 /**
  * GET /api/v1/moderation-requests/my
- * Lấy danh sách yêu cầu kiểm duyệt của user đang đăng nhập.
- * Query: keyword, status, page, limit
+ * Lấy danh sách yêu cầu kiểm duyệt của user đang đăng nhập (có sắp xếp).
+ * Query: keyword, status, page, limit, sortField, sortOrder
  */
 const getMyModerationRequests = async (req, res, next) => {
   try {
     const userId = req.user.id;
     const accessToken = req.accessToken;
-    const { keyword, status, page, limit } = req.query;
+    const { keyword, status, page, limit, sortField, sortOrder } = req.query;
 
     const result = await moderationService.getMyRequests(accessToken, userId, {
       keyword,
       status,
       page: page ? parseInt(page, 10) : 1,
       limit: limit ? parseInt(limit, 10) : 15,
+      sortField,
+      sortOrder,
     });
 
     return success(res, result, "Lấy danh sách yêu cầu kiểm duyệt thành công");

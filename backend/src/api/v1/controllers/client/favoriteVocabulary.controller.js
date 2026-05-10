@@ -40,7 +40,7 @@ const removeFavorite = async (req, res, next) => {
 
 /**
  * GET /api/v1/favorites/vocabulary-sets
- * Lấy danh sách bộ từ vựng yêu thích (có phân trang, tìm kiếm).
+ * Lấy danh sách bộ từ vựng yêu thích (có phân trang, tìm kiếm, sắp xếp).
  */
 const getFavorites = async (req, res, next) => {
   try {
@@ -48,11 +48,15 @@ const getFavorites = async (req, res, next) => {
     const accessToken = req.accessToken;
     const { page, limit } = parsePagination(req.query);
     const keyword = req.query.keyword || "";
+    const sortField = req.query.sortField || "";
+    const sortOrder = req.query.sortOrder || "";
 
     const result = await favoriteVocabularyService.getFavorites(accessToken, userId, {
       keyword,
       page,
       limit,
+      sortField,
+      sortOrder,
     });
 
     return success(res, result, "Lấy danh sách yêu thích thành công");
