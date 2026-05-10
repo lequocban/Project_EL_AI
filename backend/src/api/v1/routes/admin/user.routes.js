@@ -2,9 +2,9 @@ const router = require("express").Router();
 const userController = require("../../controllers/admin/user.controller");
 const { verifyToken, requireAuth, requireAdmin } = require("../../middlewares/auth.middleware");
 const { validateQuery, validateParams, validateBody } = require("../../validations/validate");
-const { getAllUsersSchema, getUserDetailSchema, updateUserStatusSchema, deleteUserSchema } = require("../../validations/user.validation");
+const { getAllUsersSchema, getUserDetailSchema, updateUserStatusSchema, updateUserRoleSchema, deleteUserSchema } = require("../../validations/user.validation");
 
-// GET /api/v1/admin/users — Danh sách người dùng (role_id = 1)
+// GET /api/v1/admin/users — Danh sách toàn bộ người dùng (mọi role)
 router.get(
   "/",
   verifyToken,
@@ -12,6 +12,16 @@ router.get(
   requireAdmin,
   validateQuery(getAllUsersSchema),
   userController.getAllUsers
+);
+
+// PATCH /api/v1/admin/users/roles — Cấp hoặc thu hồi vai trò của người dùng
+router.patch(
+  "/roles",
+  verifyToken,
+  requireAuth,
+  requireAdmin,
+  validateBody(updateUserRoleSchema),
+  userController.updateUserRole
 );
 
 // GET /api/v1/admin/users/:id — Chi tiết người dùng
