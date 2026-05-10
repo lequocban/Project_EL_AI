@@ -1,6 +1,9 @@
 const { supabase } = require("../../../config/supabase");
 const { AppError } = require("../../../utils/appError");
-const { parseSortParams, buildSupabaseOrder } = require("../../../utils/sorting");
+const {
+  parseSortParams,
+  buildSupabaseOrder,
+} = require("../../../utils/sorting");
 
 /**
  * Tạo mới một vocabulary set.
@@ -103,7 +106,10 @@ const softDelete = async (id) => {
  * @param {string} options.sortOrder - Thứ tự sắp xếp: "asc" | "desc"
  * @returns {Promise<{data: Array, total: number}>}
  */
-const getMySets = async (userId, { keyword, page = 1, limit = 15, sortField, sortOrder } = {}) => {
+const getMySets = async (
+  userId,
+  { keyword, page = 1, limit = 15, sortField, sortOrder } = {},
+) => {
   const safeLimit = Math.min(Math.max(1, limit), 15);
   const from = (page - 1) * safeLimit;
   const to = from + safeLimit - 1;
@@ -147,7 +153,13 @@ const getMySets = async (userId, { keyword, page = 1, limit = 15, sortField, sor
  * @param {string} options.sortOrder - Thứ tự sắp xếp: "asc" | "desc"
  * @returns {Promise<{data: Array, total: number}>}
  */
-const getPublicSets = async ({ keyword, page = 1, limit = 15, sortField, sortOrder } = {}) => {
+const getPublicSets = async ({
+  keyword,
+  page = 1,
+  limit = 15,
+  sortField,
+  sortOrder,
+} = {}) => {
   const safeLimit = Math.min(Math.max(1, limit), 15);
   const from = (page - 1) * safeLimit;
   const to = from + safeLimit - 1;
@@ -270,9 +282,10 @@ const addWordsToSet = async (setId, wordIds) => {
     word_id: wordId,
   }));
 
-  const { error } = await supabase
-    .from("vocabulary_set_words")
-    .upsert(rows, { onConflict: "vocabulary_id,word_id", ignoreDuplicates: true });
+  const { error } = await supabase.from("vocabulary_set_words").upsert(rows, {
+    onConflict: "vocabulary_id,word_id",
+    ignoreDuplicates: true,
+  });
 
   if (error) {
     throw new AppError(error.message, 500);
@@ -319,7 +332,8 @@ const getWordsInSet = async (setId, { sortField, sortOrder } = {}) => {
 
   const { data, error } = await supabase
     .from("vocabulary_set_words")
-    .select(`
+    .select(
+      `
       word_id,
       created_at,
       words (
@@ -330,7 +344,8 @@ const getWordsInSet = async (setId, { sortField, sortOrder } = {}) => {
         audio_url,
         created_at
       )
-    `)
+    `,
+    )
     .eq("vocabulary_id", setId);
 
   if (error) {
@@ -418,7 +433,9 @@ const getPendingPublicSets = async ({ keyword, page = 1, limit = 15 }) => {
 
   let query = supabase
     .from("vocabulary_sets")
-    .select("id, title, description, status, created_by, created_at", { count: "exact" })
+    .select("id, title, description, status, created_by, created_at", {
+      count: "exact",
+    })
     .eq("status", "req_public")
     .eq("deleted", false)
     .order("created_at", { ascending: false })
@@ -460,8 +477,19 @@ const getVocabularySetById = async (setId) => {
 };
 
 module.exports = {
-  create, update, softDelete, getMySets, getPublicSets, countWordsInSet,
-  findWordByText, createWord, addWordsToSet, findById, getWordsInSet,
-  removeWordsFromSet, updateStatus, getPendingPublicSets,
+  create,
+  update,
+  softDelete,
+  getMySets,
+  getPublicSets,
+  countWordsInSet,
+  findWordByText,
+  createWord,
+  addWordsToSet,
+  findById,
+  getWordsInSet,
+  removeWordsFromSet,
+  updateStatus,
+  getPendingPublicSets,
   getVocabularySetById,
 };

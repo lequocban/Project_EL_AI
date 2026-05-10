@@ -19,8 +19,10 @@ import {
   Loader2,
   FileText,
   Wand2,
+  Clock,
 } from "lucide-react";
 import { readingApi } from "@/api/readingApi";
+import PracticeHistoryModal from "@/components/PracticeHistoryModal";
 
 const LEVEL_LABELS = {
   beginner: "Cơ bản",
@@ -42,6 +44,7 @@ export default function Reading() {
   const [startLesson, setStartLesson] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   const loadDataRef = useRef(null);
 
@@ -109,13 +112,22 @@ export default function Reading() {
           </p>
         </div>
         {tab === "mine" && (
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 gradient-orange text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-md hover:opacity-90 transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            Tạo bài đọc
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowHistory(true)}
+              className="flex items-center gap-1.5 bg-orange-50 text-orange-600 px-3 py-2 rounded-xl text-sm font-bold hover:bg-orange-100 transition-all"
+            >
+              <Clock className="w-4 h-4" />
+              Lịch sử
+            </button>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center gap-2 gradient-orange text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-md hover:opacity-90 transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              Tạo bài đọc
+            </button>
+          </div>
         )}
       </div>
 
@@ -262,6 +274,14 @@ export default function Reading() {
         <CreateReadingModal
           onClose={() => setShowCreateModal(false)}
           onCreated={handleCreated}
+        />
+      )}
+      {showHistory && (
+        <PracticeHistoryModal
+          type="reading"
+          onClose={() => setShowHistory(false)}
+          getHistory={readingApi.getPracticeHistory}
+          getDetail={readingApi.getPracticeDetail}
         />
       )}
     </div>

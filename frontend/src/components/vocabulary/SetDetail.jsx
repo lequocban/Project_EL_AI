@@ -14,6 +14,7 @@ import {
   Headphones,
   ChevronDown,
   SortAsc,
+  Search,
 } from "lucide-react";
 import FlashcardGame from "./FlashcardGame";
 import MatchGame from "./MatchGame";
@@ -74,6 +75,11 @@ export default function SetDetail({ set, onBack }) {
   const [speakingId, setSpeakingId] = useState(null);
   const [sortOption, setSortOption] = useState("newest");
   const [showSortDropdown, setShowSortDropdown] = useState(false);
+  // Phân trang từ vựng: mỗi trang 7 từ
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  // Tìm kiếm từ vựng cụ thể
+  const [searchQuery, setSearchQuery] = useState("");
 
   const SORT_OPTIONS = [
     { value: "newest", label: "Mới nhất", sortField: "created_at", sortOrder: "desc" },
@@ -106,10 +112,17 @@ export default function SetDetail({ set, onBack }) {
     try {
       const opt = SORT_OPTIONS.find((o) => o.value === sortOption);
       const detail = await vocabularyApi.getSetById(set.id, opt?.sortField || "word", opt?.sortOrder || "asc");
-      setWords(detail.words || []);
+      const allWords = detail.words || [];
+      // Reset về trang 1 mỗi khi load lại dữ liệu
+      setCurrentPage(1);
+      // Tính tổng số trang dựa trên số từ và limit = 7
+      const total = Math.max(1, Math.ceil(allWords.length / 7));
+      setTotalPages(total);
+      setWords(allWords);
       setError("");
     } catch (err) {
       setWords([]);
+      setTotalPages(1);
       setError(err.message || "Không thể tải danh sách từ");
     }
   };
@@ -282,11 +295,13 @@ export default function SetDetail({ set, onBack }) {
       </button>
 
       <div className="mb-6">
-        <h1 className="text-2xl font-black text-foreground">{set.title}</h1>
-        {set.description && (
-          <p className="text-muted-foreground text-sm mt-1">{set.description}</p>
-        )}
-        <p className="text-sm font-semibold text-primary mt-1">{words.length} từ vựng</p>
+        <div>
+          <h1 className="text-2xl font-black text-foreground">{set.title}</h1>
+          {set.description && (
+            <p className="text-muted-foreground text-sm mt-1">{set.description}</p>
+          )}
+          <p className="text-sm font-semibold text-primary mt-1">{words.length} từ vựng</p>
+        </div>
       </div>
 
       {error && (
@@ -320,7 +335,9 @@ export default function SetDetail({ set, onBack }) {
 
       {words.length >= 4 && (
         <div className="mb-8">
-          <h2 className="text-base font-black text-foreground mb-3">Kiểm tra</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-base font-black text-foreground">Kiểm tra</h2>
+          </div>
           <p className="text-xs text-muted-foreground mb-3">
             Làm hết bài rồi bấm nộp để biết kết quả
           </p>
@@ -360,6 +377,34 @@ export default function SetDetail({ set, onBack }) {
           </div>
         </div>
       )}
+
+      {/* Ô tìm kiếm từ vựng */}
+      <div className="mb-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1); // Reset về trang 1 khi tìm kiếm
+            }}
+            placeholder="Tìm kiếm từ vựng..."
+            className="w-full pl-10 pr-4 py-2 rounded-xl border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => {
+                setSearchQuery("");
+                setCurrentPage(1);
+              }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              ×
+            </button>
+          )}
+        </div>
+      </div>
 
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-base font-black text-foreground">Danh sách từ</h2>
@@ -524,59 +569,121 @@ export default function SetDetail({ set, onBack }) {
           <p className="text-muted-foreground font-semibold">Chưa có dữ liệu</p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {words.map((w) => (
-            <div
-              key={w.id}
-              className="bg-white rounded-xl border border-border p-4 flex items-center justify-between"
-            >
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-bold text-foreground text-base">{w.word}</span>
-                  {w.pronunciation && (
-                    <span className="text-sm text-muted-foreground">/{w.pronunciation}/</span>
-                  )}
-                  {w.part_of_speech && (
-                    <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">
-                      {w.part_of_speech}
-                    </span>
-                  )}
+        <>
+          {(() => {
+            // Lọc từ theo search query
+            const filteredWords = searchQuery.trim()
+              ? words.filter((w) =>
+                  w.word.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  (w.meaning && w.meaning.toLowerCase().includes(searchQuery.toLowerCase()))
+                )
+              : words;
+
+            // Phân trang: mỗi trang 7 từ
+            const WORDS_PER_PAGE = 7;
+            const totalFiltered = Math.max(1, Math.ceil(filteredWords.length / WORDS_PER_PAGE));
+            // Đảm bảo currentPage không vượt quá totalFiltered
+            const safePage = Math.min(currentPage, totalFiltered);
+            const startIndex = (safePage - 1) * WORDS_PER_PAGE;
+            const paginatedWords = filteredWords.slice(startIndex, startIndex + WORDS_PER_PAGE);
+
+            return (
+              <>
+                {searchQuery && (
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Tìm thấy {filteredWords.length} từ{filteredWords.length !== words.length ? ` trong ${words.length} từ` : ""}
+                  </p>
+                )}
+                <div className="space-y-2">
+                  {paginatedWords.map((w) => (
+                    <div
+                      key={w.id}
+                      className="bg-white rounded-xl border border-border p-4 flex items-center justify-between"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-foreground text-base">{w.word}</span>
+                          {w.pronunciation && (
+                            <span className="text-sm text-muted-foreground">/{w.pronunciation}/</span>
+                          )}
+                          {w.part_of_speech && (
+                            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">
+                              {w.part_of_speech}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-0.5 font-medium">{w.meaning}</p>
+                        {w.example && (
+                          <p className="text-xs text-muted-foreground/70 mt-1 italic">"{w.example}"</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 ml-3 flex-shrink-0">
+                        <button
+                          onClick={() => playAudio(w)}
+                          disabled={speakingId === w.id}
+                          className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-sm ${
+                            speakingId === w.id
+                              ? "text-primary bg-primary/15"
+                              : "text-primary bg-primary/10 hover:bg-primary/20 hover:shadow-md"
+                          }`}
+                          title="Phát âm"
+                        >
+                          {speakingId === w.id ? (
+                            <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <Volume2 className="w-5 h-5" />
+                          )}
+                        </button>
+                        {!set.is_public && (
+                          <button
+                            onClick={() => deleteWord(w.id)}
+                            className="w-10 h-10 rounded-xl flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 hover:text-red-600 transition-all shadow-sm hover:shadow-md"
+                            title="Xóa từ"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <p className="text-sm text-muted-foreground mt-0.5 font-medium">{w.meaning}</p>
-                {w.example && (
-                  <p className="text-xs text-muted-foreground/70 mt-1 italic">"{w.example}"</p>
+
+                {/* Phân trang */}
+                {totalFiltered > 1 && (
+                  <div className="flex items-center justify-center gap-2 mt-4">
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="px-3 py-1.5 rounded-lg border border-border text-sm font-medium hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      ←
+                    </button>
+                    {Array.from({ length: totalFiltered }, (_, i) => i + 1).map((page) => (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${
+                          currentPage === page
+                            ? "bg-primary text-white"
+                            : "border border-border hover:bg-muted"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.min(totalFiltered, p + 1))}
+                      disabled={currentPage === totalFiltered}
+                      className="px-3 py-1.5 rounded-lg border border-border text-sm font-medium hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      →
+                    </button>
+                  </div>
                 )}
-              </div>
-              <div className="flex items-center gap-2 ml-3 flex-shrink-0">
-                <button
-                  onClick={() => playAudio(w)}
-                  disabled={speakingId === w.id}
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-sm ${
-                    speakingId === w.id
-                      ? "text-primary bg-primary/15"
-                      : "text-primary bg-primary/10 hover:bg-primary/20 hover:shadow-md"
-                  }`}
-                  title="Phát âm"
-                >
-                  {speakingId === w.id ? (
-                    <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <Volume2 className="w-5 h-5" />
-                  )}
-                </button>
-                {!set.is_public && (
-                  <button
-                    onClick={() => deleteWord(w.id)}
-                    className="w-10 h-10 rounded-xl flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 hover:text-red-600 transition-all shadow-sm hover:shadow-md"
-                    title="Xóa từ"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
+              </>
+            );
+          })()}
+        </>
       )}
     </div>
   );

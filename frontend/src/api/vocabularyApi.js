@@ -4,6 +4,7 @@ import { fetchWithAuth } from "@/api/authApi";
 const VOCABULARY_SET_URL = `/api/v1/vocabulary-sets`;
 const VOCABULARY_URL = `/api/v1/vocabulary`;
 const FAVORITE_URL = `/api/v1/favorites/vocabulary-sets`;
+const VOCABULARY_PRACTICE_URL = `/api/v1/vocabulary-sets/practice`;
 
 // Chuẩn hóa dữ liệu bộ từ vựng từ API
 const normalizeSet = (set) => ({
@@ -128,5 +129,31 @@ export const vocabularyApi = {
     return fetchWithAuth(`${FAVORITE_URL}/${setId}`, {
       method: "DELETE",
     });
+  },
+
+  // Lấy lịch sử luyện tập từ vựng (chỉ bài Kiểm tra), có thể lọc theo bộ từ cụ thể
+  getPracticeHistory: async ({ page = 1, limit = 20, vocabularySetId } = {}) => {
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+    });
+    if (vocabularySetId) params.append("vocabularySetId", vocabularySetId);
+    const response = await fetchWithAuth(`${VOCABULARY_PRACTICE_URL}/history?${params}`, {
+      method: "GET",
+    });
+    return {
+      items: response.data?.items || [],
+      total: response.data?.total ?? 0,
+      page: response.data?.page ?? page,
+      totalPages: response.data?.totalPages ?? 1,
+    };
+  },
+
+  // Lấy chi tiết bài đã làm từ vựng
+  getPracticeDetail: async (practiceId) => {
+    const response = await fetchWithAuth(`${VOCABULARY_PRACTICE_URL}/${practiceId}`, {
+      method: "GET",
+    });
+    return response.data || {};
   },
 };

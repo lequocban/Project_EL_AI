@@ -9,9 +9,11 @@ import {
   Trash2,
   ChevronRight,
   Heart,
+  Clock,
 } from "lucide-react";
 import CreateSetModal from "../components/vocabulary/CreateSetModal";
 import SetDetail from "../components/vocabulary/SetDetail";
+import PracticeHistoryModal from "../components/PracticeHistoryModal";
 import { vocabularyApi } from "@/api/vocabularyApi";
 
 const LEVEL_LABELS = {
@@ -53,6 +55,7 @@ export default function Vocabulary() {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState("mine");
   const [showCreate, setShowCreate] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [selectedSet, setSelectedSet] = useState(null);
   const [error, setError] = useState("");
 
@@ -152,12 +155,21 @@ export default function Vocabulary() {
             Quản lý và học bộ từ vựng của bạn
           </p>
         </div>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 gradient-primary text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-md hover:opacity-90 transition-all"
-        >
-          <Plus className="w-4 h-4" /> Tạo bộ từ
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowHistory(true)}
+            className="flex items-center gap-1.5 bg-primary/10 text-primary px-3 py-2.5 rounded-xl text-sm font-bold hover:bg-primary/20 transition-all"
+          >
+            <Clock className="w-4 h-4" />
+            Lịch sử
+          </button>
+          <button
+            onClick={() => setShowCreate(true)}
+            className="flex items-center gap-2 gradient-primary text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-md hover:opacity-90 transition-all"
+          >
+            <Plus className="w-4 h-4" /> Tạo bộ từ
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -312,6 +324,14 @@ export default function Vocabulary() {
             setShowCreate(false);
             setSelectedSet(s);
           }}
+        />
+      )}
+      {showHistory && (
+        <PracticeHistoryModal
+          type="vocabulary"
+          onClose={() => setShowHistory(false)}
+          getHistory={vocabularyApi.getPracticeHistory}
+          getDetail={vocabularyApi.getPracticeDetail}
         />
       )}
     </div>

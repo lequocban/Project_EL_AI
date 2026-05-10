@@ -54,7 +54,7 @@ const getHistoryByUser = async (userId, { page = 1, limit = 10, sortField, sortO
     sortField,
     sortOrder,
     allowedFields: ["created_at", "complete_at"],
-    defaultField: "created_at",
+    defaultField: "complete_at",
     defaultOrder: "desc",
   });
 

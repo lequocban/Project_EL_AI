@@ -21,8 +21,10 @@ import {
   Loader2,
   FileText,
   Wand2,
+  Clock,
 } from "lucide-react";
 import { listeningApi } from "@/api/listeningApi";
+import PracticeHistoryModal from "@/components/PracticeHistoryModal";
 
 const LEVEL_LABELS = {
   beginner: "Cơ bản",
@@ -44,6 +46,7 @@ export default function Listening() {
   const [startLesson, setStartLesson] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   const loadDataRef = useRef(null);
 
@@ -111,13 +114,22 @@ export default function Listening() {
           </p>
         </div>
         {tab === "mine" && (
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 gradient-green text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-md hover:opacity-90 transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            Tạo bài nghe
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowHistory(true)}
+              className="flex items-center gap-1.5 bg-green-50 text-green-600 px-3 py-2 rounded-xl text-sm font-bold hover:bg-green-100 transition-all"
+            >
+              <Clock className="w-4 h-4" />
+              Lịch sử
+            </button>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center gap-2 gradient-green text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-md hover:opacity-90 transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              Tạo bài nghe
+            </button>
+          </div>
         )}
       </div>
 
@@ -264,6 +276,14 @@ export default function Listening() {
         <CreateListeningModal
           onClose={() => setShowCreateModal(false)}
           onCreated={handleCreated}
+        />
+      )}
+      {showHistory && (
+        <PracticeHistoryModal
+          type="listening"
+          onClose={() => setShowHistory(false)}
+          getHistory={listeningApi.getPracticeHistory}
+          getDetail={listeningApi.getPracticeDetail}
         />
       )}
     </div>
@@ -529,7 +549,6 @@ function LessonStarter({ lesson, onBack }) {
   const [showAddQuestion, setShowAddQuestion] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
-  // Theo dõi các câu hỏi đã xóa trong session chỉnh sửa này
   const [deletedQuestionIds, setDeletedQuestionIds] = useState([]);
   // Các câu hỏi gốc từ server (dùng để phát hiện thay đổi)
   const originalQuestionsRef = useRef(lesson.questions || []);
