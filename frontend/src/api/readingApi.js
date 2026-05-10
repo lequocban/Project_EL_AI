@@ -1,8 +1,10 @@
 import { fetchWithAuth } from "@/api/authApi";
 
+// Các endpoint API cho reading
 const READING_LESSON_URL = `/api/v1/reading-lessons`;
 const READING_PRACTICE_URL = `/api/v1/reading-lessons/practice`;
 
+// Chuẩn hóa dữ liệu bài luyện đọc từ API
 const normalizeLesson = (lesson) => ({
   ...lesson,
   level: lesson.level || "beginner",
@@ -14,6 +16,7 @@ const normalizeLesson = (lesson) => ({
   vi_translation: lesson.viTranslation || lesson.vi_translation || "",
 });
 
+// Chuẩn hóa dữ liệu câu hỏi từ API
 const normalizeQuestion = (q) => ({
   ...q,
   options: [
@@ -27,7 +30,7 @@ const normalizeQuestion = (q) => ({
 });
 
 export const readingApi = {
-  // Lấy danh sách bài luyện đọc công khai
+  // Lấy danh sách bài luyện đọc công khai (có phân trang)
   getPublicLessons: async ({ page = 1, limit = 20, search = "" } = {}) => {
     const params = new URLSearchParams({
       page: String(page),
@@ -46,7 +49,7 @@ export const readingApi = {
     };
   },
 
-  // Lấy danh sách bài luyện đọc của tôi
+  // Lấy danh sách bài luyện đọc của tôi (có phân trang)
   getMyLessons: async ({ page = 1, limit = 20, search = "" } = {}) => {
     const params = new URLSearchParams({
       page: String(page),
@@ -99,7 +102,7 @@ export const readingApi = {
     return response.data || {};
   },
 
-  // Lấy lịch sử luyện đọc
+  // Lấy lịch sử luyện đọc (có phân trang)
   getPracticeHistory: async ({ page = 1, limit = 20 } = {}) => {
     const params = new URLSearchParams({
       page: String(page),

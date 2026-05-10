@@ -12,6 +12,8 @@ import {
   PencilLine,
   Mic,
   Headphones,
+  ChevronDown,
+  SortAsc,
 } from "lucide-react";
 import FlashcardGame from "./FlashcardGame";
 import MatchGame from "./MatchGame";
@@ -70,14 +72,40 @@ export default function SetDetail({ set, onBack }) {
   const [error, setError] = useState("");
   // Id của từ đang được phát âm (để hiện icon loading/spinning)
   const [speakingId, setSpeakingId] = useState(null);
+  const [sortOption, setSortOption] = useState("newest");
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
+
+  const SORT_OPTIONS = [
+    { value: "newest", label: "Mới nhất", sortField: "created_at", sortOrder: "desc" },
+    { value: "oldest", label: "Cũ nhất", sortField: "created_at", sortOrder: "asc" },
+    { value: "az", label: "A → Z", sortField: "word", sortOrder: "asc" },
+    { value: "za", label: "Z → A", sortField: "word", sortOrder: "desc" },
+  ];
+
+  const getCurrentSortLabel = () => {
+    const opt = SORT_OPTIONS.find((o) => o.value === sortOption);
+    return opt ? opt.label : "Sắp xếp";
+  };
+
+  // Đóng dropdown khi click ra ngoài
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (showSortDropdown && !e.target.closest(".sort-dropdown")) {
+        setShowSortDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showSortDropdown]);
 
   useEffect(() => {
     loadWords();
-  }, [set.id]);
+  }, [set.id, sortOption]);
 
   const loadWords = async () => {
     try {
-      const detail = await vocabularyApi.getSetById(set.id);
+      const opt = SORT_OPTIONS.find((o) => o.value === sortOption);
+      const detail = await vocabularyApi.getSetById(set.id, opt?.sortField || "word", opt?.sortOrder || "asc");
       setWords(detail.words || []);
       setError("");
     } catch (err) {
@@ -220,6 +248,9 @@ export default function SetDetail({ set, onBack }) {
     }
   };
 
+  // Sắp xếp đã được xử lý phía backend qua API
+  // words state đã chứa dữ liệu đã sắp xếp từ API
+
   if (mode === "flashcard") {
     return <FlashcardGame words={words} set={set} onBack={() => setMode(null)} />;
   }
@@ -332,20 +363,57 @@ export default function SetDetail({ set, onBack }) {
 
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-base font-black text-foreground">Danh sách từ</h2>
-        <button
-          onClick={() => {
-            if (!showAddWord) {
-              setPendingWords([{ word: "", meaning: "", pronunciation: "", example: "", part_of_speech: "", isLoading: false }]);
-            }
-            setShowAddWord(true);
-          }}
-          disabled={set.is_public}
-          className={`flex items-center gap-2 bg-primary text-white px-3 py-2 rounded-xl font-bold text-sm hover:opacity-90 transition-all ${
-            set.is_public ? "opacity-40 cursor-not-allowed pointer-events-none" : ""
-          }`}
-        >
-          <Plus className="w-4 h-4" /> Thêm từ
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="relative sort-dropdown">
+            <button
+              onClick={() => setShowSortDropdown(!showSortDropdown)}
+              className="flex items-center gap-2 bg-white border border-border px-3 py-2 rounded-xl font-bold text-sm hover:bg-muted transition-all"
+            >
+              <SortAsc className="w-4 h-4 text-primary" />
+              <span className="text-foreground">{getCurrentSortLabel()}</span>
+              <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${showSortDropdown ? "rotate-180" : ""}`} />
+            </button>
+            {showSortDropdown && (
+              <div className="absolute right-0 mt-2 w-40 bg-white border border-border rounded-xl shadow-lg z-20 overflow-hidden">
+                {SORT_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={async () => {
+                      if (sortOption === opt.value) {
+                        setShowSortDropdown(false);
+                        return;
+                      }
+                      setShowSortDropdown(false);
+                      setSortOption(opt.value);
+                    }}
+                    className={`w-full text-left px-4 py-2.5 text-sm font-medium hover:bg-muted transition-colors flex items-center gap-2 ${
+                      sortOption === opt.value ? "text-primary bg-primary/5" : "text-foreground"
+                    }`}
+                  >
+                    {opt.label}
+                    {sortOption === opt.value && (
+                      <span className="ml-auto text-primary">✓</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <button
+            onClick={() => {
+              if (!showAddWord) {
+                setPendingWords([{ word: "", meaning: "", pronunciation: "", example: "", part_of_speech: "", isLoading: false }]);
+              }
+              setShowAddWord(true);
+            }}
+            disabled={set.is_public}
+            className={`flex items-center gap-2 bg-primary text-white px-3 py-2 rounded-xl font-bold text-sm hover:opacity-90 transition-all ${
+              set.is_public ? "opacity-40 cursor-not-allowed pointer-events-none" : ""
+            }`}
+          >
+            <Plus className="w-4 h-4" /> Thêm từ
+          </button>
+        </div>
       </div>
 
       {showAddWord && !set.is_public && (
@@ -460,13 +528,13 @@ export default function SetDetail({ set, onBack }) {
           {words.map((w) => (
             <div
               key={w.id}
-              className="bg-white rounded-xl border border-border p-4 flex items-start justify-between group"
+              className="bg-white rounded-xl border border-border p-4 flex items-center justify-between"
             >
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-foreground">{w.word}</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-bold text-foreground text-base">{w.word}</span>
                   {w.pronunciation && (
-                    <span className="text-xs text-muted-foreground">/{w.pronunciation}/</span>
+                    <span className="text-sm text-muted-foreground">/{w.pronunciation}/</span>
                   )}
                   {w.part_of_speech && (
                     <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">
@@ -474,35 +542,35 @@ export default function SetDetail({ set, onBack }) {
                     </span>
                   )}
                 </div>
-                <p className="text-sm text-muted-foreground mt-1 font-medium">{w.meaning}</p>
+                <p className="text-sm text-muted-foreground mt-0.5 font-medium">{w.meaning}</p>
                 {w.example && (
                   <p className="text-xs text-muted-foreground/70 mt-1 italic">"{w.example}"</p>
                 )}
               </div>
-              <div className={`flex items-center gap-1 ml-2 ${set.is_public ? "" : "group"}`}>
+              <div className="flex items-center gap-2 ml-3 flex-shrink-0">
                 <button
                   onClick={() => playAudio(w)}
                   disabled={speakingId === w.id}
-                  className={`p-1.5 rounded-lg transition-all ${
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-sm ${
                     speakingId === w.id
-                      ? "text-primary bg-primary/10"
-                      : "text-muted-foreground/30 hover:text-primary hover:bg-primary/5 opacity-0 group-hover:opacity-100"
+                      ? "text-primary bg-primary/15"
+                      : "text-primary bg-primary/10 hover:bg-primary/20 hover:shadow-md"
                   }`}
                   title="Phát âm"
                 >
                   {speakingId === w.id ? (
-                    <div className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                   ) : (
-                    <Volume2 className="w-3.5 h-3.5" />
+                    <Volume2 className="w-5 h-5" />
                   )}
                 </button>
                 {!set.is_public && (
                   <button
                     onClick={() => deleteWord(w.id)}
-                    className="p-1.5 rounded-lg hover:bg-red-50 text-muted-foreground/30 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                    className="w-10 h-10 rounded-xl flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 hover:text-red-600 transition-all shadow-sm hover:shadow-md"
                     title="Xóa từ"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Trash2 className="w-5 h-5" />
                   </button>
                 )}
               </div>

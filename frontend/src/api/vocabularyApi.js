@@ -1,9 +1,11 @@
 import { fetchWithAuth } from "@/api/authApi";
 
+// Các endpoint API cho vocabulary
 const VOCABULARY_SET_URL = `/api/v1/vocabulary-sets`;
 const VOCABULARY_URL = `/api/v1/vocabulary`;
 const FAVORITE_URL = `/api/v1/favorites/vocabulary-sets`;
 
+// Chuẩn hóa dữ liệu bộ từ vựng từ API
 const normalizeSet = (set) => ({
   ...set,
   word_count: set.wordCount ?? set.word_count ?? set.words?.length ?? 0,
@@ -12,6 +14,7 @@ const normalizeSet = (set) => ({
   is_pending: set.status === "req_public",
 });
 
+// Chuẩn hóa dữ liệu từ vựng từ API
 const normalizeWord = (word) => ({
   ...word,
   pronunciation: word.pronunciation || word.phonetic || "",
@@ -19,6 +22,7 @@ const normalizeWord = (word) => ({
 });
 
 export const vocabularyApi = {
+  // Lấy danh sách bộ từ vựng của user hiện tại
   getMySets: async () => {
     const response = await fetchWithAuth(`${VOCABULARY_SET_URL}/my?limit=15`, {
       method: "GET",
@@ -26,6 +30,7 @@ export const vocabularyApi = {
     return (response.data?.items || []).map(normalizeSet);
   },
 
+  // Lấy danh sách bộ từ vựng công khai
   getPublicSets: async () => {
     const response = await fetchWithAuth(`${VOCABULARY_SET_URL}/public?limit=15`, {
       method: "GET",
@@ -33,8 +38,15 @@ export const vocabularyApi = {
     return (response.data?.items || []).map(normalizeSet);
   },
 
-  getSetById: async (id) => {
-    const response = await fetchWithAuth(`${VOCABULARY_SET_URL}/${id}`, {
+  // Lấy chi tiết một bộ từ vựng, có hỗ trợ sắp xếp
+  getSetById: async (id, sortField, sortOrder) => {
+    let url = `${VOCABULARY_SET_URL}/${id}`;
+    const params = new URLSearchParams();
+    if (sortField) params.append("sortField", sortField);
+    if (sortOrder) params.append("sortOrder", sortOrder);
+    if (params.toString()) url += `?${params.toString()}`;
+
+    const response = await fetchWithAuth(url, {
       method: "GET",
     });
     return normalizeSet({
@@ -43,6 +55,7 @@ export const vocabularyApi = {
     });
   },
 
+  // Tạo mới một bộ từ vựng
   createSet: async ({ title, description }) => {
     const response = await fetchWithAuth(VOCABULARY_SET_URL, {
       method: "POST",
@@ -51,12 +64,14 @@ export const vocabularyApi = {
     return normalizeSet(response.data);
   },
 
+  // Xóa một bộ từ vựng theo ID
   deleteSet: async (id) => {
     return fetchWithAuth(`${VOCABULARY_SET_URL}/${id}`, {
       method: "DELETE",
     });
   },
 
+  // Thêm danh sách từ vựng vào bộ từ
   addWordsToSet: async (id, words) => {
     return fetchWithAuth(`${VOCABULARY_SET_URL}/${id}/words`, {
       method: "POST",
@@ -64,6 +79,7 @@ export const vocabularyApi = {
     });
   },
 
+  // Xóa nhiều từ vựng khỏi bộ từ
   deleteWordsFromSet: async (id, wordIds) => {
     return fetchWithAuth(`${VOCABULARY_SET_URL}/${id}/words/remove`, {
       method: "DELETE",
@@ -71,6 +87,7 @@ export const vocabularyApi = {
     });
   },
 
+  // Tra cứu thông tin của một từ vựng
   lookupWord: async (word) => {
     const response = await fetchWithAuth(`${VOCABULARY_URL}/lookup`, {
       method: "POST",
@@ -79,6 +96,7 @@ export const vocabularyApi = {
     return normalizeWord(response.data);
   },
 
+  // Tạo bộ từ vựng tự động bằng AI
   generateWordsWithAI: async ({ title, description, topic, wordCount }) => {
     const response = await fetchWithAuth(`${VOCABULARY_SET_URL}/generate-words`, {
       method: "POST",
@@ -91,14 +109,13 @@ export const vocabularyApi = {
     return vocabularyApi.getSetById(setId);
   },
 
-  // ─── Favorites ────────────────────────────────────────────────────────────
-  // Lấy danh sách tất cả bộ từ yêu thích của user (trả về mảng VocabularySet)
+  // Lấy danh sách bộ từ yêu thích của user
   getFavorites: async () => {
     const response = await fetchWithAuth(FAVORITE_URL, { method: "GET" });
     return (response.data?.items || []).map(normalizeSet);
   },
 
-  // Thêm bộ từ vào danh sách yêu thích
+  // Thêm một bộ từ vựng vào danh sách yêu thích
   addFavorite: async (setId) => {
     return fetchWithAuth(`${FAVORITE_URL}/${setId}`, {
       method: "POST",
@@ -106,7 +123,7 @@ export const vocabularyApi = {
     });
   },
 
-  // Xóa bộ từ khỏi danh sách yêu thích
+  // Xóa một bộ từ vựng khỏi danh sách yêu thích
   removeFavorite: async (setId) => {
     return fetchWithAuth(`${FAVORITE_URL}/${setId}`, {
       method: "DELETE",
