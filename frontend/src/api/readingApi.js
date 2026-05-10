@@ -10,6 +10,8 @@ const normalizeLesson = (lesson) => ({
   is_public: lesson.status === "public",
   is_pending: lesson.status === "req_public",
   questionCount: lesson.question_count ?? lesson.questionCount ?? lesson.num_questions ?? 0,
+  content: lesson.content || lesson.passage || "",
+  vi_translation: lesson.viTranslation || lesson.vi_translation || "",
 });
 
 const normalizeQuestion = (q) => ({
@@ -129,5 +131,14 @@ export const readingApi = {
       body: JSON.stringify({ title, topic, level, questionCount }),
     });
     return normalizeLesson(response.data || {});
+  },
+
+  // Cập nhật bài luyện đọc
+  updateLesson: async (id, data) => {
+    const response = await fetchWithAuth(`${READING_LESSON_URL}/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+    return response.data || {};
   },
 };
