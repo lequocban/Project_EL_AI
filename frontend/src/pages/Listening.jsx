@@ -19,6 +19,8 @@ import {
   ChevronUp,
   Edit3,
   Loader2,
+  FileText,
+  Wand2,
 } from "lucide-react";
 import { listeningApi } from "@/api/listeningApi";
 
@@ -41,6 +43,7 @@ export default function Listening() {
   const [search, setSearch] = useState("");
   const [startLesson, setStartLesson] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const loadDataRef = useRef(null);
 
@@ -107,6 +110,15 @@ export default function Listening() {
             Cải thiện kỹ năng nghe tiếng Anh
           </p>
         </div>
+        {tab === "mine" && (
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-2 gradient-green text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-md hover:opacity-90 transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            Tạo bài nghe
+          </button>
+        )}
       </div>
 
       {/* Tabs */}
@@ -120,7 +132,7 @@ export default function Listening() {
             onClick={() => setTab(val)}
             className={`px-4 py-2 rounded-xl font-bold text-sm transition-all ${
               tab === val
-                ? "gradient-primary text-white shadow-md"
+                ? "gradient-green text-white shadow-md"
                 : "bg-white border border-border text-muted-foreground hover:bg-muted"
             }`}
           >
@@ -248,6 +260,260 @@ export default function Listening() {
           ))}
         </div>
       )}
+      {showCreateModal && (
+        <CreateListeningModal
+          onClose={() => setShowCreateModal(false)}
+          onCreated={handleCreated}
+        />
+      )}
+    </div>
+  );
+}
+
+// Modal tạo bài luyện nghe
+function CreateListeningModal({ onClose, onCreated }) {
+  const [mode, setMode] = useState("manual"); // "manual" | "ai"
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  // Form thủ công
+  const [title, setTitle] = useState("");
+  const [audioUrl, setAudioUrl] = useState("");
+  const [transcript, setTranscript] = useState("");
+  const [transcriptVi, setTranscriptVi] = useState("");
+
+  // Form AI
+  const [aiTitle, setAiTitle] = useState("");
+  const [aiTopic, setAiTopic] = useState("");
+  const [aiQuestionCount, setAiQuestionCount] = useState(3);
+
+  const handleManualSubmit = async () => {
+    if (!title.trim()) {
+      setError("Vui lòng nhập tiêu đề bài luyện nghe");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const lesson = await listeningApi.createLesson({
+        title: title.trim(),
+        audioUrl: audioUrl.trim() || undefined,
+        transcript: transcript.trim() || undefined,
+        viTranslation: transcriptVi.trim() || undefined,
+      });
+      onCreated(lesson);
+      onClose();
+    } catch (err) {
+      setError(err.message || "Có lỗi xảy ra khi tạo bài luyện nghe");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAISubmit = async () => {
+    if (!aiTitle.trim()) {
+      setError("Vui lòng nhập tiêu đề bài luyện nghe");
+      return;
+    }
+    if (!aiTopic.trim()) {
+      setError("Vui lòng nhập chủ đề bài luyện nghe");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const lesson = await listeningApi.generateWithAI({
+        title: aiTitle.trim(),
+        topic: aiTopic.trim(),
+        questionCount: aiQuestionCount,
+      });
+      onCreated(lesson);
+      onClose();
+    } catch (err) {
+      setError(err.message || "Có lỗi xảy ra khi tạo bài luyện nghe bằng AI");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-black text-foreground">Tạo bài luyện nghe</h2>
+          <button
+            onClick={onClose}
+            className="p-1.5 hover:bg-muted rounded-lg transition-all"
+          >
+            <X className="w-5 h-5 text-muted-foreground" />
+          </button>
+        </div>
+
+        {/* Chế độ tạo */}
+        <div className="flex gap-2 mb-6">
+          <button
+            onClick={() => { setMode("manual"); setError(""); }}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-all ${
+              mode === "manual"
+                ? "gradient-green text-white shadow-md"
+                : "border border-border text-muted-foreground hover:bg-muted"
+            }`}
+          >
+            <FileText className="w-4 h-4" />
+            Tạo thủ công
+          </button>
+          <button
+            onClick={() => { setMode("ai"); setError(""); }}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-all ${
+              mode === "ai"
+                ? "gradient-green text-white shadow-md"
+                : "border border-border text-muted-foreground hover:bg-muted"
+            }`}
+          >
+            <Wand2 className="w-4 h-4" />
+            Tạo bằng AI
+          </button>
+        </div>
+
+        {error && (
+          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-600">
+            {error}
+          </div>
+        )}
+
+        {mode === "manual" ? (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-foreground mb-2">
+                Tiêu đề <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-border bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
+                placeholder="Nhập tiêu đề bài luyện nghe..."
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-foreground mb-2">
+                Link audio (tùy chọn)
+              </label>
+              <input
+                type="text"
+                value={audioUrl}
+                onChange={(e) => setAudioUrl(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-border bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
+                placeholder="https://example.com/audio.mp3"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-foreground mb-2">
+                Nội dung bài nghe - Tiếng Anh (tùy chọn)
+              </label>
+              <textarea
+                value={transcript}
+                onChange={(e) => setTranscript(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-border bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                rows={4}
+                placeholder="Nhập nội dung bài nghe tiếng Anh..."
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-foreground mb-2">
+                Nội dung bài nghe - Tiếng Việt (tùy chọn)
+              </label>
+              <textarea
+                value={transcriptVi}
+                onChange={(e) => setTranscriptVi(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-border bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                rows={4}
+                placeholder="Nhập bản dịch tiếng Việt..."
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-foreground mb-2">
+                Tiêu đề <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={aiTitle}
+                onChange={(e) => setAiTitle(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-border bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
+                placeholder="VD: Daily Conversation at Restaurant"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-foreground mb-2">
+                Chủ đề <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={aiTopic}
+                onChange={(e) => setAiTopic(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-border bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                rows={3}
+                placeholder="VD: A conversation between a customer and a waiter at a restaurant, ordering food and drinks"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-foreground mb-2">
+                Số câu hỏi (3 - 5) <span className="text-red-500">*</span>
+              </label>
+              <div className="flex items-center gap-4">
+                <input
+                  type="range"
+                  min={3}
+                  max={5}
+                  value={aiQuestionCount}
+                  onChange={(e) => setAiQuestionCount(Number(e.target.value))}
+                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary"
+                />
+                <span className="text-lg font-black text-primary w-8 text-center">
+                  {aiQuestionCount}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                AI sẽ tạo từ 3 đến 5 câu hỏi cho bài luyện nghe
+              </p>
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-3 mt-6">
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="flex-1 border border-border py-2.5 rounded-xl font-bold text-sm hover:bg-muted transition-all"
+          >
+            Hủy
+          </button>
+          <button
+            onClick={mode === "manual" ? handleManualSubmit : handleAISubmit}
+            disabled={loading}
+            className="flex-1 gradient-green text-white py-2.5 rounded-xl font-bold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Đang tạo...
+              </>
+            ) : mode === "manual" ? (
+              <>
+                <Save className="w-4 h-4" />
+                Tạo bài
+              </>
+            ) : (
+              <>
+                <Wand2 className="w-4 h-4" />
+                Tạo bằng AI
+              </>
+            )}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -488,7 +754,7 @@ function LessonStarter({ lesson, onBack }) {
 
           <button
             onClick={handleStart}
-            className="w-full gradient-primary text-white py-3 rounded-xl font-bold shadow-md hover:opacity-90 transition-all flex items-center justify-center gap-2"
+            className="w-full gradient-green text-white py-3 rounded-xl font-bold shadow-md hover:opacity-90 transition-all flex items-center justify-center gap-2"
           >
             <Play className="w-5 h-5" />
             Bắt đầu làm bài
@@ -628,7 +894,7 @@ function LessonStarter({ lesson, onBack }) {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex-1 gradient-primary text-white py-3 rounded-xl font-bold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2"
+              className="flex-1 gradient-green text-white py-3 rounded-xl font-bold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2"
             >
               {saving ? (
                 <>
@@ -758,7 +1024,7 @@ function LessonStarter({ lesson, onBack }) {
               </button>
               <button
                 onClick={handleSaveQuestion}
-                className="flex-1 gradient-primary text-white py-2.5 rounded-xl font-bold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2"
+                className="flex-1 gradient-green text-white py-2.5 rounded-xl font-bold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2"
               >
                 <Save className="w-4 h-4" />
                 Lưu
@@ -1142,7 +1408,7 @@ function LessonPlayer({ lesson, onBack }) {
               stopAudio();
               onBack();
             }}
-            className="w-full gradient-primary text-white py-3 rounded-xl font-bold shadow-md hover:opacity-90 transition-all"
+            className="w-full gradient-green text-white py-3 rounded-xl font-bold shadow-md hover:opacity-90 transition-all"
           >
             Quay lại danh sách bài
           </button>
@@ -1305,7 +1571,7 @@ function LessonPlayer({ lesson, onBack }) {
             <button
               onClick={handleSubmit}
               disabled={!allAnswered || submitting}
-              className="w-full gradient-primary text-white py-3 rounded-xl font-bold shadow-md hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              className="w-full gradient-green text-white py-3 rounded-xl font-bold shadow-md hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
             >
               {submitting
                 ? "Đang nộp bài..."

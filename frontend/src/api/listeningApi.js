@@ -124,6 +124,20 @@ export const listeningApi = {
     return response.data || {};
   },
 
+  // Tạo bài luyện nghe (thủ công)
+  createLesson: async ({ title, audioUrl, transcript, viTranslation }) => {
+    const response = await fetchWithAuth(`${LISTENING_LESSON_URL}`, {
+      method: "POST",
+      body: JSON.stringify({
+        title,
+        ...(audioUrl ? { audioUrl } : {}),
+        ...(transcript ? { transcript } : {}),
+        ...(viTranslation ? { viTranslation } : {}),
+      }),
+    });
+    return normalizeLesson(response.data || {});
+  },
+
   // Tạo bài luyện nghe bằng AI
   generateWithAI: async ({ title, topic, level, questionCount }) => {
     const response = await fetchWithAuth(`${LISTENING_LESSON_URL}/generate-ai`, {

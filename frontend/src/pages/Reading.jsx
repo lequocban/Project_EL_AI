@@ -17,6 +17,8 @@ import {
   ChevronUp,
   Edit3,
   Loader2,
+  FileText,
+  Wand2,
 } from "lucide-react";
 import { readingApi } from "@/api/readingApi";
 
@@ -39,6 +41,7 @@ export default function Reading() {
   const [search, setSearch] = useState("");
   const [startLesson, setStartLesson] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const loadDataRef = useRef(null);
 
@@ -105,6 +108,15 @@ export default function Reading() {
             Nâng cao kỹ năng đọc hiểu tiếng Anh
           </p>
         </div>
+        {tab === "mine" && (
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-2 gradient-orange text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-md hover:opacity-90 transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            Tạo bài đọc
+          </button>
+        )}
       </div>
 
       {/* Tabs */}
@@ -118,7 +130,7 @@ export default function Reading() {
             onClick={() => setTab(val)}
             className={`px-4 py-2 rounded-xl font-bold text-sm transition-all ${
               tab === val
-                ? "gradient-primary text-white shadow-md"
+                ? "gradient-orange text-white shadow-md"
                 : "bg-white border border-border text-muted-foreground hover:bg-muted"
             }`}
           >
@@ -246,6 +258,246 @@ export default function Reading() {
           ))}
         </div>
       )}
+      {showCreateModal && (
+        <CreateReadingModal
+          onClose={() => setShowCreateModal(false)}
+          onCreated={handleCreated}
+        />
+      )}
+    </div>
+  );
+}
+
+// Modal tạo bài luyện đọc
+function CreateReadingModal({ onClose, onCreated }) {
+  const [mode, setMode] = useState("manual"); // "manual" | "ai"
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  // Form thủ công
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [contentVi, setContentVi] = useState("");
+
+  // Form AI
+  const [aiTitle, setAiTitle] = useState("");
+  const [aiTopic, setAiTopic] = useState("");
+  const [aiQuestionCount, setAiQuestionCount] = useState(3);
+
+  const handleManualSubmit = async () => {
+    if (!title.trim()) {
+      setError("Vui lòng nhập tiêu đề bài luyện đọc");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const lesson = await readingApi.createLesson({
+        title: title.trim(),
+        content: content.trim() || undefined,
+        viTranslation: contentVi.trim() || undefined,
+      });
+      onCreated(lesson);
+      onClose();
+    } catch (err) {
+      setError(err.message || "Có lỗi xảy ra khi tạo bài luyện đọc");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAISubmit = async () => {
+    if (!aiTitle.trim()) {
+      setError("Vui lòng nhập tiêu đề bài luyện đọc");
+      return;
+    }
+    if (!aiTopic.trim()) {
+      setError("Vui lòng nhập chủ đề bài luyện đọc");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const lesson = await readingApi.generateWithAI({
+        title: aiTitle.trim(),
+        topic: aiTopic.trim(),
+        questionCount: aiQuestionCount,
+      });
+      onCreated(lesson);
+      onClose();
+    } catch (err) {
+      setError(err.message || "Có lỗi xảy ra khi tạo bài luyện đọc bằng AI");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-black text-foreground">Tạo bài luyện đọc</h2>
+          <button
+            onClick={onClose}
+            className="p-1.5 hover:bg-muted rounded-lg transition-all"
+          >
+            <X className="w-5 h-5 text-muted-foreground" />
+          </button>
+        </div>
+
+        {/* Chế độ tạo */}
+        <div className="flex gap-2 mb-6">
+          <button
+            onClick={() => { setMode("manual"); setError(""); }}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-all ${
+              mode === "manual"
+                ? "gradient-orange text-white shadow-md"
+                : "border border-border text-muted-foreground hover:bg-muted"
+            }`}
+          >
+            <FileText className="w-4 h-4" />
+            Tạo thủ công
+          </button>
+          <button
+            onClick={() => { setMode("ai"); setError(""); }}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-all ${
+              mode === "ai"
+                ? "gradient-orange text-white shadow-md"
+                : "border border-border text-muted-foreground hover:bg-muted"
+            }`}
+          >
+            <Wand2 className="w-4 h-4" />
+            Tạo bằng AI
+          </button>
+        </div>
+
+        {error && (
+          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-600">
+            {error}
+          </div>
+        )}
+
+        {mode === "manual" ? (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-foreground mb-2">
+                Tiêu đề <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-border bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
+                placeholder="Nhập tiêu đề bài luyện đọc..."
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-foreground mb-2">
+                Nội dung bài đọc - Tiếng Anh (tùy chọn)
+              </label>
+              <textarea
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-border bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                rows={6}
+                placeholder="Nhập nội dung bài đọc tiếng Anh..."
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-foreground mb-2">
+                Nội dung bài đọc - Tiếng Việt (tùy chọn)
+              </label>
+              <textarea
+                value={contentVi}
+                onChange={(e) => setContentVi(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-border bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                rows={6}
+                placeholder="Nhập bản dịch tiếng Việt..."
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-foreground mb-2">
+                Tiêu đề <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={aiTitle}
+                onChange={(e) => setAiTitle(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-border bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
+                placeholder="VD: The Future of Technology"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-foreground mb-2">
+                Chủ đề <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={aiTopic}
+                onChange={(e) => setAiTopic(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-border bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                rows={3}
+                placeholder="VD: Artificial intelligence and its impact on daily life, including smart homes, self-driving cars, and chatbots"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-foreground mb-2">
+                Số câu hỏi (3 - 5) <span className="text-red-500">*</span>
+              </label>
+              <div className="flex items-center gap-4">
+                <input
+                  type="range"
+                  min={3}
+                  max={5}
+                  value={aiQuestionCount}
+                  onChange={(e) => setAiQuestionCount(Number(e.target.value))}
+                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary"
+                />
+                <span className="text-lg font-black text-primary w-8 text-center">
+                  {aiQuestionCount}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                AI sẽ tạo từ 3 đến 5 câu hỏi cho bài luyện đọc
+              </p>
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-3 mt-6">
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="flex-1 border border-border py-2.5 rounded-xl font-bold text-sm hover:bg-muted transition-all"
+          >
+            Hủy
+          </button>
+          <button
+            onClick={mode === "manual" ? handleManualSubmit : handleAISubmit}
+            disabled={loading}
+            className="flex-1 gradient-orange text-white py-2.5 rounded-xl font-bold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Đang tạo...
+              </>
+            ) : mode === "manual" ? (
+              <>
+                <Save className="w-4 h-4" />
+                Tạo bài
+              </>
+            ) : (
+              <>
+                <Wand2 className="w-4 h-4" />
+                Tạo bằng AI
+              </>
+            )}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -491,7 +743,7 @@ function ReadingStarter({ lesson, onBack }) {
 
           <button
             onClick={handleStart}
-            className="w-full gradient-primary text-white py-3 rounded-xl font-bold shadow-md hover:opacity-90 transition-all flex items-center justify-center gap-2"
+            className="w-full gradient-orange text-white py-3 rounded-xl font-bold shadow-md hover:opacity-90 transition-all flex items-center justify-center gap-2"
           >
             Bắt đầu làm bài
           </button>
@@ -630,7 +882,7 @@ function ReadingStarter({ lesson, onBack }) {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex-1 gradient-primary text-white py-3 rounded-xl font-bold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2"
+              className="flex-1 gradient-orange text-white py-3 rounded-xl font-bold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2"
             >
               {saving ? (
                 <>
@@ -760,7 +1012,7 @@ function ReadingStarter({ lesson, onBack }) {
               </button>
               <button
                 onClick={handleSaveQuestion}
-                className="flex-1 gradient-primary text-white py-2.5 rounded-xl font-bold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2"
+                className="flex-1 gradient-orange text-white py-2.5 rounded-xl font-bold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2"
               >
                 <Save className="w-4 h-4" />
                 Lưu
@@ -1023,7 +1275,7 @@ function ReadingPlayer({ lesson, onBack }) {
         <div className="max-w-lg mx-auto mt-6">
           <button
             onClick={onBack}
-            className="w-full gradient-primary text-white py-3 rounded-xl font-bold shadow-md hover:opacity-90 transition-all"
+            className="w-full gradient-orange text-white py-3 rounded-xl font-bold shadow-md hover:opacity-90 transition-all"
           >
             Quay lại danh sách bài
           </button>
@@ -1147,7 +1399,7 @@ function ReadingPlayer({ lesson, onBack }) {
             <button
               onClick={handleSubmit}
               disabled={!allAnswered || submitting}
-              className="w-full gradient-primary text-white py-3 rounded-xl font-bold shadow-md hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              className="w-full gradient-orange text-white py-3 rounded-xl font-bold shadow-md hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
             >
               {submitting
                 ? "Đang nộp bài..."
