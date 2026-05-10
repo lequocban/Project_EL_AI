@@ -33,9 +33,6 @@ const SET_COLORS = [
   "from-teal-500 to-cyan-600",
 ];
 
-const FAVORITES_KEY = "base44_favorite_sets";
-
-// Chuyển ra ngoài component để không tạo lại mỗi lần render
 // Backend trả về status dạng "public" / "private" / "req_public" (chữ thường)
 const normalizeSetForDisplay = (set) => ({
   ...set,
@@ -45,28 +42,19 @@ const normalizeSetForDisplay = (set) => ({
   is_pending: set.status === "req_public",
 });
 
+// Kiểm tra xem 1 bộ từ có trong danh sách favorites không
+const isFavSet = (setId, favorites) =>
+  favorites.some((f) => String(f.id) === String(setId));
+
 export default function Vocabulary() {
   const [sets, setSets] = useState([]);
   const [publicSets, setPublicSets] = useState([]);
-  const [favoriteIds, setFavoriteIds] = useState(new Set());
+  const [favorites, setFavorites] = useState([]);
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState("mine");
   const [showCreate, setShowCreate] = useState(false);
   const [selectedSet, setSelectedSet] = useState(null);
   const [error, setError] = useState("");
-
-  // Đọc favorites từ localStorage khi mount (chuẩn hóa id về string)
-  useEffect(() => {
-    const stored = localStorage.getItem(FAVORITES_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        setFavoriteIds(new Set((parsed || []).map((id) => String(id))));
-      } catch {
-        localStorage.removeItem(FAVORITES_KEY);
-      }
-    }
-  }, []);
 
   useEffect(() => {
     loadData();
@@ -74,37 +62,45 @@ export default function Vocabulary() {
 
   const loadData = async () => {
     try {
-      const [mineRaw, pub] = await Promise.all([
+      const [mineRaw, pub, fav] = await Promise.all([
         vocabularyApi.getMySets(),
         vocabularyApi.getPublicSets(),
+        vocabularyApi.getFavorites(),
       ]);
       // Gọi getSetById để lấy status thực (getMySets không trả status)
       const mine = await Promise.all(mineRaw.map((s) => vocabularyApi.getSetById(s.id)));
       setSets(mine);
       setPublicSets(pub);
+      setFavorites(fav);
       setError("");
     } catch (err) {
       setSets([]);
       setPublicSets([]);
+      setFavorites([]);
       setError(err.message || "Không thể tải dữ liệu từ vựng");
     }
   };
 
-  // Toggle yêu thích: thêm/xóa setId khỏi localStorage
-  // Chuẩn hóa sang string để tránh lỗi so sánh string vs number
-  const toggleFavorite = (setId, e) => {
+  // Toggle yêu thích: gọi API backend để thêm/xóa khỏi danh sách yêu thích
+  const toggleFavorite = async (setId, e) => {
     e?.stopPropagation();
     const id = String(setId);
-    setFavoriteIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
+    const isFav = favorites.some((f) => String(f.id) === id);
+    try {
+      if (isFav) {
+        await vocabularyApi.removeFavorite(id);
+        setFavorites((prev) => prev.filter((f) => String(f.id) !== id));
       } else {
-        next.add(id);
+        await vocabularyApi.addFavorite(id);
+        // Lấy thông tin bộ từ để enrich data cho tab favorites
+        const setData = sets.find((s) => String(s.id) === id) ||
+          publicSets.find((s) => String(s.id) === id) ||
+          await vocabularyApi.getSetById(id);
+        setFavorites((prev) => [...prev, setData]);
       }
-      localStorage.setItem(FAVORITES_KEY, JSON.stringify([...next]));
-      return next;
-    });
+    } catch (err) {
+      setError(err.message || "Không thể cập nhật yêu thích");
+    }
   };
 
   const deleteSet = async (id, e) => {
@@ -122,17 +118,8 @@ export default function Vocabulary() {
     let data = [];
     if (tab === "mine") data = sets;
     else if (tab === "public") data = publicSets;
-    else if (tab === "favorites") {
-      // Deduplicate theo id trước khi filter. Ưu tiên giữ item từ publicSets
-      // để tránh trường hợp cùng 1 bộ từ xuất hiện ở cả "Của tôi" và "Cộng đồng"
-      // thì tab "Yêu thích" chỉ hiện 1 card, không trùng lặp.
-      const seen = new Map();
-      [...sets, ...publicSets].forEach((s) => seen.set(s.id, s));
-      data = [...seen.values()].filter((s) => favoriteIds.has(String(s.id)));
-    }
+    else if (tab === "favorites") data = favorites;
 
-    // Backend getMySets không trả status, nhưng giờ loadData đã gọi getSetById
-    // nên sets đã có status thực. Chỉ gán public cho tab public.
     return data.map((s) => {
       const enriched = { ...s };
       if (tab === "public") enriched.status = "public";
@@ -199,13 +186,13 @@ export default function Vocabulary() {
               <Heart className={`w-3.5 h-3.5 ${tab === val ? "fill-white" : ""}`} />
             )}
             {label}
-            {val === "favorites" && favoriteIds.size > 0 && (
+            {val === "favorites" && favorites.length > 0 && (
               <span
                 className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${
                   tab === val ? "bg-white/30" : "bg-primary/10 text-primary"
                 }`}
               >
-                {favoriteIds.size}
+                {favorites.length}
               </span>
             )}
           </button>
@@ -240,7 +227,7 @@ export default function Vocabulary() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {displayed.map((set, i) => {
-            const isFavorite = favoriteIds.has(String(set.id));
+            const isFav = isFavSet(set.id, favorites);
             return (
               <div
                 key={set.id}
@@ -264,14 +251,14 @@ export default function Vocabulary() {
                     <button
                       onClick={(e) => toggleFavorite(set.id, e)}
                       className={`p-1 rounded-lg transition-colors ${
-                        isFavorite
+                        isFav
                           ? "text-red-500"
                           : "text-muted-foreground/40 hover:text-red-400"
                       }`}
-                      title={isFavorite ? "Bỏ yêu thích" : "Yêu thích"}
+                      title={isFav ? "Bỏ yêu thích" : "Yêu thích"}
                     >
                       <Heart
-                        className={`w-4 h-4 transition-all ${isFavorite ? "fill-red-500" : ""}`}
+                        className={`w-4 h-4 transition-all ${isFav ? "fill-red-500" : ""}`}
                       />
                     </button>
                     {/* Icon công khai: chỉ hiện Globe khi đã được duyệt public */}

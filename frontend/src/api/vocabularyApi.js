@@ -2,6 +2,7 @@ import { fetchWithAuth } from "@/api/authApi";
 
 const VOCABULARY_SET_URL = `/api/v1/vocabulary-sets`;
 const VOCABULARY_URL = `/api/v1/vocabulary`;
+const FAVORITE_URL = `/api/v1/favorites/vocabulary-sets`;
 
 const normalizeSet = (set) => ({
   ...set,
@@ -88,5 +89,27 @@ export const vocabularyApi = {
       throw new Error("Không nhận được ID bộ từ vựng từ server");
     }
     return vocabularyApi.getSetById(setId);
+  },
+
+  // ─── Favorites ────────────────────────────────────────────────────────────
+  // Lấy danh sách tất cả bộ từ yêu thích của user (trả về mảng VocabularySet)
+  getFavorites: async () => {
+    const response = await fetchWithAuth(FAVORITE_URL, { method: "GET" });
+    return (response.data?.items || []).map(normalizeSet);
+  },
+
+  // Thêm bộ từ vào danh sách yêu thích
+  addFavorite: async (setId) => {
+    return fetchWithAuth(`${FAVORITE_URL}/${setId}`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+  },
+
+  // Xóa bộ từ khỏi danh sách yêu thích
+  removeFavorite: async (setId) => {
+    return fetchWithAuth(`${FAVORITE_URL}/${setId}`, {
+      method: "DELETE",
+    });
   },
 };
