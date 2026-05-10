@@ -1,102 +1,254 @@
-import { useState } from "react";
-import { FileText, ArrowLeft } from "lucide-react";
+import { useState, useEffect } from "react";
+import {
+  ArrowLeft,
+  Search,
+  Globe,
+  Lock,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  Sparkles,
+} from "lucide-react";
+import { readingApi } from "@/api/readingApi";
+import CreateReadingModal from "@/components/reading/CreateReadingModal";
 
-const SAMPLE_LESSONS = [
-  {
-    id: "r1",
-    title: "The Benefits of Exercise",
-    level: "beginner",
-    topic: "health",
-    passage: `Regular exercise is important for good health. When we exercise, our bodies become stronger and we feel better. Exercise helps our heart pump blood more efficiently and strengthens our muscles and bones.\n\nThere are many types of exercise. Walking and swimming are gentle exercises that almost everyone can do. Running and cycling are more intense and help burn calories faster. Yoga and stretching improve flexibility and reduce stress.\n\nExperts recommend at least 30 minutes of moderate exercise five days a week. Even small changes like taking the stairs instead of the elevator can make a big difference to your health.`,
-    questions: [
-      {
-        question: "What does exercise help our heart do?",
-        options: ["Pump blood more efficiently","Grow bigger","Beat slower","Work less"],
-        correct: 0,
-      },
-      {
-        question: "How much exercise do experts recommend per week?",
-        options: ["15 minutes, 3 days","20 minutes, 4 days","30 minutes, 5 days","60 minutes, 2 days"],
-        correct: 2,
-      },
-    ],
-  },
-  {
-    id: "r2",
-    title: "Social Media and Modern Life",
-    level: "intermediate",
-    topic: "technology",
-    passage: `Social media has transformed the way we communicate, share information, and connect with others. Platforms like Facebook, Instagram, and Twitter have billions of users worldwide, making them among the most influential technologies of our time.\n\nThe benefits of social media are undeniable. It allows people to maintain relationships with friends and family across great distances, provides a platform for businesses to reach customers, and enables the rapid spread of important information during emergencies.\n\nHowever, social media also presents significant challenges. Research suggests that excessive use can lead to feelings of anxiety, depression, and loneliness. The spread of misinformation is another serious concern, as false news can circulate rapidly before it can be corrected.\n\nStriking a healthy balance is key. Experts recommend limiting screen time, being critical of information sources, and taking regular breaks from social media to maintain mental wellbeing.`,
-    questions: [
-      {
-        question: "What is one benefit of social media mentioned in the passage?",
-        options: [
-          "It replaces face-to-face communication",
-          "It allows people to maintain long-distance relationships",
-          "It eliminates the need for traditional media",
-          "It always spreads accurate information",
-        ],
-        correct: 1,
-      },
-      {
-        question: "What challenge does social media present according to the text?",
-        options: [
-          "It is too expensive",
-          "Excessive use can cause anxiety and depression",
-          "It is difficult to use",
-          "It has too few users",
-        ],
-        correct: 1,
-      },
-    ],
-  },
-];
+const LEVEL_LABELS = {
+  beginner: "Cơ bản",
+  intermediate: "Trung cấp",
+  advanced: "Nâng cao",
+};
+const LEVEL_COLORS = {
+  beginner: "bg-green-100 text-green-700",
+  intermediate: "bg-blue-100 text-blue-700",
+  advanced: "bg-purple-100 text-purple-700",
+};
 
 export default function Reading() {
+  const [lessons, setLessons] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [tab, setTab] = useState("mine");
+  const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
-  if (selected) return <ReadingPlayer lesson={selected} onBack={() => setSelected(null)} />;
+  useEffect(() => {
+    loadData();
+  }, [tab]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadData();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const loadData = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const data =
+        tab === "mine"
+          ? await readingApi.getMyLessons({ search })
+          : await readingApi.getPublicLessons({ search });
+      setLessons(data.items || []);
+    } catch (err) {
+      setError(err.message || "Không thể tải dữ liệu luyện đọc");
+      setLessons([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreated = async (lesson) => {
+    setShowCreateModal(false);
+    setTab("mine");
+    await loadData();
+    try {
+      const detail = await readingApi.getLessonById(lesson.id);
+      setSelected(detail);
+    } catch {
+      // Neu khong lay duoc chi tiet, van reload danh sach binh thuong
+    }
+  };
+
+  if (selected) {
+    return (
+      <ReadingPlayer
+        lesson={selected}
+        onBack={() => {
+          setSelected(null);
+          loadData();
+        }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background p-6 lg:p-8">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-black text-foreground">📖 Luyện đọc</h1>
-          <p className="text-muted-foreground text-sm mt-1">Nâng cao kỹ năng đọc hiểu tiếng Anh</p>
+          <p className="text-muted-foreground text-sm mt-1">
+            Nâng cao kỹ năng đọc hiểu tiếng Anh
+          </p>
         </div>
+        <button
+          onClick={() => setShowCreateModal(true)}
+          className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-md hover:opacity-90 transition-all"
+        >
+          <Sparkles className="w-4 h-4" />
+          Tạo bài đọc
+        </button>
       </div>
 
-      <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-amber-700">
-        Chưa có dữ liệu từ backend — hiện đang hiển thị bài mẫu.
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {SAMPLE_LESSONS.map((lesson) => (
-          <div
-            key={lesson.id}
-            onClick={() => setSelected(lesson)}
-            className="bg-white rounded-2xl p-5 border border-border card-hover cursor-pointer group"
+      {/* Tabs */}
+      <div className="flex gap-2 mb-4">
+        {[
+          ["mine", "Của tôi"],
+          ["public", "Cộng đồng"],
+        ].map(([val, label]) => (
+          <button
+            key={val}
+            onClick={() => setTab(val)}
+            className={`px-4 py-2 rounded-xl font-bold text-sm transition-all ${
+              tab === val
+                ? "gradient-primary text-white shadow-md"
+                : "bg-white border border-border text-muted-foreground hover:bg-muted"
+            }`}
           >
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
-                <FileText className="w-6 h-6 text-white" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-bold text-foreground group-hover:text-primary transition-colors">{lesson.title}</h3>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
-                    lesson.level === "beginner" ? "bg-green-100 text-green-700" :
-                    lesson.level === "intermediate" ? "bg-blue-100 text-blue-700" : "bg-purple-100 text-purple-700"
-                  }`}>
-                    {lesson.level === "beginner" ? "Cơ bản" : lesson.level === "intermediate" ? "Trung cấp" : "Nâng cao"}
-                  </span>
-                  <span className="text-xs text-muted-foreground">{lesson.questions?.length || 0} câu hỏi</span>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Search */}
+      <div className="relative mb-6">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Tìm kiếm bài luyện đọc..."
+          className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
+        />
+      </div>
+
+      {error && (
+        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-600">
+          {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className="bg-white rounded-2xl p-5 border border-border animate-pulse"
+            >
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-muted rounded-xl flex-shrink-0" />
+                <div className="flex-1">
+                  <div className="h-4 bg-muted rounded w-3/4 mb-2" />
+                  <div className="h-3 bg-muted rounded w-1/2" />
                 </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : lessons.length === 0 ? (
+        <div className="text-center py-16">
+          <Globe className="w-16 h-16 mx-auto text-muted-foreground/30 mb-4" />
+          <p className="text-muted-foreground font-semibold">
+            Chưa có bài luyện đọc nào
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {lessons.map((lesson) => (
+            <div
+              key={lesson.id}
+              onClick={async () => {
+                setDetailLoading(true);
+                try {
+                  const detail = await readingApi.getLessonById(lesson.id);
+                  setSelected(detail);
+                } catch (err) {
+                  setError(err.message || "Không thể tải chi tiết bài luyện đọc");
+                } finally {
+                  setDetailLoading(false);
+                }
+              }}
+              className="bg-white rounded-2xl p-5 border border-border card-hover cursor-pointer group"
+            >
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
+                  <svg
+                    className="w-6 h-6 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                    />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-foreground group-hover:text-primary transition-colors">
+                    {lesson.title}
+                  </h3>
+                  <div className="flex items-center gap-2 mt-1">
+                    {lesson.level && (
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                          LEVEL_COLORS[lesson.level] || "bg-gray-100 text-gray-700"
+                        }`}
+                      >
+                        {LEVEL_LABELS[lesson.level] || lesson.level}
+                      </span>
+                    )}
+                    {tab === "mine" ? (
+                      lesson.is_public ? (
+                        <Globe
+                          className="w-3.5 h-3.5 text-blue-400"
+                          title="Công khai"
+                        />
+                      ) : (
+                        <Lock
+                          className="w-3.5 h-3.5 text-muted-foreground/50"
+                          title="Riêng tư"
+                        />
+                      )
+                    ) : (
+                      <Globe
+                        className="w-3.5 h-3.5 text-blue-400"
+                        title="Cộng đồng"
+                      />
+                    )}
+                  </div>
+                  {lesson.description && (
+                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                      {lesson.description}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showCreateModal && (
+        <CreateReadingModal
+          onClose={() => setShowCreateModal(false)}
+          onCreated={handleCreated}
+        />
+      )}
     </div>
   );
 }
@@ -104,63 +256,357 @@ export default function Reading() {
 function ReadingPlayer({ lesson, onBack }) {
   const [answers, setAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
-  const questions = lesson.questions || [];
-  const score = submitted ? questions.filter((q, i) => answers[i] === q.correct).length : 0;
+  const [submitting, setSubmitting] = useState(false);
+  const [result, setResult] = useState(null);
+  const [submitError, setSubmitError] = useState("");
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
 
+  const questions = lesson.questions || [];
+
+  // Xử lý hiển thị kết quả chi tiết
+  const getResults = () => {
+    if (submitted && result) {
+      // Sử dụng kết quả từ backend
+      const correctCount =
+        result.correctCount ??
+        result.details?.filter((d) => d.isCorrect).length ??
+        0;
+      return questions.map((q, i) => {
+        const answerData = result.details?.find((d) => d.questionId === q.id);
+        const userAnswerIndex = answers[i];
+        const userAnswer = ["A", "B", "C", "D"][userAnswerIndex] || "";
+        const correctIndex = ["A", "B", "C", "D"].indexOf(q.correct_answer);
+        const isCorrect = answerData
+          ? answerData.isCorrect
+          : userAnswer === q.correct_answer;
+        return {
+          ...q,
+          isCorrect,
+          userAnswer,
+          userAnswerIndex,
+        };
+      });
+    }
+    // Tính toán phía frontend
+    return questions.map((q, i) => {
+      const userAnswerIndex = answers[i];
+      const userAnswer = ["A", "B", "C", "D"][userAnswerIndex] || "";
+      const isCorrect = userAnswer === q.correct_answer;
+      return {
+        ...q,
+        isCorrect,
+        userAnswer,
+        userAnswerIndex,
+      };
+    });
+  };
+
+  const handleSubmit = async () => {
+    if (Object.keys(answers).length < questions.length) return;
+    setSubmitting(true);
+    setSubmitError("");
+    try {
+      const answerList = questions.map((q, i) => ({
+        questionId: q.id,
+        answer: ["A", "B", "C", "D"][answers[i]] || "",
+      }));
+      const data = await readingApi.submitReadingPractice(lesson.id, answerList);
+      setResult(data);
+      setSubmitted(true);
+    } catch (err) {
+      setSubmitError(err.message || "Không thể nộp bài");
+      setSubmitting(false);
+    }
+  };
+
+  const allAnswered = questions.every((_, i) => answers[i] !== undefined);
+  const answeredCount = Object.keys(answers).length;
+  const results = submitted ? getResults() : [];
+  const correctCount = submitted ? results.filter((r) => r.isCorrect).length : 0;
+  const wrongCount = submitted ? questions.length - correctCount : 0;
+  const percentage =
+    questions.length > 0 ? Math.round((correctCount / questions.length) * 100) : 0;
+
+  // Modal xác nhận thoát
+  if (showExitConfirm) {
+    return (
+      <div className="min-h-screen bg-background p-6 lg:p-8 flex items-center justify-center">
+        <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-xl">
+          <div className="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle className="w-7 h-7 text-amber-500" />
+          </div>
+          <h2 className="text-xl font-black text-foreground mb-2">Xác nhận thoát</h2>
+          <p className="text-sm text-muted-foreground mb-6">
+            Bạn có chắc muốn thoát? Tiến trình hiện tại sẽ không được lưu.
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowExitConfirm(false)}
+              className="flex-1 border border-border py-2.5 rounded-xl font-bold text-sm hover:bg-muted transition-all"
+            >
+              Hủy
+            </button>
+            <button
+              onClick={onBack}
+              className="flex-1 bg-red-500 text-white py-2.5 rounded-xl font-bold text-sm hover:bg-red-600 transition-all"
+            >
+              Xác nhận
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Trang kết quả chi tiết
+  if (submitted) {
+    return (
+      <div className="min-h-screen bg-background p-6 lg:p-8">
+        <button
+          onClick={onBack}
+          className="flex items-center gap-2 text-muted-foreground hover:text-foreground font-semibold text-sm mb-6 transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" /> Quay lại
+        </button>
+
+        {/* Tổng kết quả */}
+        <div className="bg-white rounded-2xl p-6 max-w-lg mx-auto text-center shadow-md mb-6">
+          <h2 className="text-lg font-black mb-1">Kết quả bài luyện đọc</h2>
+          <div className="text-5xl font-black text-primary my-3">{percentage}%</div>
+          <p className="text-muted-foreground font-medium">
+            {correctCount}/{questions.length} câu đúng
+          </p>
+          <div className="flex justify-center gap-6 mt-4">
+            <div className="text-center">
+              <div className="text-2xl font-black text-green-500">
+                {correctCount}
+              </div>
+              <div className="text-xs text-muted-foreground">Đúng</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-black text-red-500">{wrongCount}</div>
+              <div className="text-xs text-muted-foreground">Sai</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Chi tiết từng câu */}
+        <div className="space-y-4 max-w-lg mx-auto">
+          {results.map((q, qi) => {
+            const borderColor = q.isCorrect
+              ? "border-green-400 bg-green-50"
+              : "border-red-400 bg-red-50";
+            const iconColor = q.isCorrect ? "text-green-500" : "text-red-500";
+            const Icon = q.isCorrect ? CheckCircle : XCircle;
+            const correctIndex = ["A", "B", "C", "D"].indexOf(q.correct_answer);
+
+            return (
+              <div key={q.id ?? qi} className={`rounded-2xl p-4 border-2 ${borderColor}`}>
+                <div className="flex items-start gap-3 mb-3">
+                  <Icon className={`w-5 h-5 mt-0.5 flex-shrink-0 ${iconColor}`} />
+                  <div className="flex-1">
+                    <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wide mb-1">
+                      Câu {qi + 1}
+                    </p>
+                    <h3 className="text-lg font-black text-foreground">
+                      {q.question}
+                    </h3>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  {q.options?.map((opt, oi) => {
+                    const isCorrectOption = oi === correctIndex;
+                    const isSelectedOption = oi === q.userAnswerIndex;
+                    let style = "bg-white border-border";
+                    if (isCorrectOption)
+                      style =
+                        "bg-green-100 border-green-500 text-green-700 font-semibold";
+                    else if (isSelectedOption && !isCorrectOption)
+                      style = "bg-red-100 border-red-500 text-red-700";
+                    return (
+                      <div
+                        key={oi}
+                        className={`w-full p-3 rounded-xl border-2 text-sm text-left flex items-center justify-between ${style}`}
+                      >
+                        <span>
+                          <span className="font-bold mr-2">
+                            {["A", "B", "C", "D"][oi]}:
+                          </span>
+                          {opt}
+                        </span>
+                        {isCorrectOption && (
+                          <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                        )}
+                        {isSelectedOption && !isCorrectOption && (
+                          <XCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                {!q.isCorrect && (
+                  <p className="text-xs text-red-600 font-medium mt-2">
+                    Đáp án đúng:{" "}
+                    <span className="font-black">
+                      {["A", "B", "C", "D"][correctIndex]}
+                    </span>
+                  </p>
+                )}
+                {q.explain && (
+                  <div className="mt-3 p-3 bg-blue-50 rounded-xl text-sm text-blue-700">
+                    <strong>Giải thích:</strong> {q.explain}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="max-w-lg mx-auto mt-6">
+          <button
+            onClick={onBack}
+            className="w-full gradient-primary text-white py-3 rounded-xl font-bold shadow-md hover:opacity-90 transition-all"
+          >
+            Quay lại danh sách bài
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Giao diện đang làm bài
   return (
     <div className="min-h-screen bg-background p-6 lg:p-8">
-      <button onClick={onBack} className="flex items-center gap-2 text-muted-foreground hover:text-foreground font-semibold text-sm mb-6">
-        <ArrowLeft className="w-4 h-4" /> Quay lại
-      </button>
+      <div className="flex items-center justify-between mb-4">
+        <button
+          onClick={() => setShowExitConfirm(true)}
+          className="flex items-center gap-2 text-muted-foreground hover:text-foreground font-semibold text-sm"
+        >
+          <ArrowLeft className="w-4 h-4" /> Thoát
+        </button>
+        <span className="text-sm font-bold text-muted-foreground">
+          {answeredCount}/{questions.length} đã trả lời
+        </span>
+      </div>
+
       <div className="max-w-2xl mx-auto">
-        <h1 className="text-2xl font-black text-foreground mb-6">{lesson.title}</h1>
+        <h1 className="text-2xl font-black text-foreground mb-6">
+          {lesson.title}
+        </h1>
         <div className="bg-white rounded-2xl border border-border p-6 mb-6 shadow-sm">
-          <p className="text-sm text-foreground leading-relaxed whitespace-pre-line font-medium">{lesson.passage}</p>
+          <p className="text-sm text-foreground leading-relaxed whitespace-pre-line font-medium">
+            {lesson.content || lesson.passage || ""}
+          </p>
         </div>
+
+        {submitError && (
+          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-600">
+            {submitError}
+          </div>
+        )}
+
         {questions.length > 0 && (
           <div>
             <h2 className="font-black text-foreground mb-4">Câu hỏi đọc hiểu</h2>
-            <div className="space-y-4">
-              {questions.map((q, qi) => (
-                <div key={qi} className="bg-white rounded-2xl border border-border p-5">
-                  <p className="font-bold text-foreground mb-3">{qi + 1}. {q.question}</p>
-                  <div className="space-y-2">
-                    {q.options?.map((opt, oi) => {
-                      const chosen = answers[qi] === oi;
-                      const correct = q.correct === oi;
-                      return (
-                        <button key={oi}
-                          onClick={() => !submitted && setAnswers({ ...answers, [qi]: oi })}
-                          className={`w-full text-left px-4 py-2.5 rounded-xl border text-sm font-medium transition-all ${
-                            submitted
-                              ? correct ? "bg-green-100 border-green-500 text-green-700"
-                                : chosen ? "bg-red-100 border-red-500 text-red-700"
-                                : "bg-white border-border opacity-50"
-                              : chosen ? "gradient-primary text-white border-transparent shadow-md"
-                              : "bg-white border-border hover:border-primary/40"
-                          }`}
-                        >{opt}</button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
+
+            {/* Thanh tiến trình */}
+            <div className="flex items-center gap-1 mb-6 justify-center flex-wrap">
+              {questions.map((q, idx) => {
+                const isAnswered = answers[idx] !== undefined;
+                return (
+                  <button
+                    key={q.id ?? idx}
+                    onClick={() => setCurrentIndex(idx)}
+                    className={`w-8 h-8 rounded-full text-xs font-bold transition-all ${
+                      idx === currentIndex
+                        ? "bg-primary text-white scale-110"
+                        : isAnswered
+                        ? "bg-primary/30 text-primary"
+                        : "bg-border text-muted-foreground"
+                    }`}
+                  >
+                    {idx + 1}
+                  </button>
+                );
+              })}
             </div>
-            {!submitted ? (
-              <button onClick={() => setSubmitted(true)}
-                disabled={Object.keys(answers).length < questions.length}
-                className="w-full mt-6 gradient-primary text-white py-3 rounded-xl font-bold shadow-md hover:opacity-90 disabled:opacity-40">
-                Nộp bài
-              </button>
-            ) : (
-              <div className="mt-4 bg-white rounded-2xl border border-border p-5 text-center">
-                <p className="text-2xl font-black text-primary">{score}/{questions.length}</p>
-                <p className="text-muted-foreground font-medium mt-1">câu trả lời đúng</p>
-                <button onClick={onBack}
-                  className="mt-4 px-6 py-2.5 border border-border rounded-xl font-bold text-sm hover:bg-muted">
-                  Quay lại
-                </button>
+
+            {/* Hiển thị câu hỏi hiện tại */}
+            {questions[currentIndex] && (
+              <div className="bg-white rounded-2xl border border-border p-5 mb-4">
+                <p className="font-bold text-foreground mb-3">
+                  Câu {currentIndex + 1}. {questions[currentIndex].question}
+                </p>
+                <div className="space-y-2">
+                  {questions[currentIndex].options?.map((opt, oi) => {
+                    const chosen = answers[currentIndex] === oi;
+                    return (
+                      <button
+                        key={oi}
+                        onClick={() =>
+                          setAnswers({ ...answers, [currentIndex]: oi })
+                        }
+                        className={`w-full text-left px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all ${
+                          chosen
+                            ? "border-primary bg-primary/5 text-primary"
+                            : "border-border bg-white hover:border-primary/40"
+                        }`}
+                      >
+                        <span className="font-bold mr-2">
+                          {["A", "B", "C", "D"][oi]}:
+                        </span>
+                        {opt}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
+            )}
+
+            {/* Nút điều hướng câu hỏi */}
+            <div className="flex items-center justify-between mb-4">
+              <button
+                onClick={() =>
+                  setCurrentIndex(Math.max(0, currentIndex - 1))
+                }
+                disabled={currentIndex === 0}
+                className="flex items-center gap-1 px-4 py-2 rounded-xl border border-border text-sm font-bold hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              >
+                <ArrowLeft className="w-4 h-4" /> Câu trước
+              </button>
+              <span className="text-sm text-muted-foreground font-medium">
+                Câu {currentIndex + 1} / {questions.length}
+              </span>
+              <button
+                onClick={() =>
+                  setCurrentIndex(
+                    Math.min(questions.length - 1, currentIndex + 1)
+                  )
+                }
+                disabled={currentIndex === questions.length - 1}
+                className="flex items-center gap-1 px-4 py-2 rounded-xl border border-border text-sm font-bold hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              >
+                Câu tiếp <ArrowLeft className="w-4 h-4 rotate-180" />
+              </button>
+            </div>
+
+            {/* Nút nộp bài */}
+            <button
+              onClick={handleSubmit}
+              disabled={!allAnswered || submitting}
+              className="w-full gradient-primary text-white py-3 rounded-xl font-bold shadow-md hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            >
+              {submitting
+                ? "Đang nộp bài..."
+                : allAnswered
+                ? "✓ Nộp bài ngay"
+                : `Nộp bài (${answeredCount}/${questions.length})`}
+            </button>
+            {!allAnswered && (
+              <p className="text-xs text-muted-foreground text-center mt-2">
+                Vui lòng trả lời tất cả câu hỏi trước khi nộp bài
+              </p>
             )}
           </div>
         )}

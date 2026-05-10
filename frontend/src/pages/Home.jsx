@@ -10,6 +10,8 @@ import {
   BookText,
 } from "lucide-react";
 import { vocabularyApi } from "@/api/vocabularyApi";
+import { listeningApi } from "@/api/listeningApi";
+import { readingApi } from "@/api/readingApi";
 
 const MODULE_COLORS = {
   vocabulary: "from-violet-500 to-indigo-500",
@@ -36,15 +38,20 @@ export default function Home() {
     } catch {
       setMySets([]);
     }
-    // Luyện nghe và Luyện đọc hiện dùng sample data
-    setListeningLessons([
-      { id: "l1", title: "At the Airport", level: "beginner", topic: "travel", questions: [{ id: 1 }, { id: 2 }] },
-      { id: "l2", title: "Job Interview", level: "intermediate", topic: "business", questions: [{ id: 1 }, { id: 2 }] },
-    ]);
-    setReadingLessons([
-      { id: "r1", title: "The Benefits of Exercise", level: "beginner", topic: "health", questions: [{ id: 1 }, { id: 2 }] },
-      { id: "r2", title: "Social Media and Modern Life", level: "intermediate", topic: "technology", questions: [{ id: 1 }, { id: 2 }] },
-    ]);
+    // Luyện nghe - lấy từ API
+    try {
+      const listeningData = await listeningApi.getMyLessons({ limit: 6 });
+      setListeningLessons(listeningData.items || []);
+    } catch {
+      setListeningLessons([]);
+    }
+    // Luyện đọc - lấy từ API
+    try {
+      const readingData = await readingApi.getMyLessons({ limit: 6 });
+      setReadingLessons(readingData.items || []);
+    } catch {
+      setReadingLessons([]);
+    }
   };
 
   const SET_COLORS = [
@@ -194,9 +201,6 @@ export default function Home() {
                   <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${LEVEL_BADGE[lesson.level]}`}>
                     {LEVEL_LABELS[lesson.level]}
                   </span>
-                  <span className="text-xs text-muted-foreground">
-                    {lesson.questions.length} câu
-                  </span>
                 </div>
               </Link>
             ))}
@@ -232,9 +236,6 @@ export default function Home() {
                 <div className="flex items-center gap-2 mt-1">
                   <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${LEVEL_BADGE[lesson.level]}`}>
                     {LEVEL_LABELS[lesson.level]}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {lesson.questions.length} câu
                   </span>
                 </div>
               </Link>
