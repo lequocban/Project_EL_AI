@@ -141,11 +141,12 @@ export const vocabularyApi = {
     const response = await fetchWithAuth(`${VOCABULARY_PRACTICE_URL}/history?${params}`, {
       method: "GET",
     });
+    const pagination = response.data?.pagination || {};
     return {
       items: response.data?.items || [],
-      total: response.data?.total ?? 0,
-      page: response.data?.page ?? page,
-      totalPages: response.data?.totalPages ?? 1,
+      total: pagination.total ?? 0,
+      page: pagination.page ?? page,
+      totalPages: pagination.totalPages ?? 1,
     };
   },
 

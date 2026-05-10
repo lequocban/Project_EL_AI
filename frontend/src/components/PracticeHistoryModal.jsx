@@ -10,7 +10,7 @@ const TYPE_COLORS = {
 
 // Màu sắc cho loại bài từ vựng
 const VOCAB_TYPE_LABELS = {
-  quiz: "Translate quiz (EN→VI)",
+  quiz: "Quiz (EN→VI)",
   listening_quiz: "Listening quiz",
   translate_write: "Translate write (VI→EN)",
   listen_write: "Listen write",
@@ -112,7 +112,6 @@ export default function PracticeHistoryModal({ type, onClose, getHistory, getDet
     setError("");
     try {
       const data = await getHistory({ page: pageNum, limit: 10 });
-      // Map dữ liệu từ response về đúng format
       const mappedItems = (data.items || []).map((item) => mapHistoryItem(item, type));
       setHistory(mappedItems);
       setTotalPages(data.totalPages || 1);
@@ -329,98 +328,103 @@ export default function PracticeHistoryModal({ type, onClose, getHistory, getDet
   // Trang danh sách lịch sử
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-lg font-black text-foreground flex items-center gap-2">
-              <span className={`w-3 h-3 rounded-full bg-gradient-to-br ${typeConfig.gradient}`} />
-              Lịch sử làm bài
-            </h2>
-            <p className="text-xs text-muted-foreground mt-0.5">{typeConfig.label}</p>
+      {/* Dialog có header cố định */}
+      <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+        {/* Header - sticky, không bị cuộn */}
+        <div className="flex-shrink-0 px-6 py-4 border-b border-border bg-white rounded-t-2xl">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-black text-foreground flex items-center gap-2">
+                <span className={`w-3 h-3 rounded-full bg-gradient-to-br ${typeConfig.gradient}`} />
+                Lịch sử làm bài
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">{typeConfig.label}</p>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-1.5 hover:bg-muted rounded-lg transition-all"
+            >
+              <X className="w-5 h-5 text-muted-foreground" />
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 hover:bg-muted rounded-lg transition-all"
-          >
-            <X className="w-5 h-5 text-muted-foreground" />
-          </button>
         </div>
 
-        {error && (
-          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-600">
-            {error}
-          </div>
-        )}
+        {/* Nội dung scrollable */}
+        <div className="flex-1 overflow-y-auto px-6 py-4">
 
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : history.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground font-semibold text-sm">Chưa có lịch sử làm bài</p>
-          </div>
-        ) : (
-          <>
-            <div className="space-y-3 mb-4">
-              {history.map((item) => {
-                const score = item.score ?? 0;
-                return (
-                  <div
-                    key={item.id}
-                    className={`rounded-xl p-3 border ${getScoreBg(score)} hover:shadow-sm transition-all`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-foreground truncate">
-                          {item.title}
-                        </p>
-                        {item.type && VOCAB_TYPE_LABELS[item.type] && (
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {VOCAB_TYPE_LABELS[item.type]}
+          {error && (
+            <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-600">
+              {error}
+            </div>
+          )}
+
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : history.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground font-semibold text-sm">Chưa có lịch sử làm bài</p>
+            </div>
+          ) : (
+            <>
+              <div className="space-y-3 mb-4">
+                {history.map((item) => {
+                  const score = item.score ?? 0;
+                  return (
+                    <div
+                      key={item.id}
+                      className={`rounded-xl p-3 border ${getScoreBg(score)} hover:shadow-sm transition-all`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-foreground truncate">
+                            {item.title}
                           </p>
-                        )}
-                        <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {formatDate(item.completedAt)}
-                        </p>
-                        {item.totalQuestions != null && (
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {item.correctAnswers ?? 0}/{item.totalQuestions} đúng
-                            {item.timeSpent != null && (
-                              <span className="ml-2">
-                                • {Math.floor((item.timeSpent || 0) / 60)}p {(item.timeSpent || 0) % 60}gi
-                              </span>
-                            )}
+                          {item.type && VOCAB_TYPE_LABELS[item.type] && (
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {VOCAB_TYPE_LABELS[item.type]}
+                            </p>
+                          )}
+                          <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {formatDate(item.completedAt)}
                           </p>
-                        )}
-                        {item.timeSpent != null && item.totalQuestions == null && (
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {Math.floor((item.timeSpent || 0) / 60)}p {(item.timeSpent || 0) % 60}gi
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-3 ml-3">
-                        <div className={`text-2xl font-black ${getScoreColor(score)}`}>
-                          {score}%
+                          {item.totalQuestions != null && (
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {item.correctAnswers ?? 0}/{item.totalQuestions} đúng
+                              {item.timeSpent != null && (
+                                <span className="ml-2">
+                                  • {Math.floor((item.timeSpent || 0) / 60)}p {(item.timeSpent || 0) % 60}gi
+                                </span>
+                              )}
+                            </p>
+                          )}
+                          {item.timeSpent != null && item.totalQuestions == null && (
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {Math.floor((item.timeSpent || 0) / 60)}p {(item.timeSpent || 0) % 60}gi
+                            </p>
+                          )}
                         </div>
-                        <button
-                          onClick={() => handleViewDetail(item)}
-                          className={`p-2 rounded-xl bg-white border border-border hover:bg-primary/5 text-primary transition-all shadow-sm`}
-                          title="Xem chi tiết"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center gap-3 ml-3">
+                          <div className={`text-2xl font-black ${getScoreColor(score)}`}>
+                            {score}%
+                          </div>
+                          <button
+                            onClick={() => handleViewDetail(item)}
+                            className={`p-2 rounded-xl bg-white border border-border hover:bg-primary/5 text-primary transition-all shadow-sm`}
+                            title="Xem chi tiết"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
 
-            {/* Phân trang */}
-            {totalPages > 1 && (
+              {/* Phân trang - luôn hiển thị để người dùng biết đang ở trang nào */}
               <div className="flex items-center justify-center gap-2">
                 <button
                   onClick={() => loadHistory(page - 1)}
@@ -429,7 +433,7 @@ export default function PracticeHistoryModal({ type, onClose, getHistory, getDet
                 >
                   ←
                 </button>
-                <span className="text-sm text-muted-foreground font-medium px-2">
+                <span className="text-sm text-muted-foreground font-medium px-3 py-1.5 bg-muted rounded-lg">
                   {page} / {totalPages}
                 </span>
                 <button
@@ -440,9 +444,9 @@ export default function PracticeHistoryModal({ type, onClose, getHistory, getDet
                   →
                 </button>
               </div>
-            )}
-          </>
-        )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

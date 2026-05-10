@@ -448,7 +448,7 @@ function QuestionCard({ q, index, examType, onAnswer }) {
     }
   };
 
-  if (examType === "translate_quiz") {
+  if (examType === "quiz") {
     return (
       <div className="bg-white rounded-2xl p-4 border border-border shadow-sm">
         <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wide mb-2">
