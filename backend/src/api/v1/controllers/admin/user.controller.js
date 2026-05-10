@@ -53,8 +53,26 @@ const getUserDetail = async (req, res, next) => {
   }
 };
 
+/**
+ * Xóa vĩnh viễn tài khoản người dùng khỏi hệ thống.
+ * Chỉ admin (role_id = 3) mới có quyền.
+ * Tài khoản phải đang ở trạng thái inactive.
+ */
+const deleteUser = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const result = await userService.deleteUser(id);
+
+    return success(res, result, "Xóa tài khoản vĩnh viễn thành công");
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   getAllUsers,
   getUserDetail,
   updateUserStatus,
+  deleteUser,
 };

@@ -130,9 +130,31 @@ const getUserById = async (userId) => {
   return profile;
 };
 
+/**
+ * Xóa vĩnh viễn user khỏi Supabase Auth và toàn bộ dữ liệu trong database.
+ * Các bảng phụ thuộc (profiles, user_roles, favorite_vocabularies,
+ * reading_practice, listening_practice, vocabulary_practice) sẽ tự động
+ * bị xóa do ON DELETE CASCADE.
+ * @param {string} userId
+ */
+const deleteUserPermanently = async (userId) => {
+  const client = createAdminClient();
+
+  // Xóa user khỏi Supabase Auth
+  const { error: authError } = await client.auth.admin.deleteUser(userId);
+
+  if (authError) {
+    console.error("[user.model] deleteUserPermanently - auth delete error:", authError);
+    throw new AppError("Không thể xóa tài khoản khỏi hệ thống xác thực", 500);
+  }
+
+  return { deleted: true, userId };
+};
+
 module.exports = {
   getUsersByRole,
   countUsersByRole,
   updateUsersStatus,
   getUserById,
+  deleteUserPermanently,
 };

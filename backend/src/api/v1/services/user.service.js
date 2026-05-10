@@ -2,7 +2,9 @@ const {
   getUsersByRole,
   updateUsersStatus,
   getUserById,
+  deleteUserPermanently,
 } = require("../repositories/user.model");
+const { AppError } = require("../../../utils/appError");
 const { toApiDate } = require("../../../utils/date.utils");
 const { parsePagination } = require("../../../utils/pagination");
 const { buildPaginationResponse } = require("../../../utils/paginationResponse");
@@ -74,8 +76,25 @@ const updateUserStatus = async (userIds, status) => {
   return { updatedCount };
 };
 
+/**
+ * Xóa vĩnh viễn tài khoản người dùng.
+ * Chỉ xóa được khi tài khoản đang ở trạng thái inactive.
+ */
+const deleteUser = async (userId) => {
+  const profile = await getUserById(userId);
+
+  if (profile.status !== "inactive") {
+    throw new AppError("Chỉ có thể xóa tài khoản đang ở trạng thái inactive", 400);
+  }
+
+  await deleteUserPermanently(userId);
+
+  return { deletedUserId: userId };
+};
+
 module.exports = {
   getAllUsers,
   getUserDetail,
   updateUserStatus,
+  deleteUser,
 };

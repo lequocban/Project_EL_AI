@@ -32,6 +32,10 @@ const getUserDetailSchema = z.object({
   id: z.string().uuid("id phải là UUID hợp lệ"),
 });
 
+const deleteUserSchema = z.object({
+  id: z.string().uuid("id phải là UUID hợp lệ"),
+});
+
 const updateUserStatusSchema = z.object({
   userIds: z
     .array(z.string().uuid("userIds phải là mảng UUID hợp lệ"))
@@ -46,4 +50,5 @@ module.exports = {
   getAllUsersSchema,
   getUserDetailSchema,
   updateUserStatusSchema,
+  deleteUserSchema,
 };
