@@ -11,6 +11,7 @@ const adminReadingLessonRoutes = require("./admin/readingLesson.routes");
 const adminAuthRoutes = require("./admin/auth.routes");
 const adminUserRoutes = require("./admin/user.routes");
 const adminListeningLessonRoutes = require("./admin/listeningLesson.routes");
+const adminModerationRoutes = require("./admin/moderation.routes");
 const readingLessonRoutes = require("./client/readingLesson.routes");
 const listeningLessonRoutes = require("./client/listeningLesson.routes");
 const readingQuestionRoutes = require("./client/readingQuestion.routes");
@@ -35,6 +36,7 @@ router.use("/moderation-requests", moderationRoutes);
 router.use("/admin/auth", adminAuthRoutes);
 router.use("/admin/users", adminUserRoutes);
 router.use("/admin/vocabulary-sets", adminVocabularySetRoutes);
+router.use("/admin/moderation", adminModerationRoutes);
 router.use("/admin", adminReadingLessonRoutes);
 router.use("/admin", adminListeningLessonRoutes);
 

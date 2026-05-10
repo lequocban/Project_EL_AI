@@ -143,9 +143,91 @@ const existsPendingRequest = async (accessToken, contentId, contentType, userId)
   return !!data;
 };
 
+/**
+ * Lấy danh sách yêu cầu kiểm duyệt theo loại nội dung.
+ * Cần truyền accessToken để RLS nhận diện user (admin/content_manager).
+ * @param {string} accessToken - JWT của admin/content_manager
+ * @param {string} contentType - Loại nội dung: 'vocabulary_set' | 'reading_lesson' | 'listening_lesson'
+ * @param {Object} options
+ * @param {string} options.status - Lọc theo trạng thái
+ * @param {string} options.keyword - Từ khóa tìm kiếm theo tiêu đề nội dung
+ * @param {number} options.page - Trang (bắt đầu từ 1)
+ * @param {number} options.limit - Số item mỗi trang (max 15)
+ * @param {string} options.sortField - Trường sắp xếp: "created_at"
+ * @param {string} options.sortOrder - Thứ tự sắp xếp: "asc" | "desc"
+ * @returns {Promise<{data: Array, total: number}>}
+ */
+const getRequestsByContentType = async (
+  accessToken,
+  contentType,
+  { status, page = 1, limit = 15, sortField, sortOrder } = {}
+) => {
+  const client = createAuthedClient(accessToken);
+  const safeLimit = Math.min(Math.max(1, limit), 15);
+  const from = (page - 1) * safeLimit;
+  const to = from + safeLimit - 1;
+
+  const { sortColumn, ascending } = parseSortParams({
+    sortField,
+    sortOrder,
+    allowedFields: ["created_at"],
+    defaultField: "created_at",
+    defaultOrder: "desc",
+  });
+
+  let query = client
+    .from("moderation_requests")
+    .select(
+      "id, content_type, content_id, status, requested_by, reviewed_by, reviewed_at, created_at",
+      { count: "exact" }
+    )
+    .eq("content_type", contentType)
+    .order(sortColumn, buildSupabaseOrder(sortColumn, ascending))
+    .range(from, to);
+
+  if (status && status.trim()) {
+    query = query.eq("status", status.trim());
+  }
+
+  const { data, error, count } = await query;
+
+  if (error) {
+    throw new AppError(error.message, 500);
+  }
+
+  return { data: data || [], total: count || 0 };
+};
+
+/**
+ * Kiểm tra content có yêu cầu kiểm duyệt đang pending không.
+ * Dùng service role (không cần token).
+ * @param {string} contentId
+ * @param {string} contentType
+ * @returns {Promise<Object|null>} - Trả về request pending hoặc null
+ */
+const checkPendingModeration = async (contentId, contentType) => {
+  const { supabase } = require("../../../config/supabase");
+
+  const { data, error } = await supabase
+    .from("moderation_requests")
+    .select("id, content_type, content_id, status")
+    .eq("content_id", contentId)
+    .eq("content_type", contentType)
+    .eq("status", "pending")
+    .maybeSingle();
+
+  if (error) {
+    throw new AppError(error.message, 500);
+  }
+
+  return data;
+};
+
 module.exports = {
   createModerationRequest,
   getRequestsByUser,
+  getRequestsByContentType,
   findById,
   existsPendingRequest,
+  checkPendingModeration,
 };
