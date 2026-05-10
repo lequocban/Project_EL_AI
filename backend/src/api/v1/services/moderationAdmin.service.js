@@ -2,8 +2,8 @@ const moderationModel = require("../repositories/moderation.model");
 const vocabularySetModel = require("../repositories/vocabularySet.model");
 const vocabularyService = require("./vocabulary.service");
 const readingLessonModel = require("../repositories/readingLesson.model");
-const listeningLessonModel = require("../repositories/listeningLesson.model");
 const readingQuestionModel = require("../repositories/readingQuestion.model");
+const listeningLessonModel = require("../repositories/listeningLesson.model");
 const listeningQuestionModel = require("../repositories/listeningQuestion.model");
 const { AppError } = require("../../../utils/appError");
 const { parsePagination } = require("../../../utils/pagination");
@@ -345,6 +345,145 @@ const updateListeningQuestion = async (accessToken, questionId, lessonId, update
 };
 
 // ============================================================
+// LẤY CHI TIẾT YÊU CẦU KIỂM DUYỆT — ADMIN / CONTENT MANAGER
+// ============================================================
+
+/**
+ * Lấy chi tiết một yêu cầu kiểm duyệt (kèm nội dung đầy đủ).
+ * - vocabulary_set: trả về thông tin bộ từ vựng + danh sách từ vựng
+ * - reading_lesson: trả về thông tin bài luyện đọc + danh sách câu hỏi
+ * - listening_lesson: trả về thông tin bài luyện nghe + danh sách câu hỏi
+ * @param {string} requestId - ID của yêu cầu kiểm duyệt
+ */
+const getModerationRequestDetail = async (requestId) => {
+  const { data: request, error } = await require("../../../config/supabase").supabase
+    .from("moderation_requests")
+    .select("id, content_type, content_id, status, requested_by, reviewed_by, reviewed_at, reason, notes, created_at")
+    .eq("id", requestId)
+    .maybeSingle();
+
+  if (error) {
+    throw new AppError(error.message, 500);
+  }
+
+  if (!request) {
+    throw new AppError("Không tìm thấy yêu cầu kiểm duyệt", 404);
+  }
+
+  const requesterProfile = await getUserProfile(request.requested_by);
+  const reviewerProfile = request.reviewed_by
+    ? await getUserProfile(request.reviewed_by)
+    : null;
+
+  let contentDetail = null;
+
+  switch (request.content_type) {
+    case "vocabulary_set": {
+      const set = await vocabularySetModel.findById(request.content_id);
+      if (!set) {
+        throw new AppError("Không tìm thấy bộ từ vựng", 404);
+      }
+      const words = await vocabularySetModel.getWordsInSet(request.content_id, {});
+      contentDetail = {
+        id: set.id,
+        title: set.title,
+        description: set.description,
+        status: set.status,
+        createdBy: set.created_by,
+        createdAt: set.created_at,
+        updatedAt: set.updated_at,
+        wordCount: words.length,
+        words: words,
+      };
+      break;
+    }
+    case "reading_lesson": {
+      const lesson = await readingLessonModel.findById(request.content_id);
+      if (!lesson) {
+        throw new AppError("Không tìm thấy bài luyện đọc", 404);
+      }
+      const questions = await readingQuestionModel.findByLessonId(request.content_id);
+      contentDetail = {
+        id: lesson.id,
+        title: lesson.title,
+        content: lesson.content,
+        viTranslation: lesson.vi_translation,
+        status: lesson.status,
+        createdBy: lesson.created_by,
+        createdAt: lesson.created_at,
+        updatedAt: lesson.updated_at,
+        questionCount: questions.length,
+        questions: questions.map((q) => ({
+          id: q.id,
+          question: q.question,
+          optionA: q.option_a,
+          optionB: q.option_b,
+          optionC: q.option_c,
+          optionD: q.option_d,
+          correctAnswer: q.correct_answer,
+          explain: q.explain,
+          createdAt: q.created_at,
+        })),
+      };
+      break;
+    }
+    case "listening_lesson": {
+      const lesson = await listeningLessonModel.findById(request.content_id);
+      if (!lesson) {
+        throw new AppError("Không tìm thấy bài luyện nghe", 404);
+      }
+      const questions = await listeningQuestionModel.findByLessonId(request.content_id);
+      contentDetail = {
+        id: lesson.id,
+        title: lesson.title,
+        audioUrl: lesson.audio_url,
+        transcript: lesson.transcript,
+        viTranslation: lesson.vi_translation,
+        status: lesson.status,
+        createdBy: lesson.created_by,
+        createdAt: lesson.created_at,
+        updatedAt: lesson.updated_at,
+        questionCount: questions.length,
+        questions: questions.map((q) => ({
+          id: q.id,
+          question: q.question,
+          optionA: q.option_a,
+          optionB: q.option_b,
+          optionC: q.option_c,
+          optionD: q.option_d,
+          correctAnswer: q.correct_answer,
+          explain: q.explain,
+          createdAt: q.created_at,
+        })),
+      };
+      break;
+    }
+    default:
+      contentDetail = null;
+  }
+
+  return {
+    id: request.id,
+    contentType: request.content_type,
+    contentId: request.content_id,
+    status: request.status,
+    requestedBy: request.requested_by,
+    reviewedBy: request.reviewed_by || null,
+    reviewedAt: request.reviewed_at || null,
+    reason: request.reason || null,
+    notes: request.notes || null,
+    createdAt: request.created_at,
+    requester: requesterProfile
+      ? { id: requesterProfile.id, userName: requesterProfile.userName, email: requesterProfile.email }
+      : null,
+    reviewer: reviewerProfile
+      ? { id: reviewerProfile.id, userName: reviewerProfile.userName, email: reviewerProfile.email }
+      : null,
+    content: contentDetail,
+  };
+};
+
+// ============================================================
 // QUẢN LÝ TỪ VỰNG TRONG BỘ TỪ VỰNG — ADMIN / CONTENT MANAGER
 // Yêu cầu: bộ từ vựng đó phải có yêu cầu kiểm duyệt đang "pending"
 // ============================================================
@@ -448,6 +587,51 @@ const removeWordsFromVocabularySet = async (accessToken, setId, wordIds) => {
   };
 };
 
+// ============================================================
+// PHÊ DUYỆT / TỪ CHỐI YÊU CẦU KIỂM DUYỆT — ADMIN / CONTENT MANAGER
+// ============================================================
+
+const VALID_STATUS_TRANSITIONS = {
+  approved: "approved",
+  rejected: "rejected",
+};
+
+/**
+ * Xác nhận (approve) hoặc từ chối (reject) yêu cầu kiểm duyệt.
+ * Chỉ cập nhật bảng moderation_requests: status, reviewed_by, reviewed_at, reason, notes.
+ * @param {string} reviewerId - ID của người duyệt
+ * @param {string} requestId - ID của yêu cầu kiểm duyệt
+ * @param {Object} data
+ * @param {string} data.action - 'approve' hoặc 'reject'
+ * @param {string} data.reason - Lý do duyệt/từ chối
+ * @param {string} data.notes - Ghi chú thêm
+ */
+const reviewModerationRequest = async (reviewerId, requestId, { action, reason, notes }) => {
+  if (!action || !["approve", "reject"].includes(action)) {
+    throw new AppError("Action phải là 'approve' hoặc 'reject'", 400);
+  }
+
+  const targetStatus = action === "approve" ? "approved" : "rejected";
+
+  const updated = await moderationModel.updateModerationRequest(requestId, reviewerId, {
+    status: targetStatus,
+    reason: reason || null,
+    notes: notes || null,
+  });
+
+  return {
+    id: updated.id,
+    contentType: updated.content_type,
+    contentId: updated.content_id,
+    status: updated.status,
+    reviewedBy: updated.reviewed_by,
+    reviewedAt: updated.reviewed_at,
+    reason: updated.reason || null,
+    notes: updated.notes || null,
+    createdAt: updated.created_at,
+  };
+};
+
 module.exports = {
   getModerationRequestsByContentType,
   VALID_CONTENT_TYPES,
@@ -459,4 +643,6 @@ module.exports = {
   updateListeningQuestion,
   addWordsToVocabularySet,
   removeWordsFromVocabularySet,
+  reviewModerationRequest,
+  getModerationRequestDetail,
 };

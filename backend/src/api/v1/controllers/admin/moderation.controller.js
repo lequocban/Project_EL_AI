@@ -232,6 +232,60 @@ const removeWordsFromVocabularySet = async (req, res, next) => {
   }
 };
 
+// ============================================================
+// LẤY CHI TIẾT YÊU CẦU KIỂM DUYỆT
+// ============================================================
+
+/**
+ * GET /api/v1/admin/moderation/requests/:requestId
+ * Lấy chi tiết một yêu cầu kiểm duyệt (kèm nội dung đầy đủ).
+ * - vocabulary_set: trả về thông tin bộ từ vựng + danh sách từ vựng
+ * - reading_lesson: trả về thông tin bài luyện đọc + danh sách câu hỏi
+ * - listening_lesson: trả về thông tin bài luyện nghe + danh sách câu hỏi
+ */
+const getModerationRequestDetail = async (req, res, next) => {
+  try {
+    const { requestId } = req.params;
+
+    const result = await moderationAdminService.getModerationRequestDetail(requestId);
+
+    return success(res, result, "Lấy chi tiết yêu cầu kiểm duyệt thành công");
+  } catch (error) {
+    return next(error);
+  }
+};
+
+// ============================================================
+// PHÊ DUYỆT / TỪ CHỐI YÊU CẦU KIỂM DUYỆT
+// ============================================================
+
+/**
+ * POST /api/v1/admin/moderation/requests/:requestId/review
+ * Xác nhận (approve) hoặc từ chối (reject) yêu cầu kiểm duyệt.
+ * Chỉ cập nhật bảng moderation_requests: status, reviewed_by, reviewed_at, reason, notes.
+ * Body: { action: "approve" | "reject", reason?: string, notes?: string }
+ */
+const reviewModerationRequest = async (req, res, next) => {
+  try {
+    const { requestId } = req.params;
+    const { action, reason, notes } = req.body;
+
+    if (!action) {
+      return next(new AppError("Vui lòng cung cấp action ('approve' hoặc 'reject')", 400));
+    }
+
+    const result = await moderationAdminService.reviewModerationRequest(
+      req.user.id,
+      requestId,
+      { action, reason, notes }
+    );
+
+    return success(res, result, `Yêu cầu kiểm duyệt đã được ${action === "approve" ? "duyệt" : "từ chối"} thành công`);
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   getVocabularySetRequests,
   getReadingLessonRequests,
@@ -243,4 +297,6 @@ module.exports = {
   updateListeningQuestion,
   addWordsToVocabularySet,
   removeWordsFromVocabularySet,
+  getModerationRequestDetail,
+  reviewModerationRequest,
 };

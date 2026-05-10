@@ -34,6 +34,35 @@ router.get(
 );
 
 // ============================================================
+// LẤY CHI TIẾT YÊU CẦU KIỂM DUYỆT
+// ============================================================
+
+// GET /api/v1/admin/moderation/requests/:requestId
+// Lấy chi tiết một yêu cầu kiểm duyệt (kèm nội dung đầy đủ)
+router.get(
+  "/requests/:requestId",
+  verifyToken,
+  requireAuth,
+  requireManagerOrAdmin,
+  moderationAdminController.getModerationRequestDetail
+);
+
+// ============================================================
+// PHÊ DUYỆT / TỪ CHỐI YÊU CẦU KIỂM DUYỆT
+// ============================================================
+
+// POST /api/v1/admin/moderation/requests/:requestId/review
+// Xác nhận (approve) hoặc từ chối (reject) yêu cầu kiểm duyệt
+// Body: { action: "approve" | "reject", reason?: string, notes?: string }
+router.post(
+  "/requests/:requestId/review",
+  verifyToken,
+  requireAuth,
+  requireManagerOrAdmin,
+  moderationAdminController.reviewModerationRequest
+);
+
+// ============================================================
 // CHỈNH SỬA NỘI DUNG (YÊU CẦU CONTENT ĐANG PENDING)
 // ============================================================
 
