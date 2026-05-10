@@ -64,10 +64,19 @@ const changePasswordSchema = z.object({
     .regex(/[0-9]/, "Mật khẩu mới phải có ít nhất 1 chữ số"),
 });
 
+const adminLoginSchema = z.object({
+  email: z
+    .string()
+    .email("Email không hợp lệ")
+    .transform((val) => val.toLowerCase().trim()),
+  password: z.string().min(1, "Vui lòng nhập mật khẩu"),
+});
+
 module.exports = {
   registerSchema,
   loginSchema,
   requestOtpSchema,
   resetPasswordSchema,
   changePasswordSchema,
+  adminLoginSchema,
 };
