@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   ArrowLeft,
   Search,
@@ -35,18 +35,16 @@ export default function Listening() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, [tab]);
+  const loadDataRef = useRef(null);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      loadData();
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [search]);
+  // Filter tức thì trên dữ liệu đã load (không cần chờ API)
+  const filteredLessons = search.trim()
+    ? lessons.filter((l) =>
+        l.title?.toLowerCase().includes(search.toLowerCase().trim())
+      )
+    : lessons;
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
@@ -61,7 +59,16 @@ export default function Listening() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [tab, search]);
+
+  loadDataRef.current = loadData;
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadDataRef.current?.();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [tab, search]);
 
   const handleCreated = async (lesson) => {
     setShowCreateModal(false);
@@ -131,7 +138,7 @@ export default function Listening() {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Tìm kiếm bài luyện nghe..."
+          placeholder="Tìm kiếm bài luyện nghe theo tiêu đề..."
           className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
         />
       </div>
@@ -159,16 +166,16 @@ export default function Listening() {
             </div>
           ))}
         </div>
-      ) : lessons.length === 0 ? (
+      ) : filteredLessons.length === 0 ? (
         <div className="text-center py-16">
           <Globe className="w-16 h-16 mx-auto text-muted-foreground/30 mb-4" />
           <p className="text-muted-foreground font-semibold">
-            Chưa có bài luyện nghe nào
+            {search ? "Không tìm thấy bài luyện nghe nào phù hợp" : "Chưa có bài luyện nghe nào"}
           </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {lessons.map((lesson) => (
+          {filteredLessons.map((lesson) => (
             <div
               key={lesson.id}
               onClick={async () => {
