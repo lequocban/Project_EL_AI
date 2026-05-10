@@ -49,7 +49,15 @@ const login = async ({ email, password }) => {
     throw mapAuthError(error);
   }
 
-  return buildAuthResponse(data.user, data.session);
+  const user = data.user;
+
+  // Kiểm tra status của user — chỉ cho phép đăng nhập khi status = 'active'
+  const status = await profileModel.getStatusByUserId(user.id);
+  if (status !== "active") {
+    throw new AppError("Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.", 403);
+  }
+
+  return buildAuthResponse(user, data.session);
 };
 
 // -------------------------------------------------------
@@ -102,6 +110,7 @@ const changePassword = async ({ userId, email, currentPassword, newPassword }) =
 // -------------------------------------------------------
 // Admin Login
 // Chỉ cho phép user có role_id = 2 (content_manager) hoặc 3 (admin)
+// và status = 'active'
 // -------------------------------------------------------
 const adminLogin = async ({ email, password }) => {
   const { data, error } = await authModel.signInWithPassword({ email, password });
@@ -112,6 +121,12 @@ const adminLogin = async ({ email, password }) => {
 
   const user = data.user;
   const session = data.session;
+
+  // Kiểm tra status của user — chỉ cho phép đăng nhập khi status = 'active'
+  const status = await profileModel.getStatusByUserId(user.id);
+  if (status !== "active") {
+    throw new AppError("Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.", 403);
+  }
 
   const roleIds = await getRoleIdsByUserIdService(user.id);
   const allowedRoles = [2, 3]; // content_manager, admin

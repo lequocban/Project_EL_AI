@@ -9,12 +9,11 @@ const getProfileById = async (accessToken, userId) => {
   const client = createAuthedClient(accessToken);
   const { data, error } = await client
     .from("profiles")
-    .select("id, user_name, email, day_of_birth")
+    .select("id, user_name, email, day_of_birth, status")
     .eq("id", userId)
     .single();
 
   if (error) {
-    // PGRST116: Row not found — profile chưa được tạo (trigger chưa kịp chạy)
     if (error.code === "PGRST116" || error.code === "PGRST301") {
       return null;
     }
@@ -22,6 +21,32 @@ const getProfileById = async (accessToken, userId) => {
   }
 
   return data;
+};
+
+/**
+ * Lấy status của user từ bảng profiles (dùng service role key).
+ * @param {string} userId
+ * @returns {Promise<string|null>}
+ */
+const getStatusByUserId = async (userId) => {
+  if (!userId) {
+    return null;
+  }
+
+  const { createAdminClient } = require("../../../config/supabase");
+  const client = createAdminClient();
+
+  const { data, error } = await client
+    .from("profiles")
+    .select("status")
+    .eq("id", userId)
+    .single();
+
+  if (error) {
+    return null;
+  }
+
+  return data?.status || null;
 };
 
 const updateProfile = async (accessToken, userId, updates) => {
@@ -50,4 +75,5 @@ const updateProfile = async (accessToken, userId, updates) => {
 module.exports = {
   getProfileById,
   updateProfile,
+  getStatusByUserId,
 };
