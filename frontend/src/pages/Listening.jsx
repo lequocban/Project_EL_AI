@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   Search,
@@ -10,9 +11,16 @@ import {
   Volume2,
   Play,
   Sparkles,
+  Plus,
+  X,
+  Save,
+  Trash2,
+  ChevronDown,
+  ChevronUp,
+  Edit3,
+  Loader2,
 } from "lucide-react";
 import { listeningApi } from "@/api/listeningApi";
-import CreateListeningModal from "@/components/listening/CreateListeningModal";
 
 const LEVEL_LABELS = {
   beginner: "Cơ bản",
@@ -31,13 +39,11 @@ export default function Listening() {
   const [error, setError] = useState("");
   const [tab, setTab] = useState("mine");
   const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState(null);
+  const [startLesson, setStartLesson] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const loadDataRef = useRef(null);
 
-  // Filter tức thì trên dữ liệu đã load (không cần chờ API)
   const filteredLessons = search.trim()
     ? lessons.filter((l) =>
         l.title?.toLowerCase().includes(search.toLowerCase().trim())
@@ -71,23 +77,21 @@ export default function Listening() {
   }, [tab, search]);
 
   const handleCreated = async (lesson) => {
-    setShowCreateModal(false);
-    setTab("mine");
     await loadData();
     try {
       const detail = await listeningApi.getLessonById(lesson.id);
-      setSelected(detail);
+      setStartLesson(detail);
     } catch {
       // Neu khong lay duoc chi tiet, van reload danh sach binh thuong
     }
   };
 
-  if (selected) {
+  if (startLesson) {
     return (
-      <LessonPlayer
-        lesson={selected}
+      <LessonStarter
+        lesson={startLesson}
         onBack={() => {
-          setSelected(null);
+          setStartLesson(null);
           loadData();
         }}
       />
@@ -103,13 +107,6 @@ export default function Listening() {
             Cải thiện kỹ năng nghe tiếng Anh
           </p>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-teal-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-md hover:opacity-90 transition-all"
-        >
-          <Sparkles className="w-4 h-4" />
-          Tạo bài nghe
-        </button>
       </div>
 
       {/* Tabs */}
@@ -182,7 +179,7 @@ export default function Listening() {
                 setDetailLoading(true);
                 try {
                   const detail = await listeningApi.getLessonById(lesson.id);
-                  setSelected(detail);
+                  setStartLesson(detail);
                 } catch (err) {
                   setError(err.message || "Không thể tải chi tiết bài luyện nghe");
                 } finally {
@@ -251,12 +248,524 @@ export default function Listening() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
 
-      {showCreateModal && (
-        <CreateListeningModal
-          onClose={() => setShowCreateModal(false)}
-          onCreated={handleCreated}
-        />
+// Giao diện bắt đầu làm bài (có nút chỉnh sửa)
+function LessonStarter({ lesson, onBack }) {
+  const navigate = useNavigate();
+  const [isEditing, setIsEditing] = useState(false);
+  const [questions, setQuestions] = useState(lesson.questions || []);
+  const [transcriptEn, setTranscriptEn] = useState(lesson.transcript || lesson.audio_script || "");
+  const [transcriptVi, setTranscriptVi] = useState(lesson.vi_translation || "");
+  const [editingQuestion, setEditingQuestion] = useState(null);
+  const [showAddQuestion, setShowAddQuestion] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  // Theo dõi các câu hỏi đã xóa trong session chỉnh sửa này
+  const [deletedQuestionIds, setDeletedQuestionIds] = useState([]);
+  // Các câu hỏi gốc từ server (dùng để phát hiện thay đổi)
+  const originalQuestionsRef = useRef(lesson.questions || []);
+
+  const handleStart = () => {
+    navigate(`/listening/${lesson.id}/practice`, {
+      state: { lesson: { ...lesson, questions, transcript: transcriptEn, vi_translation: transcriptVi } }
+    });
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSaveError("");
+    try {
+      // Lưu transcript và vi_translation trước
+      await listeningApi.updateLesson(lesson.id, {
+        transcript: transcriptEn,
+        viTranslation: transcriptVi,
+      });
+
+      // 1. Xóa các câu hỏi đã được xóa khỏi giao diện
+      if (deletedQuestionIds.length > 0) {
+        await Promise.all(
+          deletedQuestionIds.map((id) => listeningApi.deleteQuestion(id))
+        );
+      }
+
+      // 2. Cập nhật các câu hỏi đã sửa (có id từ server và đã bị thay đổi)
+      const originalMap = new Map(
+        originalQuestionsRef.current.map((q) => [q.id, q])
+      );
+      const modifiedQuestions = questions.filter((q) => {
+        if (!q.id || String(q.id).startsWith("temp_")) return false;
+        const original = originalMap.get(q.id);
+        if (!original) return false;
+        return (
+          original.question !== q.question ||
+          JSON.stringify(original.options) !== JSON.stringify(q.options) ||
+          original.correct_answer !== q.correct_answer ||
+          (original.explain || "") !== (q.explain || "")
+        );
+      });
+      if (modifiedQuestions.length > 0) {
+        await Promise.all(
+          modifiedQuestions.map((q) =>
+            listeningApi.updateQuestion(q.id, {
+              question: q.question,
+              option_a: q.options[0],
+              option_b: q.options[1],
+              option_c: q.options[2],
+              option_d: q.options[3],
+              correct_answer: q.correct_answer,
+              explain: q.explain,
+            })
+          )
+        );
+      }
+
+      // 3. Tạo các câu hỏi mới (chưa có id từ server)
+      const newQuestions = questions.filter(
+        (q) => !q.id || String(q.id).startsWith("temp_")
+      );
+      if (newQuestions.length > 0) {
+        const savedQuestions = await listeningApi.createBulkQuestions(
+          lesson.id,
+          newQuestions.map((q) => ({
+            question: q.question,
+            options: q.options,
+            correct_answer: q.correct_answer,
+            explain: q.explain,
+          }))
+        );
+
+        // Thay thế các câu hỏi tạm bằng câu hỏi đã có id từ server
+        const tempIds = newQuestions.map((q) => q.id);
+        const updatedQuestions = questions.map((q) => {
+          const tempIndex = tempIds.indexOf(q.id);
+          if (tempIndex !== -1 && savedQuestions[tempIndex]) {
+            return { ...q, id: savedQuestions[tempIndex].id };
+          }
+          return q;
+        });
+        setQuestions(updatedQuestions);
+        originalQuestionsRef.current = updatedQuestions;
+      } else {
+        originalQuestionsRef.current = questions;
+      }
+
+      setDeletedQuestionIds([]);
+      setIsEditing(false);
+    } catch (err) {
+      setSaveError(err.message || "Có lỗi xảy ra");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAddQuestion = () => {
+    setEditingQuestion({
+      id: null,
+      question: "",
+      options: ["", "", "", ""],
+      correctAnswer: null,
+      explanation: "",
+    });
+    setShowAddQuestion(true);
+  };
+
+  const handleEditQuestion = (q) => {
+    setEditingQuestion({
+      ...q,
+      correctAnswer: ["A", "B", "C", "D"].indexOf(q.correct_answer),
+    });
+    setShowAddQuestion(true);
+  };
+
+  const handleSaveQuestion = () => {
+    if (!editingQuestion.question.trim()) {
+      alert("Vui lòng nhập nội dung câu hỏi");
+      return;
+    }
+    if (editingQuestion.options.some((o) => !o.trim())) {
+      alert("Vui lòng nhập đầy đủ 4 đáp án");
+      return;
+    }
+    if (editingQuestion.correctAnswer === null) {
+      alert("Vui lòng chọn đáp án đúng");
+      return;
+    }
+
+    const correctLetter = ["A", "B", "C", "D"][editingQuestion.correctAnswer];
+    const newQuestion = {
+      id: editingQuestion.id || `temp_${Date.now()}`,
+      question: editingQuestion.question,
+      options: editingQuestion.options,
+      correct_answer: correctLetter,
+      explain: editingQuestion.explanation,
+    };
+
+    let updatedQuestions;
+    if (editingQuestion.id) {
+      updatedQuestions = questions.map((q) =>
+        q.id === editingQuestion.id ? newQuestion : q
+      );
+    } else {
+      updatedQuestions = [...questions, newQuestion];
+    }
+
+    setQuestions(updatedQuestions);
+    setShowAddQuestion(false);
+    setEditingQuestion(null);
+  };
+
+  const handleDeleteQuestion = (id) => {
+    // Nếu là câu hỏi từ server (có id thật) thì đánh dấu đã xóa
+    if (id && !String(id).startsWith("temp_")) {
+      setDeletedQuestionIds((prev) => [...prev, id]);
+    }
+    const updated = questions.filter((q) => q.id !== id);
+    setQuestions(updated);
+  };
+
+  return (
+    <div className="min-h-screen bg-background p-6 lg:p-8">
+      <button
+        onClick={onBack}
+        className="flex items-center gap-2 text-muted-foreground hover:text-foreground font-semibold text-sm mb-6 transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" /> Quay lại
+      </button>
+
+      <div className="max-w-2xl mx-auto">
+        <div className="bg-white rounded-2xl p-6 shadow-md mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <span
+              className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                LEVEL_COLORS[lesson.level] || "bg-gray-100 text-gray-700"
+              }`}
+            >
+              {LEVEL_LABELS[lesson.level] || lesson.level}
+            </span>
+            {!isEditing && !lesson.is_public && (
+              <button
+                onClick={() => setIsEditing(true)}
+                className="flex items-center gap-1 bg-gradient-to-r from-green-500 to-teal-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm hover:opacity-90 transition-all"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                Chỉnh sửa
+              </button>
+            )}
+          </div>
+
+          <h1 className="text-2xl font-black text-foreground mb-2">
+            {lesson.title}
+          </h1>
+
+          {lesson.description && (
+            <p className="text-sm text-muted-foreground mb-4">
+              {lesson.description}
+            </p>
+          )}
+
+          <div className="bg-gradient-to-br from-green-500 to-teal-600 rounded-xl p-4 text-white mb-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                <Volume2 className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <p className="font-bold text-lg">Bài luyện nghe</p>
+                <p className="text-green-100 text-sm">
+                  {questions.length} câu hỏi
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {saveError && (
+            <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-600">
+              {saveError}
+            </div>
+          )}
+
+          <button
+            onClick={handleStart}
+            className="w-full gradient-primary text-white py-3 rounded-xl font-bold shadow-md hover:opacity-90 transition-all flex items-center justify-center gap-2"
+          >
+            <Play className="w-5 h-5" />
+            Bắt đầu làm bài
+          </button>
+        </div>
+
+        {/* Phần chỉnh sửa đoạn văn - chỉ hiện khi đang chỉnh sửa */}
+        {isEditing && (
+          <div className="bg-white rounded-2xl p-5 shadow-md mb-6">
+            <h3 className="font-black text-foreground mb-4">Nội dung bài nghe</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-2">
+                  Đoạn văn tiếng Anh
+                </label>
+                <textarea
+                  value={transcriptEn}
+                  onChange={(e) => setTranscriptEn(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-border bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                  rows={5}
+                  placeholder="Nhập đoạn văn tiếng Anh..."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-2">
+                  Đoạn văn tiếng Việt
+                </label>
+                <textarea
+                  value={transcriptVi}
+                  onChange={(e) => setTranscriptVi(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-border bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                  rows={5}
+                  placeholder="Nhập đoạn văn tiếng Việt..."
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Danh sách câu hỏi - chỉ hiện khi đang chỉnh sửa */}
+        {isEditing && (
+          <div className="bg-white rounded-2xl p-5 shadow-md mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-black text-foreground">
+                Danh sách câu hỏi ({questions.length})
+              </h3>
+              <button
+                onClick={handleAddQuestion}
+                className="flex items-center gap-1 text-green-600 hover:text-green-700 text-xs font-bold"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Thêm câu hỏi
+              </button>
+            </div>
+
+            {questions.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                Chưa có câu hỏi nào
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {questions.map((q, idx) => (
+                  <div
+                    key={q.id}
+                    className="border border-border rounded-xl p-4 hover:bg-muted/30 transition-all"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <p className="text-xs text-muted-foreground font-semibold mb-1">
+                          Câu {idx + 1}
+                        </p>
+                        <p className="text-sm font-medium text-foreground">
+                          {q.question}
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {q.options?.map((opt, oi) => (
+                            <span
+                              key={oi}
+                              className={`text-xs px-2 py-0.5 rounded-full ${
+                                ["A", "B", "C", "D"][oi] === q.correct_answer
+                                  ? "bg-green-100 text-green-700 font-semibold"
+                                  : "bg-gray-100 text-gray-600"
+                              }`}
+                            >
+                              {["A", "B", "C", "D"][oi]}. {opt}
+                            </span>
+                          ))}
+                        </div>
+                        {q.explain && (
+                          <p className="text-xs text-blue-600 mt-2">
+                            <strong>Giải thích:</strong> {q.explain}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex gap-1 ml-2">
+                        <button
+                          onClick={() => handleEditQuestion(q)}
+                          className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
+                          title="Sửa"
+                        >
+                          <Sparkles className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteQuestion(q.id)}
+                          className="p-1.5 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                          title="Xóa"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Nút Hủy / Lưu khi đang chỉnh sửa */}
+        {isEditing && (
+          <div className="flex gap-3">
+            <button
+              onClick={() => {
+                setIsEditing(false);
+                setQuestions(lesson.questions || []);
+                setTranscriptEn(lesson.transcript || lesson.audio_script || "");
+                setTranscriptVi(lesson.vi_translation || "");
+                setDeletedQuestionIds([]);
+                originalQuestionsRef.current = lesson.questions || [];
+              }}
+              disabled={saving}
+              className="flex-1 border border-border py-3 rounded-xl font-bold text-sm hover:bg-muted transition-all flex items-center justify-center gap-2"
+            >
+              <X className="w-4 h-4" />
+              Hủy
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex-1 gradient-primary text-white py-3 rounded-xl font-bold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2"
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Đang lưu...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  Lưu
+                </>
+              )}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Modal thêm/sửa câu hỏi */}
+      {showAddQuestion && editingQuestion && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-black text-foreground">
+                {editingQuestion.id ? "Sửa câu hỏi" : "Thêm câu hỏi mới"}
+              </h2>
+              <button
+                onClick={() => {
+                  setShowAddQuestion(false);
+                  setEditingQuestion(null);
+                }}
+                className="p-1.5 hover:bg-muted rounded-lg transition-all"
+              >
+                <X className="w-5 h-5 text-muted-foreground" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-2">
+                  Nội dung câu hỏi
+                </label>
+                <textarea
+                  value={editingQuestion.question}
+                  onChange={(e) =>
+                    setEditingQuestion({
+                      ...editingQuestion,
+                      question: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 rounded-xl border border-border bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                  rows={3}
+                  placeholder="Nhập nội dung câu hỏi..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-2">
+                  Các đáp án
+                </label>
+                <div className="space-y-2">
+                  {["A", "B", "C", "D"].map((letter, idx) => (
+                    <div key={letter} className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={editingQuestion.correctAnswer === idx}
+                        onChange={() =>
+                          setEditingQuestion({
+                            ...editingQuestion,
+                            correctAnswer: idx,
+                          })
+                        }
+                        className="w-4 h-4 text-green-600 rounded border-gray-300 focus:ring-green-500"
+                      />
+                      <span className="text-xs font-bold text-muted-foreground w-5">
+                        {letter}.
+                      </span>
+                      <input
+                        type="text"
+                        value={editingQuestion.options[idx]}
+                        onChange={(e) => {
+                          const newOptions = [...editingQuestion.options];
+                          newOptions[idx] = e.target.value;
+                          setEditingQuestion({
+                            ...editingQuestion,
+                            options: newOptions,
+                          });
+                        }}
+                        className="flex-1 px-3 py-2 rounded-xl border border-border bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
+                        placeholder={`Đáp án ${letter}`}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Tích vào ô bên cạnh đáp án để chọn đáp án đúng
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-2">
+                  Giải thích (tùy chọn)
+                </label>
+                <textarea
+                  value={editingQuestion.explanation}
+                  onChange={(e) =>
+                    setEditingQuestion({
+                      ...editingQuestion,
+                      explanation: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 rounded-xl border border-border bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                  rows={2}
+                  placeholder="Nhập giải thích cho câu hỏi..."
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowAddQuestion(false);
+                  setEditingQuestion(null);
+                }}
+                className="flex-1 border border-border py-2.5 rounded-xl font-bold text-sm hover:bg-muted transition-all"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleSaveQuestion}
+                className="flex-1 gradient-primary text-white py-2.5 rounded-xl font-bold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2"
+              >
+                <Save className="w-4 h-4" />
+                Lưu
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -273,10 +782,11 @@ function LessonPlayer({ lesson, onBack }) {
   const [submitError, setSubmitError] = useState("");
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [showTranscript, setShowTranscript] = useState(false);
+  const [questions] = useState(lesson.questions || []);
+  const [transcriptEn] = useState(lesson.transcript || lesson.audio_script || "");
+  const [transcriptVi] = useState(lesson.vi_translation || "");
 
-  const questions = lesson.questions || [];
-
-  // Dừng audio khi rời khỏi component
   useEffect(() => {
     return () => {
       window.speechSynthesis.cancel();
@@ -298,7 +808,7 @@ function LessonPlayer({ lesson, onBack }) {
 
   const speak = () => {
     window.speechSynthesis.cancel();
-    const text = lesson.audioUrl ? "" : lesson.transcript || lesson.audio_script || "";
+    const text = transcriptEn;
     if (!text) return;
     const utt = new SpeechSynthesisUtterance(text);
     utt.lang = "en-US";
@@ -310,9 +820,22 @@ function LessonPlayer({ lesson, onBack }) {
     window.speechSynthesis.speak(utt);
   };
 
+  const speakVietnamese = (text) => {
+    window.speechSynthesis.cancel();
+    if (!text) return;
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.lang = "vi-VN";
+    utt.rate = 0.9;
+    utt.onend = () => setSpeaking(false);
+    utt.onerror = () => setSpeaking(false);
+    uttRef.current = utt;
+    setSpeaking(true);
+    window.speechSynthesis.speak(utt);
+  };
+
   const handleSubmit = async () => {
     if (Object.keys(answers).length < questions.length) return;
-    stopAudio(); // Dừng audio trước khi nộp bài
+    stopAudio();
     setSubmitting(true);
     setSubmitError("");
     try {
@@ -323,6 +846,16 @@ function LessonPlayer({ lesson, onBack }) {
       const data = await listeningApi.submitListeningPractice(lesson.id, answerList);
       setResult(data);
       setSubmitted(true);
+      setShowTranscript(true);
+      setTimeout(() => {
+        if (audioUrl) {
+          if (audioRef.current) {
+            audioRef.current.play().catch(() => {});
+          }
+        } else {
+          speak();
+        }
+      }, 300);
     } catch (err) {
       setSubmitError(err.message || "Không thể nộp bài");
       setSubmitting(false);
@@ -331,16 +864,10 @@ function LessonPlayer({ lesson, onBack }) {
 
   const allAnswered = questions.every((_, i) => answers[i] !== undefined);
   const answeredCount = Object.keys(answers).length;
-  const transcript = lesson.transcript || lesson.audio_script || "";
   const audioUrl = lesson.audioUrl || lesson.audio_url || "";
 
-  // Xử lý hiển thị kết quả chi tiết
   const getResults = () => {
     if (submitted && result) {
-      const correctCount =
-        result.correctCount ??
-        result.details?.filter((d) => d.isCorrect).length ??
-        0;
       return questions.map((q, i) => {
         const answerData = result.details?.find((d) => d.questionId === q.id);
         const userAnswerIndex = answers[i];
@@ -376,7 +903,6 @@ function LessonPlayer({ lesson, onBack }) {
   const percentage =
     questions.length > 0 ? Math.round((correctCount / questions.length) * 100) : 0;
 
-  // Modal xác nhận thoát
   if (showExitConfirm) {
     return (
       <div className="min-h-screen bg-background p-6 lg:p-8 flex items-center justify-center">
@@ -415,7 +941,10 @@ function LessonPlayer({ lesson, onBack }) {
     return (
       <div className="min-h-screen bg-background p-6 lg:p-8">
         <button
-          onClick={onBack}
+          onClick={() => {
+            stopAudio();
+            onBack();
+          }}
           className="flex items-center gap-2 text-muted-foreground hover:text-foreground font-semibold text-sm mb-6 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" /> Quay lại
@@ -441,6 +970,99 @@ function LessonPlayer({ lesson, onBack }) {
             </div>
           </div>
         </div>
+
+        {/* Audio player */}
+        <div className="max-w-lg mx-auto mb-6">
+          <div className="bg-gradient-to-br from-green-500 to-teal-600 rounded-2xl p-6 text-white shadow-lg">
+            <div className="flex items-center gap-4">
+              <div className="flex gap-3">
+                {audioUrl ? (
+                  <audio
+                    ref={audioRef}
+                    src={audioUrl}
+                    controls
+                    className="h-14 rounded-lg"
+                    onEnded={() => setSpeaking(false)}
+                  />
+                ) : (
+                  <button
+                    onClick={speaking ? stopAudio : speak}
+                    className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition-all"
+                  >
+                    {speaking ? (
+                      <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
+                        <rect x="6" y="6" width="12" height="12" rx="2" />
+                      </svg>
+                    ) : (
+                      <Play className="w-7 h-7" />
+                    )}
+                  </button>
+                )}
+              </div>
+              <div>
+                <p className="font-bold flex items-center gap-2">
+                  {speaking ? (
+                    <><Volume2 className="w-4 h-4 animate-pulse" /> Đang phát...</>
+                  ) : (
+                    "Nghe lại bài nghe"
+                  )}
+                </p>
+                <p className="text-green-100 text-sm">Text-to-Speech</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Transcript */}
+        {(transcriptEn || transcriptVi) && (
+          <div className="max-w-lg mx-auto mb-6">
+            <div className="bg-white rounded-2xl border border-border overflow-hidden shadow-md">
+              <button
+                onClick={() => setShowTranscript(!showTranscript)}
+                className="w-full p-4 font-bold text-sm cursor-pointer hover:bg-muted flex items-center justify-between transition-all"
+              >
+                <span className="flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Nội dung bài nghe & Bản dịch
+                </span>
+                {showTranscript ? (
+                  <ChevronUp className="w-4 h-4" />
+                ) : (
+                  <ChevronDown className="w-4 h-4" />
+                )}
+              </button>
+              {showTranscript && (
+                <div className="p-4 pt-0 space-y-4">
+                  {transcriptEn && (
+                    <div>
+                      <p className="text-xs font-semibold text-green-600 mb-1">Tiếng Anh</p>
+                      <p className="text-sm text-foreground whitespace-pre-line font-medium">
+                        {transcriptEn}
+                      </p>
+                    </div>
+                  )}
+                  {transcriptVi && (
+                    <div>
+                      <p className="text-xs font-semibold text-blue-600 mb-1">Tiếng Việt</p>
+                      <p className="text-sm text-foreground whitespace-pre-line font-medium">
+                        {transcriptVi}
+                      </p>
+                      <button
+                        onClick={() => speakVietnamese(transcriptVi)}
+                        className="mt-2 text-xs text-blue-500 hover:text-blue-700 flex items-center gap-1"
+                      >
+                        <Volume2 className="w-3 h-3" />
+                        Nghe bản dịch
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Chi tiết từng câu */}
         <div className="space-y-4 max-w-lg mx-auto">
@@ -516,7 +1138,10 @@ function LessonPlayer({ lesson, onBack }) {
 
         <div className="max-w-lg mx-auto mt-6">
           <button
-            onClick={onBack}
+            onClick={() => {
+              stopAudio();
+              onBack();
+            }}
             className="w-full gradient-primary text-white py-3 rounded-xl font-bold shadow-md hover:opacity-90 transition-all"
           >
             Quay lại danh sách bài
@@ -526,7 +1151,7 @@ function LessonPlayer({ lesson, onBack }) {
     );
   }
 
-  // Giao diện đang làm bài
+  // Giao diện đang làm bài - KHÔNG có nút chỉnh sửa
   return (
     <div className="min-h-screen bg-background p-6 lg:p-8">
       <div className="flex items-center justify-between mb-4">
@@ -559,56 +1184,35 @@ function LessonPlayer({ lesson, onBack }) {
                   onEnded={() => setSpeaking(false)}
                 />
               ) : (
-                <>
-                  <button
-                    onClick={speaking ? stopAudio : speak}
-                    disabled={speaking && !audioUrl}
-                    className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition-all"
-                  >
-                    {speaking ? (
-                      <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
-                        <rect x="6" y="6" width="12" height="12" rx="2" />
-                      </svg>
-                    ) : (
-                      <Play className="w-7 h-7" />
-                    )}
-                  </button>
-                </>
+                <button
+                  onClick={speaking ? stopAudio : speak}
+                  disabled={speaking && !audioUrl}
+                  className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition-all"
+                >
+                  {speaking ? (
+                    <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
+                      <rect x="6" y="6" width="12" height="12" rx="2" />
+                    </svg>
+                  ) : (
+                    <Play className="w-7 h-7" />
+                  )}
+                </button>
               )}
             </div>
             <div>
               <p className="font-bold flex items-center gap-2">
                 {speaking ? (
                   <><Volume2 className="w-4 h-4 animate-pulse" /> Đang phát...</>
-                ) : audioUrl ? (
-                  "Trình phát audio"
                 ) : (
                   "Nhấn ▶ để nghe bài"
                 )}
               </p>
               <p className="text-green-100 text-sm">
-                {audioUrl ? "Audio từ server" : speaking ? "Nhấn ■ để dừng" : "Text-to-Speech"}
+                {speaking ? "Nhấn ■ để dừng" : "Text-to-Speech"}
               </p>
             </div>
           </div>
         </div>
-
-        {/* Transcript */}
-        {transcript && (
-          <details className="bg-white rounded-2xl border border-border mb-6 overflow-hidden">
-            <summary className="p-4 font-bold text-sm cursor-pointer hover:bg-muted flex items-center gap-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              Xem nội dung bài nghe
-            </summary>
-            <div className="p-4 pt-0">
-              <p className="text-sm text-muted-foreground whitespace-pre-line font-medium">
-                {transcript}
-              </p>
-            </div>
-          </details>
-        )}
 
         {submitError && (
           <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-600">
@@ -720,3 +1324,47 @@ function LessonPlayer({ lesson, onBack }) {
     </div>
   );
 }
+
+// Component xử lý route /listening/:id/practice
+function ListeningPractice() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [lesson, setLesson] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadLesson = async () => {
+      setLoading(true);
+      try {
+        const detail = await listeningApi.getLessonById(id);
+        setLesson(detail);
+      } catch (err) {
+        console.error("Không thể tải bài luyện nghe:", err);
+        navigate("/listening");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadLesson();
+  }, [id, navigate]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted-foreground text-sm">Đang tải bài luyện nghe...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!lesson) {
+    return null;
+  }
+
+  return <LessonPlayer lesson={lesson} onBack={() => navigate("/listening")} />;
+}
+
+// Export LessonPlayer để có thể sử dụng ở nơi khác (nếu cần)
+export { LessonPlayer, ListeningPractice };

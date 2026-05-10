@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   Search,
@@ -8,9 +9,16 @@ import {
   CheckCircle,
   XCircle,
   Sparkles,
+  Plus,
+  X,
+  Save,
+  Trash2,
+  ChevronDown,
+  ChevronUp,
+  Edit3,
+  Loader2,
 } from "lucide-react";
 import { readingApi } from "@/api/readingApi";
-import CreateReadingModal from "@/components/reading/CreateReadingModal";
 
 const LEVEL_LABELS = {
   beginner: "Cơ bản",
@@ -29,13 +37,11 @@ export default function Reading() {
   const [error, setError] = useState("");
   const [tab, setTab] = useState("mine");
   const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState(null);
+  const [startLesson, setStartLesson] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const loadDataRef = useRef(null);
 
-  // Filter tức thì trên dữ liệu đã load (không cần chờ API)
   const filteredLessons = search.trim()
     ? lessons.filter((l) =>
         l.title?.toLowerCase().includes(search.toLowerCase().trim())
@@ -69,23 +75,21 @@ export default function Reading() {
   }, [tab, search]);
 
   const handleCreated = async (lesson) => {
-    setShowCreateModal(false);
-    setTab("mine");
     await loadData();
     try {
       const detail = await readingApi.getLessonById(lesson.id);
-      setSelected(detail);
+      setStartLesson(detail);
     } catch {
       // Neu khong lay duoc chi tiet, van reload danh sach binh thuong
     }
   };
 
-  if (selected) {
+  if (startLesson) {
     return (
-      <ReadingPlayer
-        lesson={selected}
+      <ReadingStarter
+        lesson={startLesson}
         onBack={() => {
-          setSelected(null);
+          setStartLesson(null);
           loadData();
         }}
       />
@@ -101,13 +105,6 @@ export default function Reading() {
             Nâng cao kỹ năng đọc hiểu tiếng Anh
           </p>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-md hover:opacity-90 transition-all"
-        >
-          <Sparkles className="w-4 h-4" />
-          Tạo bài đọc
-        </button>
       </div>
 
       {/* Tabs */}
@@ -180,7 +177,7 @@ export default function Reading() {
                 setDetailLoading(true);
                 try {
                   const detail = await readingApi.getLessonById(lesson.id);
-                  setSelected(detail);
+                  setStartLesson(detail);
                 } catch (err) {
                   setError(err.message || "Không thể tải chi tiết bài luyện đọc");
                 } finally {
@@ -249,12 +246,528 @@ export default function Reading() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
 
-      {showCreateModal && (
-        <CreateReadingModal
-          onClose={() => setShowCreateModal(false)}
-          onCreated={handleCreated}
-        />
+// Giao diện bắt đầu làm bài (có nút chỉnh sửa)
+function ReadingStarter({ lesson, onBack }) {
+  const navigate = useNavigate();
+  const [isEditing, setIsEditing] = useState(false);
+  const [questions, setQuestions] = useState(lesson.questions || []);
+  const [passageContent, setPassageContent] = useState(lesson.content || lesson.passage || "");
+  const [passageVi, setPassageVi] = useState(lesson.vi_translation || "");
+  const [editingQuestion, setEditingQuestion] = useState(null);
+  const [showAddQuestion, setShowAddQuestion] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  // Theo dõi các câu hỏi đã xóa trong session chỉnh sửa này
+  const [deletedQuestionIds, setDeletedQuestionIds] = useState([]);
+  // Các câu hỏi gốc từ server (dùng để phát hiện thay đổi)
+  const originalQuestionsRef = useRef(lesson.questions || []);
+
+  const handleStart = () => {
+    navigate(`/reading/${lesson.id}/practice`, {
+      state: { lesson: { ...lesson, questions, content: passageContent, vi_translation: passageVi } }
+    });
+  };
+
+  // Lưu content, vi_translation và đồng bộ câu hỏi xuống database
+  const handleSave = async () => {
+    setSaving(true);
+    setSaveError("");
+    try {
+      // Lưu content và vi_translation trước
+      await readingApi.updateLesson(lesson.id, {
+        content: passageContent,
+        vi_translation: passageVi,
+      });
+
+      // 1. Xóa các câu hỏi đã được xóa khỏi giao diện
+      if (deletedQuestionIds.length > 0) {
+        await Promise.all(
+          deletedQuestionIds.map((id) => readingApi.deleteQuestion(id))
+        );
+      }
+
+      // 2. Cập nhật các câu hỏi đã sửa (có id từ server và đã bị thay đổi)
+      const originalMap = new Map(
+        originalQuestionsRef.current.map((q) => [q.id, q])
+      );
+      const modifiedQuestions = questions.filter((q) => {
+        if (!q.id || String(q.id).startsWith("temp_")) return false;
+        const original = originalMap.get(q.id);
+        if (!original) return false;
+        return (
+          original.question !== q.question ||
+          JSON.stringify(original.options) !== JSON.stringify(q.options) ||
+          original.correct_answer !== q.correct_answer ||
+          (original.explain || "") !== (q.explain || "")
+        );
+      });
+      if (modifiedQuestions.length > 0) {
+        await Promise.all(
+          modifiedQuestions.map((q) =>
+            readingApi.updateQuestion(q.id, {
+              question: q.question,
+              option_a: q.options[0],
+              option_b: q.options[1],
+              option_c: q.options[2],
+              option_d: q.options[3],
+              correct_answer: q.correct_answer,
+              explain: q.explain,
+            })
+          )
+        );
+      }
+
+      // 3. Tạo các câu hỏi mới (chưa có id từ server)
+      const newQuestions = questions.filter(
+        (q) => !q.id || String(q.id).startsWith("temp_")
+      );
+      if (newQuestions.length > 0) {
+        const savedQuestions = await readingApi.createBulkQuestions(
+          lesson.id,
+          newQuestions.map((q) => ({
+            question: q.question,
+            options: q.options,
+            correct_answer: q.correct_answer,
+            explain: q.explain,
+          }))
+        );
+
+        // Thay thế các câu hỏi tạm bằng câu hỏi đã có id từ server
+        const tempIds = newQuestions.map((q) => q.id);
+        const updatedQuestions = questions.map((q) => {
+          const tempIndex = tempIds.indexOf(q.id);
+          if (tempIndex !== -1 && savedQuestions[tempIndex]) {
+            return { ...q, id: savedQuestions[tempIndex].id };
+          }
+          return q;
+        });
+        setQuestions(updatedQuestions);
+        // Cập nhật lại ref gốc để lần sau biết được câu hỏi nào là mới
+        originalQuestionsRef.current = updatedQuestions;
+      } else {
+        // Nếu không có câu hỏi mới, cập nhật ref gốc với các thay đổi hiện tại
+        originalQuestionsRef.current = questions;
+      }
+
+      setDeletedQuestionIds([]);
+      setIsEditing(false);
+    } catch (err) {
+      setSaveError(err.message || "Có lỗi xảy ra");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAddQuestion = () => {
+    setEditingQuestion({
+      id: null,
+      question: "",
+      options: ["", "", "", ""],
+      correctAnswer: null,
+      explanation: "",
+    });
+    setShowAddQuestion(true);
+  };
+
+  const handleEditQuestion = (q) => {
+    setEditingQuestion({
+      ...q,
+      correctAnswer: ["A", "B", "C", "D"].indexOf(q.correct_answer),
+    });
+    setShowAddQuestion(true);
+  };
+
+  const handleSaveQuestion = () => {
+    if (!editingQuestion.question.trim()) {
+      alert("Vui lòng nhập nội dung câu hỏi");
+      return;
+    }
+    if (editingQuestion.options.some((o) => !o.trim())) {
+      alert("Vui lòng nhập đầy đủ 4 đáp án");
+      return;
+    }
+    if (editingQuestion.correctAnswer === null) {
+      alert("Vui lòng chọn đáp án đúng");
+      return;
+    }
+
+    const correctLetter = ["A", "B", "C", "D"][editingQuestion.correctAnswer];
+    const newQuestion = {
+      id: editingQuestion.id || `temp_${Date.now()}`,
+      question: editingQuestion.question,
+      options: editingQuestion.options,
+      correct_answer: correctLetter,
+      explain: editingQuestion.explanation,
+    };
+
+    let updatedQuestions;
+    if (editingQuestion.id) {
+      updatedQuestions = questions.map((q) =>
+        q.id === editingQuestion.id ? newQuestion : q
+      );
+    } else {
+      updatedQuestions = [...questions, newQuestion];
+    }
+
+    setQuestions(updatedQuestions);
+    setShowAddQuestion(false);
+    setEditingQuestion(null);
+  };
+
+  const handleDeleteQuestion = (id) => {
+    // Nếu là câu hỏi từ server (có id thật) thì đánh dấu đã xóa
+    if (id && !String(id).startsWith("temp_")) {
+      setDeletedQuestionIds((prev) => [...prev, id]);
+    }
+    const updated = questions.filter((q) => q.id !== id);
+    setQuestions(updated);
+  };
+
+  return (
+    <div className="min-h-screen bg-background p-6 lg:p-8">
+      <button
+        onClick={onBack}
+        className="flex items-center gap-2 text-muted-foreground hover:text-foreground font-semibold text-sm mb-6 transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" /> Quay lại
+      </button>
+
+      <div className="max-w-2xl mx-auto">
+        <div className="bg-white rounded-2xl p-6 shadow-md mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <span
+              className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                LEVEL_COLORS[lesson.level] || "bg-gray-100 text-gray-700"
+              }`}
+            >
+              {LEVEL_LABELS[lesson.level] || lesson.level}
+            </span>
+            {!isEditing && !lesson.is_public && (
+              <button
+                onClick={() => setIsEditing(true)}
+                className="flex items-center gap-1 bg-gradient-to-r from-orange-500 to-amber-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm hover:opacity-90 transition-all"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                Chỉnh sửa
+              </button>
+            )}
+          </div>
+
+          <h1 className="text-2xl font-black text-foreground mb-2">
+            {lesson.title}
+          </h1>
+
+          {lesson.description && (
+            <p className="text-sm text-muted-foreground mb-4">
+              {lesson.description}
+            </p>
+          )}
+
+          <div className="bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl p-4 text-white mb-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+              </div>
+              <div>
+                <p className="font-bold text-lg">Bài luyện đọc</p>
+                <p className="text-orange-100 text-sm">
+                  {questions.length} câu hỏi
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {saveError && (
+            <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-600">
+              {saveError}
+            </div>
+          )}
+
+          <button
+            onClick={handleStart}
+            className="w-full gradient-primary text-white py-3 rounded-xl font-bold shadow-md hover:opacity-90 transition-all flex items-center justify-center gap-2"
+          >
+            Bắt đầu làm bài
+          </button>
+        </div>
+
+        {/* Phần đoạn văn - chỉ hiện khi đang chỉnh sửa */}
+        {isEditing && (
+          <div className="bg-white rounded-2xl p-5 shadow-md mb-6">
+            <h3 className="font-black text-foreground mb-4">Nội dung bài đọc</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-2">
+                  Đoạn văn tiếng Anh
+                </label>
+                <textarea
+                  value={passageContent}
+                  onChange={(e) => setPassageContent(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-border bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                  rows={8}
+                  placeholder="Nhập đoạn văn tiếng Anh..."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-2">
+                  Đoạn văn tiếng Việt
+                </label>
+                <textarea
+                  value={passageVi}
+                  onChange={(e) => setPassageVi(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-border bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                  rows={8}
+                  placeholder="Nhập đoạn văn tiếng Việt..."
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Danh sách câu hỏi - chỉ hiện khi đang chỉnh sửa */}
+        {isEditing && (
+          <div className="bg-white rounded-2xl p-5 shadow-md mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-black text-foreground">
+                Danh sách câu hỏi ({questions.length})
+              </h3>
+              <button
+                onClick={handleAddQuestion}
+                className="flex items-center gap-1 text-green-600 hover:text-green-700 text-xs font-bold"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Thêm câu hỏi
+              </button>
+            </div>
+
+            {questions.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                Chưa có câu hỏi nào
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {questions.map((q, idx) => (
+                  <div
+                    key={q.id}
+                    className="border border-border rounded-xl p-4 hover:bg-muted/30 transition-all"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <p className="text-xs text-muted-foreground font-semibold mb-1">
+                          Câu {idx + 1}
+                        </p>
+                        <p className="text-sm font-medium text-foreground">
+                          {q.question}
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {q.options?.map((opt, oi) => (
+                            <span
+                              key={oi}
+                              className={`text-xs px-2 py-0.5 rounded-full ${
+                                ["A", "B", "C", "D"][oi] === q.correct_answer
+                                  ? "bg-green-100 text-green-700 font-semibold"
+                                  : "bg-gray-100 text-gray-600"
+                              }`}
+                            >
+                              {["A", "B", "C", "D"][oi]}. {opt}
+                            </span>
+                          ))}
+                        </div>
+                        {q.explain && (
+                          <p className="text-xs text-blue-600 mt-2">
+                            <strong>Giải thích:</strong> {q.explain}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex gap-1 ml-2">
+                        <button
+                          onClick={() => handleEditQuestion(q)}
+                          className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
+                          title="Sửa"
+                        >
+                          <Sparkles className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteQuestion(q.id)}
+                          className="p-1.5 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                          title="Xóa"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Nút Hủy / Lưu - chỉ hiện khi đang chỉnh sửa */}
+        {isEditing && (
+          <div className="flex gap-3 mb-6">
+            <button
+              onClick={() => {
+                setIsEditing(false);
+                setQuestions(lesson.questions || []);
+                setPassageContent(lesson.content || lesson.passage || "");
+                setPassageVi(lesson.vi_translation || "");
+                setDeletedQuestionIds([]);
+                originalQuestionsRef.current = lesson.questions || [];
+              }}
+              disabled={saving}
+              className="flex-1 border border-border py-3 rounded-xl font-bold text-sm hover:bg-muted transition-all flex items-center justify-center gap-2"
+            >
+              <X className="w-4 h-4" />
+              Hủy
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex-1 gradient-primary text-white py-3 rounded-xl font-bold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2"
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Đang lưu...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  Lưu
+                </>
+              )}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Modal thêm/sửa câu hỏi */}
+      {showAddQuestion && editingQuestion && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-black text-foreground">
+                {editingQuestion.id ? "Sửa câu hỏi" : "Thêm câu hỏi mới"}
+              </h2>
+              <button
+                onClick={() => {
+                  setShowAddQuestion(false);
+                  setEditingQuestion(null);
+                }}
+                className="p-1.5 hover:bg-muted rounded-lg transition-all"
+              >
+                <X className="w-5 h-5 text-muted-foreground" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-2">
+                  Nội dung câu hỏi
+                </label>
+                <textarea
+                  value={editingQuestion.question}
+                  onChange={(e) =>
+                    setEditingQuestion({
+                      ...editingQuestion,
+                      question: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 rounded-xl border border-border bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                  rows={3}
+                  placeholder="Nhập nội dung câu hỏi..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-2">
+                  Các đáp án
+                </label>
+                <div className="space-y-2">
+                  {["A", "B", "C", "D"].map((letter, idx) => (
+                    <div key={letter} className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={editingQuestion.correctAnswer === idx}
+                        onChange={() =>
+                          setEditingQuestion({
+                            ...editingQuestion,
+                            correctAnswer: idx,
+                          })
+                        }
+                        className="w-4 h-4 text-green-600 rounded border-gray-300 focus:ring-green-500"
+                      />
+                      <span className="text-xs font-bold text-muted-foreground w-5">
+                        {letter}.
+                      </span>
+                      <input
+                        type="text"
+                        value={editingQuestion.options[idx]}
+                        onChange={(e) => {
+                          const newOptions = [...editingQuestion.options];
+                          newOptions[idx] = e.target.value;
+                          setEditingQuestion({
+                            ...editingQuestion,
+                            options: newOptions,
+                          });
+                        }}
+                        className="flex-1 px-3 py-2 rounded-xl border border-border bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
+                        placeholder={`Đáp án ${letter}`}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Tích vào ô bên cạnh đáp án để chọn đáp án đúng
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-2">
+                  Giải thích (tùy chọn)
+                </label>
+                <textarea
+                  value={editingQuestion.explanation}
+                  onChange={(e) =>
+                    setEditingQuestion({
+                      ...editingQuestion,
+                      explanation: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 rounded-xl border border-border bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                  rows={2}
+                  placeholder="Nhập giải thích cho câu hỏi..."
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowAddQuestion(false);
+                  setEditingQuestion(null);
+                }}
+                className="flex-1 border border-border py-2.5 rounded-xl font-bold text-sm hover:bg-muted transition-all"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleSaveQuestion}
+                className="flex-1 gradient-primary text-white py-2.5 rounded-xl font-bold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2"
+              >
+                <Save className="w-4 h-4" />
+                Lưu
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -268,17 +781,32 @@ function ReadingPlayer({ lesson, onBack }) {
   const [submitError, setSubmitError] = useState("");
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [showPassage, setShowPassage] = useState(false);
+  const [passageVi] = useState(lesson.vi_translation || "");
+  const [questions] = useState(lesson.questions || []);
+  const [passageContent] = useState(lesson.content || lesson.passage || "");
 
-  const questions = lesson.questions || [];
+  const handleSubmit = async () => {
+    if (Object.keys(answers).length < questions.length) return;
+    setSubmitting(true);
+    setSubmitError("");
+    try {
+      const answerList = questions.map((q, i) => ({
+        questionId: q.id,
+        answer: ["A", "B", "C", "D"][answers[i]] || "",
+      }));
+      const data = await readingApi.submitReadingPractice(lesson.id, answerList);
+      setResult(data);
+      setSubmitted(true);
+      setShowPassage(true);
+    } catch (err) {
+      setSubmitError(err.message || "Không thể nộp bài");
+      setSubmitting(false);
+    }
+  };
 
-  // Xử lý hiển thị kết quả chi tiết
   const getResults = () => {
     if (submitted && result) {
-      // Sử dụng kết quả từ backend
-      const correctCount =
-        result.correctCount ??
-        result.details?.filter((d) => d.isCorrect).length ??
-        0;
       return questions.map((q, i) => {
         const answerData = result.details?.find((d) => d.questionId === q.id);
         const userAnswerIndex = answers[i];
@@ -295,7 +823,6 @@ function ReadingPlayer({ lesson, onBack }) {
         };
       });
     }
-    // Tính toán phía frontend
     return questions.map((q, i) => {
       const userAnswerIndex = answers[i];
       const userAnswer = ["A", "B", "C", "D"][userAnswerIndex] || "";
@@ -309,24 +836,6 @@ function ReadingPlayer({ lesson, onBack }) {
     });
   };
 
-  const handleSubmit = async () => {
-    if (Object.keys(answers).length < questions.length) return;
-    setSubmitting(true);
-    setSubmitError("");
-    try {
-      const answerList = questions.map((q, i) => ({
-        questionId: q.id,
-        answer: ["A", "B", "C", "D"][answers[i]] || "",
-      }));
-      const data = await readingApi.submitReadingPractice(lesson.id, answerList);
-      setResult(data);
-      setSubmitted(true);
-    } catch (err) {
-      setSubmitError(err.message || "Không thể nộp bài");
-      setSubmitting(false);
-    }
-  };
-
   const allAnswered = questions.every((_, i) => answers[i] !== undefined);
   const answeredCount = Object.keys(answers).length;
   const results = submitted ? getResults() : [];
@@ -335,7 +844,6 @@ function ReadingPlayer({ lesson, onBack }) {
   const percentage =
     questions.length > 0 ? Math.round((correctCount / questions.length) * 100) : 0;
 
-  // Modal xác nhận thoát
   if (showExitConfirm) {
     return (
       <div className="min-h-screen bg-background p-6 lg:p-8 flex items-center justify-center">
@@ -397,6 +905,48 @@ function ReadingPlayer({ lesson, onBack }) {
             </div>
           </div>
         </div>
+
+        {/* Đoạn văn với bản dịch từ database */}
+        {passageContent && (
+          <div className="max-w-lg mx-auto mb-6">
+            <div className="bg-white rounded-2xl border border-border overflow-hidden shadow-md">
+              <button
+                onClick={() => setShowPassage(!showPassage)}
+                className="w-full p-4 font-bold text-sm cursor-pointer hover:bg-muted flex items-center justify-between transition-all"
+              >
+                <span className="flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                  Đoạn văn bài đọc & Bản dịch
+                </span>
+                {showPassage ? (
+                  <ChevronUp className="w-4 h-4" />
+                ) : (
+                  <ChevronDown className="w-4 h-4" />
+                )}
+              </button>
+              {showPassage && (
+                <div className="p-4 pt-0 space-y-4">
+                  <div>
+                    <p className="text-xs font-semibold text-orange-600 mb-1">Tiếng Anh</p>
+                    <p className="text-sm text-foreground whitespace-pre-line font-medium leading-relaxed">
+                      {passageContent}
+                    </p>
+                  </div>
+                  {passageVi && (
+                    <div>
+                      <p className="text-xs font-semibold text-blue-600 mb-1">Tiếng Việt</p>
+                      <p className="text-sm text-foreground whitespace-pre-line font-medium leading-relaxed">
+                        {passageVi}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Chi tiết từng câu */}
         <div className="space-y-4 max-w-lg mx-auto">
@@ -482,7 +1032,7 @@ function ReadingPlayer({ lesson, onBack }) {
     );
   }
 
-  // Giao diện đang làm bài
+  // Giao diện đang làm bài - KHÔNG có nút chỉnh sửa
   return (
     <div className="min-h-screen bg-background p-6 lg:p-8">
       <div className="flex items-center justify-between mb-4">
@@ -501,11 +1051,6 @@ function ReadingPlayer({ lesson, onBack }) {
         <h1 className="text-2xl font-black text-foreground mb-6">
           {lesson.title}
         </h1>
-        <div className="bg-white rounded-2xl border border-border p-6 mb-6 shadow-sm">
-          <p className="text-sm text-foreground leading-relaxed whitespace-pre-line font-medium">
-            {lesson.content || lesson.passage || ""}
-          </p>
-        </div>
 
         {submitError && (
           <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-600">
@@ -621,3 +1166,46 @@ function ReadingPlayer({ lesson, onBack }) {
     </div>
   );
 }
+
+// Component xử lý route /reading/:id/practice
+function ReadingPractice() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [lesson, setLesson] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadLesson = async () => {
+      setLoading(true);
+      try {
+        const detail = await readingApi.getLessonById(id);
+        setLesson(detail);
+      } catch (err) {
+        console.error("Không thể tải bài luyện đọc:", err);
+        navigate("/reading");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadLesson();
+  }, [id, navigate]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted-foreground text-sm">Đang tải bài luyện đọc...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!lesson) {
+    return null;
+  }
+
+  return <ReadingPlayer lesson={lesson} onBack={() => navigate("/reading")} />;
+}
+
+export { ReadingPlayer, ReadingPractice };

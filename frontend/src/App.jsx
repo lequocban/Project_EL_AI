@@ -8,8 +8,8 @@ import Layout from "./components/Layout";
 import Home from "./pages/Home";
 import Vocabulary from "./pages/Vocabulary";
 import LookUp from "./pages/LookUp";
-import Listening from "./pages/Listening";
-import Reading from "./pages/Reading";
+import Listening, { ListeningPractice } from "./pages/Listening";
+import Reading, { ReadingPractice } from "./pages/Reading";
 import Toeic from "./pages/Toeic";
 import Leaderboard from "./pages/Leaderboard";
 import Profile from "./pages/Profile";
@@ -64,7 +64,9 @@ const AuthenticatedApp = () => {
         <Route path="/vocabulary" element={<Vocabulary />} />
         <Route path="/lookup" element={<LookUp />} />
         <Route path="/listening" element={<Listening />} />
+        <Route path="/listening/:id/practice" element={<ListeningPractice />} />
         <Route path="/reading" element={<Reading />} />
+        <Route path="/reading/:id/practice" element={<ReadingPractice />} />
         <Route path="/toeic" element={<Toeic />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/profile" element={<Profile />} />

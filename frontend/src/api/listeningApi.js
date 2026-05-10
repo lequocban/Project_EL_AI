@@ -10,6 +10,8 @@ const normalizeLesson = (lesson) => ({
   is_public: lesson.status === "public",
   is_pending: lesson.status === "req_public",
   questionCount: lesson.question_count ?? lesson.questionCount ?? lesson.num_questions ?? 0,
+  transcript: lesson.transcript || lesson.audio_script || "",
+  vi_translation: lesson.viTranslation || lesson.vi_translation || "",
 });
 
 const normalizeQuestion = (q) => ({
@@ -129,5 +131,52 @@ export const listeningApi = {
       body: JSON.stringify({ title, topic, level, questionCount }),
     });
     return normalizeLesson(response.data || {});
+  },
+
+  // Cập nhật bài luyện nghe
+  updateLesson: async (id, data) => {
+    const response = await fetchWithAuth(`${LISTENING_LESSON_URL}/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+    return response.data || {};
+  },
+
+  // Tạo nhiều câu hỏi cùng lúc cho bài luyện nghe
+  createBulkQuestions: async (lessonId, questions) => {
+    const formattedQuestions = questions.map((q) => ({
+      question: q.question,
+      option_a: q.options[0],
+      option_b: q.options[1],
+      option_c: q.options[2],
+      option_d: q.options[3],
+      correct_answer: q.correct_answer,
+      explain: q.explain,
+    }));
+    const response = await fetchWithAuth(
+      `${LISTENING_LESSON_URL}/${lessonId}/questions/bulk`,
+      {
+        method: "POST",
+        body: JSON.stringify({ questions: formattedQuestions }),
+      }
+    );
+    return (response.data || []).map(normalizeQuestion);
+  },
+
+  // Cập nhật một câu hỏi
+  updateQuestion: async (questionId, data) => {
+    const response = await fetchWithAuth(`/api/v1/listening-questions/${questionId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+    return normalizeQuestion(response.data || {});
+  },
+
+  // Xóa một câu hỏi
+  deleteQuestion: async (questionId) => {
+    const response = await fetchWithAuth(`/api/v1/listening-questions/${questionId}`, {
+      method: "DELETE",
+    });
+    return response.data || {};
   },
 };
