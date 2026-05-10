@@ -263,6 +263,10 @@ function LessonStarter({ lesson, onBack }) {
   const [showAddQuestion, setShowAddQuestion] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  // Theo dõi các câu hỏi đã xóa trong session chỉnh sửa này
+  const [deletedQuestionIds, setDeletedQuestionIds] = useState([]);
+  // Các câu hỏi gốc từ server (dùng để phát hiện thay đổi)
+  const originalQuestionsRef = useRef(lesson.questions || []);
 
   const handleStart = () => {
     navigate(`/listening/${lesson.id}/practice`, {
@@ -274,30 +278,84 @@ function LessonStarter({ lesson, onBack }) {
     setSaving(true);
     setSaveError("");
     try {
-      const updated = {
-        ...lesson,
-        questions,
-        transcript: transcriptEn,
-        vi_translation: transcriptVi,
-      };
+      // Lưu transcript và vi_translation trước
       await listeningApi.updateLesson(lesson.id, {
         transcript: transcriptEn,
-        vi_translation: transcriptVi,
-        questions: questions.map((q, idx) => ({
-          question_id: q.id,
-          question: q.question,
-          option_a: q.options?.[0] || "",
-          option_b: q.options?.[1] || "",
-          option_c: q.options?.[2] || "",
-          option_d: q.options?.[3] || "",
-          correct_answer: q.correct_answer,
-          explanation: q.explain || "",
-          order: idx + 1,
-        })),
+        viTranslation: transcriptVi,
       });
+
+      // 1. Xóa các câu hỏi đã được xóa khỏi giao diện
+      if (deletedQuestionIds.length > 0) {
+        await Promise.all(
+          deletedQuestionIds.map((id) => listeningApi.deleteQuestion(id))
+        );
+      }
+
+      // 2. Cập nhật các câu hỏi đã sửa (có id từ server và đã bị thay đổi)
+      const originalMap = new Map(
+        originalQuestionsRef.current.map((q) => [q.id, q])
+      );
+      const modifiedQuestions = questions.filter((q) => {
+        if (!q.id || String(q.id).startsWith("temp_")) return false;
+        const original = originalMap.get(q.id);
+        if (!original) return false;
+        return (
+          original.question !== q.question ||
+          JSON.stringify(original.options) !== JSON.stringify(q.options) ||
+          original.correct_answer !== q.correct_answer ||
+          (original.explain || "") !== (q.explain || "")
+        );
+      });
+      if (modifiedQuestions.length > 0) {
+        await Promise.all(
+          modifiedQuestions.map((q) =>
+            listeningApi.updateQuestion(q.id, {
+              question: q.question,
+              option_a: q.options[0],
+              option_b: q.options[1],
+              option_c: q.options[2],
+              option_d: q.options[3],
+              correct_answer: q.correct_answer,
+              explain: q.explain,
+            })
+          )
+        );
+      }
+
+      // 3. Tạo các câu hỏi mới (chưa có id từ server)
+      const newQuestions = questions.filter(
+        (q) => !q.id || String(q.id).startsWith("temp_")
+      );
+      if (newQuestions.length > 0) {
+        const savedQuestions = await listeningApi.createBulkQuestions(
+          lesson.id,
+          newQuestions.map((q) => ({
+            question: q.question,
+            options: q.options,
+            correct_answer: q.correct_answer,
+            explain: q.explain,
+          }))
+        );
+
+        // Thay thế các câu hỏi tạm bằng câu hỏi đã có id từ server
+        const tempIds = newQuestions.map((q) => q.id);
+        const updatedQuestions = questions.map((q) => {
+          const tempIndex = tempIds.indexOf(q.id);
+          if (tempIndex !== -1 && savedQuestions[tempIndex]) {
+            return { ...q, id: savedQuestions[tempIndex].id };
+          }
+          return q;
+        });
+        setQuestions(updatedQuestions);
+        originalQuestionsRef.current = updatedQuestions;
+      } else {
+        originalQuestionsRef.current = questions;
+      }
+
+      setDeletedQuestionIds([]);
       setIsEditing(false);
     } catch (err) {
-      setSaveError(err.message || "Không thể lưu bài nghe");
+      setSaveError(err.message || "Có lỗi xảy ra");
     } finally {
       setSaving(false);
     }
@@ -360,6 +418,10 @@ function LessonStarter({ lesson, onBack }) {
   };
 
   const handleDeleteQuestion = (id) => {
+    // Nếu là câu hỏi từ server (có id thật) thì đánh dấu đã xóa
+    if (id && !String(id).startsWith("temp_")) {
+      setDeletedQuestionIds((prev) => [...prev, id]);
+    }
     const updated = questions.filter((q) => q.id !== id);
     setQuestions(updated);
   };
@@ -554,6 +616,8 @@ function LessonStarter({ lesson, onBack }) {
                 setQuestions(lesson.questions || []);
                 setTranscriptEn(lesson.transcript || lesson.audio_script || "");
                 setTranscriptVi(lesson.vi_translation || "");
+                setDeletedQuestionIds([]);
+                originalQuestionsRef.current = lesson.questions || [];
               }}
               disabled={saving}
               className="flex-1 border border-border py-3 rounded-xl font-bold text-sm hover:bg-muted transition-all flex items-center justify-center gap-2"

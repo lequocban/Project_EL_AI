@@ -141,4 +141,42 @@ export const readingApi = {
     });
     return response.data || {};
   },
+
+  // Tạo nhiều câu hỏi cùng lúc cho bài luyện đọc
+  createBulkQuestions: async (lessonId, questions) => {
+    const formattedQuestions = questions.map((q) => ({
+      question: q.question,
+      option_a: q.options[0],
+      option_b: q.options[1],
+      option_c: q.options[2],
+      option_d: q.options[3],
+      correct_answer: q.correct_answer,
+      explain: q.explain,
+    }));
+    const response = await fetchWithAuth(
+      `${READING_LESSON_URL}/${lessonId}/questions/bulk`,
+      {
+        method: "POST",
+        body: JSON.stringify({ questions: formattedQuestions }),
+      }
+    );
+    return (response.data || []).map(normalizeQuestion);
+  },
+
+  // Cập nhật một câu hỏi
+  updateQuestion: async (questionId, data) => {
+    const response = await fetchWithAuth(`/api/v1/reading-questions/${questionId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+    return normalizeQuestion(response.data || {});
+  },
+
+  // Xóa một câu hỏi
+  deleteQuestion: async (questionId) => {
+    const response = await fetchWithAuth(`/api/v1/reading-questions/${questionId}`, {
+      method: "DELETE",
+    });
+    return response.data || {};
+  },
 };

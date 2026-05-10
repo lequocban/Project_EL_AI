@@ -261,6 +261,10 @@ function ReadingStarter({ lesson, onBack }) {
   const [showAddQuestion, setShowAddQuestion] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  // Theo dõi các câu hỏi đã xóa trong session chỉnh sửa này
+  const [deletedQuestionIds, setDeletedQuestionIds] = useState([]);
+  // Các câu hỏi gốc từ server (dùng để phát hiện thay đổi)
+  const originalQuestionsRef = useRef(lesson.questions || []);
 
   const handleStart = () => {
     navigate(`/reading/${lesson.id}/practice`, {
@@ -268,15 +272,88 @@ function ReadingStarter({ lesson, onBack }) {
     });
   };
 
-  // Chỉ lưu content và vi_translation - backend KHÔNG xử lý questions
+  // Lưu content, vi_translation và đồng bộ câu hỏi xuống database
   const handleSave = async () => {
     setSaving(true);
     setSaveError("");
     try {
+      // Lưu content và vi_translation trước
       await readingApi.updateLesson(lesson.id, {
         content: passageContent,
         vi_translation: passageVi,
       });
+
+      // 1. Xóa các câu hỏi đã được xóa khỏi giao diện
+      if (deletedQuestionIds.length > 0) {
+        await Promise.all(
+          deletedQuestionIds.map((id) => readingApi.deleteQuestion(id))
+        );
+      }
+
+      // 2. Cập nhật các câu hỏi đã sửa (có id từ server và đã bị thay đổi)
+      const originalMap = new Map(
+        originalQuestionsRef.current.map((q) => [q.id, q])
+      );
+      const modifiedQuestions = questions.filter((q) => {
+        if (!q.id || String(q.id).startsWith("temp_")) return false;
+        const original = originalMap.get(q.id);
+        if (!original) return false;
+        return (
+          original.question !== q.question ||
+          JSON.stringify(original.options) !== JSON.stringify(q.options) ||
+          original.correct_answer !== q.correct_answer ||
+          (original.explain || "") !== (q.explain || "")
+        );
+      });
+      if (modifiedQuestions.length > 0) {
+        await Promise.all(
+          modifiedQuestions.map((q) =>
+            readingApi.updateQuestion(q.id, {
+              question: q.question,
+              option_a: q.options[0],
+              option_b: q.options[1],
+              option_c: q.options[2],
+              option_d: q.options[3],
+              correct_answer: q.correct_answer,
+              explain: q.explain,
+            })
+          )
+        );
+      }
+
+      // 3. Tạo các câu hỏi mới (chưa có id từ server)
+      const newQuestions = questions.filter(
+        (q) => !q.id || String(q.id).startsWith("temp_")
+      );
+      if (newQuestions.length > 0) {
+        const savedQuestions = await readingApi.createBulkQuestions(
+          lesson.id,
+          newQuestions.map((q) => ({
+            question: q.question,
+            options: q.options,
+            correct_answer: q.correct_answer,
+            explain: q.explain,
+          }))
+        );
+
+        // Thay thế các câu hỏi tạm bằng câu hỏi đã có id từ server
+        const tempIds = newQuestions.map((q) => q.id);
+        const updatedQuestions = questions.map((q) => {
+          const tempIndex = tempIds.indexOf(q.id);
+          if (tempIndex !== -1 && savedQuestions[tempIndex]) {
+            return { ...q, id: savedQuestions[tempIndex].id };
+          }
+          return q;
+        });
+        setQuestions(updatedQuestions);
+        // Cập nhật lại ref gốc để lần sau biết được câu hỏi nào là mới
+        originalQuestionsRef.current = updatedQuestions;
+      } else {
+        // Nếu không có câu hỏi mới, cập nhật ref gốc với các thay đổi hiện tại
+        originalQuestionsRef.current = questions;
+      }
+
+      setDeletedQuestionIds([]);
       setIsEditing(false);
     } catch (err) {
       setSaveError(err.message || "Có lỗi xảy ra");
@@ -342,6 +419,10 @@ function ReadingStarter({ lesson, onBack }) {
   };
 
   const handleDeleteQuestion = (id) => {
+    // Nếu là câu hỏi từ server (có id thật) thì đánh dấu đã xóa
+    if (id && !String(id).startsWith("temp_")) {
+      setDeletedQuestionIds((prev) => [...prev, id]);
+    }
     const updated = questions.filter((q) => q.id !== id);
     setQuestions(updated);
   };
@@ -537,6 +618,8 @@ function ReadingStarter({ lesson, onBack }) {
                 setQuestions(lesson.questions || []);
                 setPassageContent(lesson.content || lesson.passage || "");
                 setPassageVi(lesson.vi_translation || "");
+                setDeletedQuestionIds([]);
+                originalQuestionsRef.current = lesson.questions || [];
               }}
               disabled={saving}
               className="flex-1 border border-border py-3 rounded-xl font-bold text-sm hover:bg-muted transition-all flex items-center justify-center gap-2"
