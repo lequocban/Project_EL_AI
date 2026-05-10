@@ -339,13 +339,16 @@ export default function SetDetail({ set, onBack }) {
             }
             setShowAddWord(true);
           }}
-          className="flex items-center gap-2 bg-primary text-white px-3 py-2 rounded-xl font-bold text-sm hover:opacity-90 transition-all"
+          disabled={set.is_public}
+          className={`flex items-center gap-2 bg-primary text-white px-3 py-2 rounded-xl font-bold text-sm hover:opacity-90 transition-all ${
+            set.is_public ? "opacity-40 cursor-not-allowed pointer-events-none" : ""
+          }`}
         >
           <Plus className="w-4 h-4" /> Thêm từ
         </button>
       </div>
 
-      {showAddWord && (
+      {showAddWord && !set.is_public && (
         <div className="bg-white border border-border rounded-2xl p-4 mb-4 space-y-3">
           <div className="flex items-center justify-between mb-1">
             <span className="text-sm font-bold text-muted-foreground">
@@ -476,7 +479,7 @@ export default function SetDetail({ set, onBack }) {
                   <p className="text-xs text-muted-foreground/70 mt-1 italic">"{w.example}"</p>
                 )}
               </div>
-              <div className="flex items-center gap-1 ml-2">
+              <div className={`flex items-center gap-1 ml-2 ${set.is_public ? "" : "group"}`}>
                 <button
                   onClick={() => playAudio(w)}
                   disabled={speakingId === w.id}
@@ -493,12 +496,15 @@ export default function SetDetail({ set, onBack }) {
                     <Volume2 className="w-3.5 h-3.5" />
                   )}
                 </button>
-                <button
-                  onClick={() => deleteWord(w.id)}
-                  className="p-1.5 rounded-lg hover:bg-red-50 text-muted-foreground/30 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                {!set.is_public && (
+                  <button
+                    onClick={() => deleteWord(w.id)}
+                    className="p-1.5 rounded-lg hover:bg-red-50 text-muted-foreground/30 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                    title="Xóa từ"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
             </div>
           ))}
