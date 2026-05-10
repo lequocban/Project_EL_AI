@@ -124,6 +124,19 @@ export const readingApi = {
     return response.data || {};
   },
 
+  // Tạo bài luyện đọc (thủ công)
+  createLesson: async ({ title, content, viTranslation }) => {
+    const response = await fetchWithAuth(`${READING_LESSON_URL}`, {
+      method: "POST",
+      body: JSON.stringify({
+        title,
+        ...(content ? { content } : {}),
+        ...(viTranslation ? { vi_translation: viTranslation } : {}),
+      }),
+    });
+    return normalizeLesson(response.data || {});
+  },
+
   // Tạo bài luyện đọc bằng AI
   generateWithAI: async ({ title, topic, level, questionCount }) => {
     const response = await fetchWithAuth(`${READING_LESSON_URL}/generate-with-ai`, {
