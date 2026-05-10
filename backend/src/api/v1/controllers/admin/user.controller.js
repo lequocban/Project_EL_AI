@@ -7,12 +7,9 @@ const { success } = require("../../../../utils/responseHandler");
  */
 const getAllUsers = async (req, res, next) => {
   try {
-    const { page = 1, limit = 20 } = req.query;
+    const currentUserId = req.user?.id || null;
 
-    const result = await userService.getAllUsers({
-      page: parseInt(page, 10),
-      limit: parseInt(limit, 10),
-    });
+    const result = await userService.getAllUsers(req.query, currentUserId);
 
     return success(res, result, "Lấy danh sách người dùng thành công");
   } catch (error) {
@@ -20,6 +17,44 @@ const getAllUsers = async (req, res, next) => {
   }
 };
 
+/**
+ * Cập nhật trạng thái của một hoặc nhiều người dùng.
+ * Chỉ admin (role_id = 3) mới có quyền.
+ */
+const updateUserStatus = async (req, res, next) => {
+  try {
+    const { userIds, status } = req.body;
+
+    const result = await userService.updateUserStatus(userIds, status);
+
+    return success(
+      res,
+      result,
+      `Đã cập nhật trạng thái của ${result.updatedCount} người dùng`
+    );
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * Lấy chi tiết người dùng theo id.
+ * Chỉ admin (role_id = 3) mới có quyền.
+ */
+const getUserDetail = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const user = await userService.getUserDetail(id);
+
+    return success(res, user, "Lấy thông tin người dùng thành công");
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   getAllUsers,
+  getUserDetail,
+  updateUserStatus,
 };

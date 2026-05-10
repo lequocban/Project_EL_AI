@@ -1,35 +1,81 @@
-const { getUsersByRole, countUsersByRole } = require("../repositories/user.model");
+const {
+  getUsersByRole,
+  updateUsersStatus,
+  getUserById,
+} = require("../repositories/user.model");
 const { toApiDate } = require("../../../utils/date.utils");
+const { parsePagination } = require("../../../utils/pagination");
+const { buildPaginationResponse } = require("../../../utils/paginationResponse");
+const { parseSortParams } = require("../../../utils/sorting");
+
+const ALLOWED_SORT_FIELDS = ["created_at", "email", "status"];
 
 /**
- * Lấy danh sách người dùng (role_id = 1) với phân trang.
+ * Lấy danh sách người dùng (role_id = 1) với phân trang, sắp xếp, tìm kiếm.
+ * Loại trừ user hiện tại khỏi danh sách.
  */
-const getAllUsers = async ({ page = 1, limit = 20 } = {}) => {
-  const [userData, total] = await Promise.all([
-    getUsersByRole({ page, limit }),
-    countUsersByRole(1),
-  ]);
+const getAllUsers = async (queryParams, excludeUserId = null) => {
+  const { page, limit } = parsePagination(queryParams, {
+    defaultLimit: 20,
+    maxLimit: 100,
+  });
 
-  const totalPages = Math.ceil(total / limit);
+  const { sortColumn, ascending } = parseSortParams({
+    sortField: queryParams.sortField,
+    sortOrder: queryParams.sortOrder,
+    allowedFields: ALLOWED_SORT_FIELDS,
+    defaultField: "created_at",
+    defaultOrder: "desc",
+  });
 
-  const users = userData.users.map((user) => ({
-    ...user,
-    dayOfBirth: user.dayOfBirth ? toApiDate(user.dayOfBirth) : null,
-    createdAt: user.createdAt,
-    updatedAt: user.updatedAt,
-  }));
+  const search = queryParams.search || "";
+
+  const { users, total } = await getUsersByRole({
+    page,
+    limit,
+    sortColumn,
+    ascending,
+    search,
+    excludeUserId,
+  });
+
+  return buildPaginationResponse(users, { page, limit, total, maxLimit: 100 });
+};
+
+/**
+ * Lấy chi tiết người dùng theo id, bao gồm đầy đủ thông tin.
+ */
+const getUserDetail = async (userId) => {
+  const profile = await getUserById(userId);
 
   return {
-    users,
-    pagination: {
-      page,
-      limit,
-      total,
-      totalPages,
-    },
+    id: profile.id,
+    userName: profile.user_name,
+    email: profile.email,
+    dayOfBirth: profile.day_of_birth ? toApiDate(profile.day_of_birth) : null,
+    status: profile.status,
+    createdAt: profile.created_at,
+    updatedAt: profile.updated_at,
   };
+};
+
+/**
+ * Cập nhật trạng thái của một hoặc nhiều user.
+ * @param {string[]} userIds - Danh sách user IDs
+ * @param {string} status - Trạng thái mới ('active' hoặc 'inactive')
+ */
+const updateUserStatus = async (userIds, status) => {
+  if (!userIds || userIds.length === 0) {
+    return { updatedCount: 0 };
+  }
+
+  const updatedCount = await updateUsersStatus(userIds, status);
+
+  return { updatedCount };
 };
 
 module.exports = {
   getAllUsers,
+  getUserDetail,
+  updateUserStatus,
 };
