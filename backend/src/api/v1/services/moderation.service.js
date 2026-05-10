@@ -30,6 +30,8 @@ const formatModerationRequest = (request, contentInfo = null) => ({
   requestedBy: request.requested_by,
   reviewedBy: request.reviewed_by || null,
   reviewedAt: request.reviewed_at || null,
+  reason: request.reason || null,
+  notes: request.notes || null,
   createdAt: request.created_at,
   content: contentInfo || null,
 });

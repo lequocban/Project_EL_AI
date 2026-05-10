@@ -70,9 +70,27 @@ const deleteUser = async (req, res, next) => {
   }
 };
 
+/**
+ * Cấp hoặc thu hồi vai trò của người dùng.
+ * Chỉ admin (role_id = 3) mới có quyền.
+ */
+const updateUserRole = async (req, res, next) => {
+  try {
+    const { userId, role, action } = req.body;
+    const adminId = req.user?.id || null;
+
+    const result = await userService.updateUserRole(userId, role, action, adminId);
+
+    return success(res, result, result.message);
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   getAllUsers,
   getUserDetail,
   updateUserStatus,
+  updateUserRole,
   deleteUser,
 };
