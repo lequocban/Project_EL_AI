@@ -10,7 +10,7 @@ import Vocabulary from "./pages/Vocabulary";
 import LookUp from "./pages/LookUp";
 import Listening, { ListeningPractice } from "./pages/Listening";
 import Reading, { ReadingPractice } from "./pages/Reading";
-import Toeic from "./pages/Toeic";
+import Stats from "./pages/Stats";
 import Leaderboard from "./pages/Leaderboard";
 import Profile from "./pages/Profile";
 import Landing from "./pages/Landing";
@@ -67,7 +67,7 @@ const AuthenticatedApp = () => {
         <Route path="/listening/:id/practice" element={<ListeningPractice />} />
         <Route path="/reading" element={<Reading />} />
         <Route path="/reading/:id/practice" element={<ReadingPractice />} />
-        <Route path="/toeic" element={<Toeic />} />
+        <Route path="/stats" element={<Stats />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/profile" element={<Profile />} />
       </Route>

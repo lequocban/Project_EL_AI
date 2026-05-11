@@ -5,9 +5,9 @@ import {
   BookOpen,
   Headphones,
   FileText,
-  Trophy,
   ChevronRight,
   BookText,
+  TrendingUp,
 } from "lucide-react";
 import { vocabularyApi } from "@/api/vocabularyApi";
 import { listeningApi } from "@/api/listeningApi";
@@ -94,7 +94,7 @@ export default function Home() {
     <div className="min-h-screen bg-background p-6 lg:p-8">
       <div className="mb-8">
         <h1 className="text-2xl lg:text-3xl font-black text-foreground">
-          Chào {user?.full_name?.split(" ").slice(-1)[0] || "bạn"} 👋
+          Chào {user?.full_name?.split(" ").slice(-1)[0] || "bạn"}
         </h1>
         <p className="text-muted-foreground mt-1 font-medium">
           Học đều đặn mỗi ngày để đạt mục tiêu!
@@ -122,7 +122,7 @@ export default function Home() {
             { path: "/grammar",    label: "Ngữ pháp", icon: FileText,  grad: MODULE_COLORS.grammar,    emoji: "✏️" },
             { path: "/listening",  label: "Luyện nghe", icon: Headphones, grad: MODULE_COLORS.listening, emoji: "🎧" },
             { path: "/reading",    label: "Luyện đọc",  icon: FileText, grad: MODULE_COLORS.reading,   emoji: "📖" },
-            { path: "/toeic",      label: "TOEIC",      icon: Trophy,   grad: MODULE_COLORS.toeic,      emoji: "🏆" },
+            { path: "/stats",       label: "Thống kê", icon: TrendingUp, grad: MODULE_COLORS.toeic,     emoji: "📊" },
           ].map((m) => (
             <Link
               key={m.path}
