@@ -38,7 +38,7 @@ const SET_COLORS = [
 // Backend trả về status dạng "public" / "private" / "req_public" (chữ thường)
 const normalizeSetForDisplay = (set) => ({
   ...set,
-  word_count: set.wordCount ?? set.word_count ?? 0,
+  wordCount: set.wordCount ?? set.word_count ?? 0,
   status: set.status || "private",
   is_public: set.status === "public",
   is_pending: set.status === "req_public",
@@ -299,7 +299,7 @@ export default function Vocabulary() {
                 )}
                 <div className="flex items-center gap-2 mt-3">
                   <span className="text-xs text-muted-foreground font-medium">
-                    {set.word_count || 0} từ
+                    {set.wordCount || 0} từ
                   </span>
                   {set.level && (
                     <span

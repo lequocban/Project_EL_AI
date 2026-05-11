@@ -9,7 +9,7 @@ const VOCABULARY_PRACTICE_URL = `/api/v1/vocabulary-sets/practice`;
 // Chuẩn hóa dữ liệu bộ từ vựng từ API
 const normalizeSet = (set) => ({
   ...set,
-  word_count: set.wordCount ?? set.word_count ?? set.words?.length ?? 0,
+  wordCount: set.wordCount ?? set.word_count ?? set.wordsPagination?.total ?? 0,
   status: set.status || "private",
   is_public: set.status === "public",
   is_pending: set.status === "req_public",
@@ -28,6 +28,7 @@ export const vocabularyApi = {
     const response = await fetchWithAuth(`${VOCABULARY_SET_URL}/my?limit=15`, {
       method: "GET",
     });
+    console.debug("[DEBUG getMySets] response:", JSON.stringify(response));
     return (response.data?.items || []).map(normalizeSet);
   },
 

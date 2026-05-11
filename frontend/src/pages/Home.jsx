@@ -34,6 +34,7 @@ export default function Home() {
   const loadData = async () => {
     try {
       const sets = await vocabularyApi.getMySets();
+      console.debug("[Home loadData] sets:", JSON.stringify(sets));
       setMySets(sets);
     } catch {
       setMySets([]);
@@ -164,7 +165,7 @@ export default function Home() {
                   {set.title}
                 </h3>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {set.word_count || 0} từ
+                  {set.wordCount || 0} từ
                 </p>
               </Link>
             ))}
