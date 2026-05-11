@@ -5,12 +5,12 @@ import {
   BookText,
   Headphones,
   FileText,
-  Trophy,
   Menu,
   X,
   Zap,
   BarChart2,
   User,
+  TrendingUp,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -46,9 +46,9 @@ const navItems = [
     activeClass: "from-orange-500 to-amber-500",
   },
   {
-    path: "/toeic",
-    label: "TOEIC",
-    icon: Trophy,
+    path: "/stats",
+    label: "Thống kê",
+    icon: TrendingUp,
     activeClass: "from-pink-500 to-rose-500",
   },
   {
