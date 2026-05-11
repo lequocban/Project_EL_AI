@@ -183,14 +183,16 @@ const getPublicSets = async ({ keyword, page = 1, limit = 15, sortField, sortOrd
 
 /**
  * Đếm số từ trong một bộ từ vựng.
+ * Dùng select thay head mode để đảm bảo count chính xác, không bị giới hạn bởi default RLS limit.
  * @param {string} setId
  * @returns {Promise<number>}
  */
 const countWordsInSet = async (setId) => {
   const { count, error } = await supabase
     .from("vocabulary_set_words")
-    .select("*", { count: "exact", head: true })
-    .eq("vocabulary_id", setId);
+    .select("*", { count: "exact" })
+    .eq("vocabulary_id", setId)
+    .limit(9999999);
 
   if (error) {
     throw new AppError(error.message, 500);
