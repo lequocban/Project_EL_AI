@@ -39,20 +39,24 @@ export const vocabularyApi = {
     return (response.data?.items || []).map(normalizeSet);
   },
 
-  // Lấy chi tiết một bộ từ vựng, có hỗ trợ sắp xếp
-  getSetById: async (id, sortField, sortOrder) => {
-    let url = `${VOCABULARY_SET_URL}/${id}`;
-    const params = new URLSearchParams();
+  // Lấy chi tiết một bộ từ vựng, có hỗ trợ phân trang và sắp xếp từ vựng
+  getSetById: async (id, { page = 1, limit = 15, sortField = "word", sortOrder = "asc" } = {}) => {
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+    });
     if (sortField) params.append("sortField", sortField);
     if (sortOrder) params.append("sortOrder", sortOrder);
-    if (params.toString()) url += `?${params.toString()}`;
 
-    const response = await fetchWithAuth(url, {
+    const response = await fetchWithAuth(`${VOCABULARY_SET_URL}/${id}?${params}`, {
       method: "GET",
     });
+
+    const wordsData = response.data?.words || {};
     return normalizeSet({
       ...response.data,
-      words: (response.data?.words || []).map(normalizeWord),
+      words: (wordsData.items || []).map(normalizeWord),
+      wordsPagination: wordsData.pagination || {},
     });
   },
 

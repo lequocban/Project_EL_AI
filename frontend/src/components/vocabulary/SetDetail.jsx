@@ -63,6 +63,9 @@ const MODES = [
 ];
 
 export default function SetDetail({ set, onBack }) {
+  // allWords: lưu tất cả từ để dùng cho game và luyện tập
+  const [allWords, setAllWords] = useState([]);
+  // words: chỉ dùng để hiển thị (slice theo trang)
   const [words, setWords] = useState([]);
   const [mode, setMode] = useState(null);
   const [examType, setExamType] = useState(null);
@@ -75,11 +78,16 @@ export default function SetDetail({ set, onBack }) {
   const [speakingId, setSpeakingId] = useState(null);
   const [sortOption, setSortOption] = useState("newest");
   const [showSortDropdown, setShowSortDropdown] = useState(false);
-  // Phân trang từ vựng: mỗi trang 7 từ
+  // Phân trang từ vựng: chỉ dùng để hiển thị
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  // Tìm kiếm từ vựng cụ thể
+  const [wordsPagination, setWordsPagination] = useState({});
+  // Tìm kiếm từ vựng cục bộ (filter phía client vì backend không hỗ trợ search từ)
   const [searchQuery, setSearchQuery] = useState("");
+  // Loading state riêng cho việc tải từ vựng (để hiện spinner khi chuyển trang)
+  const [isLoadingWords, setIsLoadingWords] = useState(false);
+  // Track nếu đang trong chế độ search (load nhiều dữ liệu để filter phía client)
+  const [isSearchMode, setIsSearchMode] = useState(false);
 
   const SORT_OPTIONS = [
     { value: "newest", label: "Mới nhất", sortField: "created_at", sortOrder: "desc" },
@@ -88,10 +96,134 @@ export default function SetDetail({ set, onBack }) {
     { value: "za", label: "Z → A", sortField: "word", sortOrder: "desc" },
   ];
 
+  // Số từ mỗi trang hiển thị
+  const WORDS_PER_PAGE = 7;
+
   const getCurrentSortLabel = () => {
     const opt = SORT_OPTIONS.find((o) => o.value === sortOption);
     return opt ? opt.label : "Sắp xếp";
   };
+
+  // Tính words hiển thị theo trang từ allWords
+  const calculateDisplayWords = (wordsList, page) => {
+    const startIndex = (page - 1) * WORDS_PER_PAGE;
+    return wordsList.slice(startIndex, startIndex + WORDS_PER_PAGE);
+  };
+
+  // Tính totalPages từ số từ
+  const calculateTotalPages = (totalWords) => {
+    return Math.max(1, Math.ceil(totalWords / WORDS_PER_PAGE));
+  };
+
+  // Load tất cả từ từ backend để dùng cho game và luyện tập
+  const fetchAllWords = async (sortField, sortOrder) => {
+    try {
+      setIsLoadingWords(true);
+      const detail = await vocabularyApi.getSetById(set.id, {
+        page: 1,
+        limit: 500, // Load nhiều từ để đủ cho game
+        sortField,
+        sortOrder,
+      });
+
+      const fetchedWords = detail.words || [];
+      const pagination = detail.wordsPagination || {};
+      const total = pagination.total || fetchedWords.length;
+
+      // Nếu tổng số từ lớn hơn limit, cần load thêm
+      if (total > 500) {
+        // Load thêm các trang còn lại
+        const totalPagesNeeded = Math.ceil(total / 500);
+        let allFetchedWords = [...fetchedWords];
+
+        for (let page = 2; page <= totalPagesNeeded; page++) {
+          const pageDetail = await vocabularyApi.getSetById(set.id, {
+            page,
+            limit: 500,
+            sortField,
+            sortOrder,
+          });
+          allFetchedWords = [...allFetchedWords, ...(pageDetail.words || [])];
+        }
+
+        setAllWords(allFetchedWords);
+        setWordsPagination(pagination);
+        setTotalPages(calculateTotalPages(total));
+        setWords(calculateDisplayWords(allFetchedWords, currentPage));
+      } else {
+        // Đủ dữ liệu, không cần load thêm
+        setAllWords(fetchedWords);
+        setWordsPagination(pagination);
+        setTotalPages(calculateTotalPages(total));
+        setWords(calculateDisplayWords(fetchedWords, currentPage));
+      }
+
+      setError("");
+    } catch (err) {
+      setAllWords([]);
+      setWords([]);
+      setTotalPages(1);
+      setError(err.message || "Không thể tải danh sách từ");
+    } finally {
+      setIsLoadingWords(false);
+    }
+  };
+
+  // Load nhiều từ để search phía client
+  const fetchAllWordsForSearch = async (sortField, sortOrder) => {
+    try {
+      setIsLoadingWords(true);
+      const detail = await vocabularyApi.getSetById(set.id, {
+        page: 1,
+        limit: 500,
+        sortField,
+        sortOrder,
+      });
+
+      const fetchedWords = detail.words || [];
+      const pagination = detail.wordsPagination || {};
+      const total = pagination.total || fetchedWords.length;
+
+      setAllWords(fetchedWords);
+      setWordsPagination(pagination);
+      setTotalPages(calculateTotalPages(total));
+      setWords(calculateDisplayWords(fetchedWords, 1));
+      setError("");
+    } catch (err) {
+      setError(err.message || "Không thể tải dữ liệu");
+    } finally {
+      setIsLoadingWords(false);
+    }
+  };
+
+  // Load tất cả từ khi vào trang hoặc khi sort thay đổi
+  useEffect(() => {
+    if (isSearchMode) return;
+    const opt = SORT_OPTIONS.find((o) => o.value === sortOption);
+    fetchAllWords(opt?.sortField || "word", opt?.sortOrder || "asc");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [set.id, sortOption]);
+
+  // Xử lý search thay đổi
+  useEffect(() => {
+    setCurrentPage(1);
+    if (searchQuery.trim()) {
+      setIsSearchMode(true);
+      const opt = SORT_OPTIONS.find((o) => o.value === sortOption);
+      fetchAllWordsForSearch(opt?.sortField || "word", opt?.sortOrder || "asc");
+    } else {
+      setIsSearchMode(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery]);
+
+  // Cập nhật words hiển thị khi currentPage thay đổi (không gọi API)
+  useEffect(() => {
+    if (!isSearchMode) {
+      setWords(calculateDisplayWords(allWords, currentPage));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, allWords, isSearchMode]);
 
   // Đóng dropdown khi click ra ngoài
   useEffect(() => {
@@ -103,29 +235,6 @@ export default function SetDetail({ set, onBack }) {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showSortDropdown]);
-
-  useEffect(() => {
-    loadWords();
-  }, [set.id, sortOption]);
-
-  const loadWords = async () => {
-    try {
-      const opt = SORT_OPTIONS.find((o) => o.value === sortOption);
-      const detail = await vocabularyApi.getSetById(set.id, opt?.sortField || "word", opt?.sortOrder || "asc");
-      const allWords = detail.words || [];
-      // Reset về trang 1 mỗi khi load lại dữ liệu
-      setCurrentPage(1);
-      // Tính tổng số trang dựa trên số từ và limit = 7
-      const total = Math.max(1, Math.ceil(allWords.length / 7));
-      setTotalPages(total);
-      setWords(allWords);
-      setError("");
-    } catch (err) {
-      setWords([]);
-      setTotalPages(1);
-      setError(err.message || "Không thể tải danh sách từ");
-    }
-  };
 
   // Thêm một ô nhập từ mới vào danh sách chờ
   const addWordField = () => {
@@ -202,12 +311,14 @@ export default function SetDetail({ set, onBack }) {
       setLoading(true);
       // Gửi tất cả từ cùng lúc
       await vocabularyApi.addWordsToSet(set.id, validWords);
-      // Tải lại danh sách từ
-      const detail = await vocabularyApi.getSetById(set.id);
-      setWords(detail.words || []);
       // Reset trạng thái
       setPendingWords([]);
       setShowAddWord(false);
+      // Reset về trang 1 sau khi thêm
+      setCurrentPage(1);
+      // Load lại tất cả từ
+      const opt = SORT_OPTIONS.find((o) => o.value === sortOption);
+      await fetchAllWords(opt?.sortField || "word", opt?.sortOrder || "asc");
       setError("");
     } catch (err) {
       setError(err.message || "Không thể thêm từ");
@@ -225,7 +336,16 @@ export default function SetDetail({ set, onBack }) {
   const deleteWord = async (id) => {
     try {
       await vocabularyApi.deleteWordsFromSet(set.id, [id]);
-      setWords((current) => current.filter((w) => w.id !== id));
+      // Xóa từ khỏi cả allWords và words
+      const newAllWords = allWords.filter((w) => w.id !== id);
+      const newTotalPages = calculateTotalPages(newAllWords.length);
+      // Đảm bảo currentPage không vượt quá totalPages mới
+      const newCurrentPage = Math.min(currentPage, Math.max(1, newTotalPages));
+
+      setAllWords(newAllWords);
+      setTotalPages(newTotalPages);
+      setCurrentPage(newCurrentPage);
+      setWords(calculateDisplayWords(newAllWords, newCurrentPage));
       setError("");
     } catch (err) {
       setError(err.message || "Không thể xóa từ");
@@ -274,25 +394,83 @@ export default function SetDetail({ set, onBack }) {
   // Sắp xếp đã được xử lý phía backend qua API
   // words state đã chứa dữ liệu đã sắp xếp từ API
 
+  // Load đủ từ rồi bắt đầu game
+  const startGame = async (modeId) => {
+    if (allWords.length >= 4) {
+      setMode(modeId);
+      return;
+    }
+
+    // Nếu allWords chưa đủ, load từ backend trước
+    try {
+      setIsLoadingWords(true);
+      const opt = SORT_OPTIONS.find((o) => o.value === sortOption);
+      const detail = await vocabularyApi.getSetById(set.id, {
+        page: 1,
+        limit: 500,
+        sortField: opt?.sortField || "word",
+        sortOrder: opt?.sortOrder || "asc",
+      });
+
+      const fetchedWords = detail.words || [];
+      setAllWords(fetchedWords);
+      setMode(modeId);
+    } catch (err) {
+      setError(err.message || "Không thể tải dữ liệu để chơi");
+    } finally {
+      setIsLoadingWords(false);
+    }
+  };
+
+  // Load đủ từ rồi bắt đầu bài kiểm tra
+  const startExam = async (type) => {
+    if (allWords.length >= 4) {
+      setExamType(type);
+      setMode("exam");
+      return;
+    }
+
+    // Nếu allWords chưa đủ, load từ backend trước
+    try {
+      setIsLoadingWords(true);
+      const opt = SORT_OPTIONS.find((o) => o.value === sortOption);
+      const detail = await vocabularyApi.getSetById(set.id, {
+        page: 1,
+        limit: 500,
+        sortField: opt?.sortField || "word",
+        sortOrder: opt?.sortOrder || "asc",
+      });
+
+      const fetchedWords = detail.words || [];
+      setAllWords(fetchedWords);
+      setExamType(type);
+      setMode("exam");
+    } catch (err) {
+      setError(err.message || "Không thể tải dữ liệu để kiểm tra");
+    } finally {
+      setIsLoadingWords(false);
+    }
+  };
+
   if (mode === "flashcard") {
-    return <FlashcardGame words={words} set={set} onBack={() => setMode(null)} />;
+    return <FlashcardGame words={allWords} set={set} onBack={() => setMode(null)} />;
   }
   if (mode === "match") {
-    return <MatchGame words={words} set={set} onBack={() => setMode(null)} />;
+    return <MatchGame words={allWords} set={set} onBack={() => setMode(null)} />;
   }
   if (mode === "quiz") {
     return (
-      <MultipleChoiceGame words={words} set={set} onBack={() => setMode(null)} />
+      <MultipleChoiceGame words={allWords} set={set} onBack={() => setMode(null)} />
     );
   }
   if (mode === "typing") {
-    return <TypingGame words={words} set={set} onBack={() => setMode(null)} />;
+    return <TypingGame words={allWords} set={set} onBack={() => setMode(null)} />;
   }
   if (mode === "dictation") {
-    return <DictationGame words={words} set={set} onBack={() => setMode(null)} />;
+    return <DictationGame words={allWords} set={set} onBack={() => setMode(null)} />;
   }
   if (mode === "exam") {
-    return <ExamGame words={words} onBack={() => setMode(null)} examType={examType} setId={set.id} onSubmit={handlePracticeSubmit} />;
+    return <ExamGame words={allWords} onBack={() => setMode(null)} examType={examType} setId={set.id} onSubmit={handlePracticeSubmit} />;
   }
 
   return (
@@ -310,7 +488,7 @@ export default function SetDetail({ set, onBack }) {
           {set.description && (
             <p className="text-muted-foreground text-sm mt-1">{set.description}</p>
           )}
-          <p className="text-sm font-semibold text-primary mt-1">{words.length} từ vựng</p>
+          <p className="text-sm font-semibold text-primary mt-1">{(wordsPagination.total || words.length)} từ vựng</p>
         </div>
       </div>
 
@@ -320,14 +498,14 @@ export default function SetDetail({ set, onBack }) {
         </div>
       )}
 
-      {words.length >= 4 && (
+      {allWords.length >= 4 && (
         <div className="mb-8">
           <h2 className="text-base font-black text-foreground mb-3">Luyện tập</h2>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             {MODES.map((m) => (
               <button
                 key={m.id}
-                onClick={() => setMode(m.id)}
+                onClick={() => startGame(m.id)}
                 className={`bg-gradient-to-br ${m.color} text-white rounded-2xl p-4 flex flex-col items-center gap-2 shadow-md card-hover`}
               >
                 <span className="text-2xl">{m.emoji}</span>
@@ -337,13 +515,13 @@ export default function SetDetail({ set, onBack }) {
           </div>
         </div>
       )}
-      {words.length < 4 && words.length > 0 && (
+      {allWords.length < 4 && allWords.length > 0 && (
         <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 text-amber-700 text-sm font-medium">
           ⚠️ Cần ít nhất 4 từ để bắt đầu luyện tập. Hãy thêm thêm từ vựng!
         </div>
       )}
 
-      {words.length >= 4 && (
+      {allWords.length >= 4 && (
         <div className="mb-8">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-base font-black text-foreground">Kiểm tra</h2>
@@ -353,7 +531,7 @@ export default function SetDetail({ set, onBack }) {
           </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <button
-              onClick={() => { setExamType("quiz"); setMode("exam"); }}
+              onClick={() => startExam("quiz")}
               className="bg-gradient-to-br from-emerald-500 to-teal-500 text-white rounded-2xl p-4 flex flex-col items-center gap-2 shadow-md card-hover"
             >
               <Languages className="w-7 h-7" />
@@ -361,7 +539,7 @@ export default function SetDetail({ set, onBack }) {
               <span className="text-xs text-white/70">EN → VI</span>
             </button>
             <button
-              onClick={() => { setExamType("listening_quiz"); setMode("exam"); }}
+              onClick={() => startExam("listening_quiz")}
               className="bg-gradient-to-br from-violet-500 to-purple-500 text-white rounded-2xl p-4 flex flex-col items-center gap-2 shadow-md card-hover"
             >
               <Headphones className="w-7 h-7" />
@@ -369,7 +547,7 @@ export default function SetDetail({ set, onBack }) {
               <span className="text-xs text-white/70">Nghe → VI</span>
             </button>
             <button
-              onClick={() => { setExamType("translate_write"); setMode("exam"); }}
+              onClick={() => startExam("translate_write")}
               className="bg-gradient-to-br from-amber-500 to-orange-500 text-white rounded-2xl p-4 flex flex-col items-center gap-2 shadow-md card-hover"
             >
               <PencilLine className="w-7 h-7" />
@@ -377,7 +555,7 @@ export default function SetDetail({ set, onBack }) {
               <span className="text-xs text-white/70">VI → EN</span>
             </button>
             <button
-              onClick={() => { setExamType("listening_write"); setMode("exam"); }}
+              onClick={() => startExam("listening_write")}
               className="bg-gradient-to-br from-cyan-500 to-blue-500 text-white rounded-2xl p-4 flex flex-col items-center gap-2 shadow-md card-hover"
             >
               <Mic className="w-7 h-7" />
@@ -574,38 +752,40 @@ export default function SetDetail({ set, onBack }) {
         </div>
       )}
 
-      {words.length === 0 ? (
+      {loading && words.length === 0 ? (
+        <div className="text-center py-12 bg-white rounded-2xl border border-border">
+          <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-muted-foreground font-semibold">Đang tải dữ liệu...</p>
+        </div>
+      ) : words.length === 0 && !searchQuery ? (
         <div className="text-center py-12 bg-white rounded-2xl border border-border">
           <p className="text-muted-foreground font-semibold">Chưa có dữ liệu</p>
+        </div>
+      ) : isLoadingWords ? (
+        <div className="text-center py-8">
+          <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-muted-foreground text-sm">Đang tải dữ liệu...</p>
         </div>
       ) : (
         <>
           {(() => {
-            // Lọc từ theo search query
-            const filteredWords = searchQuery.trim()
-              ? words.filter((w) =>
-                  w.word.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  (w.meaning && w.meaning.toLowerCase().includes(searchQuery.toLowerCase()))
-                )
-              : words;
+            // Lọc từ theo search query (xử lý phía client vì backend không hỗ trợ search từ)
+            // Khi search: filter trên allWords rồi slice theo trang
+            // Khi không search: dùng words đã được slice sẵn
+            const isSearching = !!searchQuery.trim();
 
-            // Phân trang: mỗi trang 7 từ
-            const WORDS_PER_PAGE = 7;
-            const totalFiltered = Math.max(1, Math.ceil(filteredWords.length / WORDS_PER_PAGE));
-            // Đảm bảo currentPage không vượt quá totalFiltered
-            const safePage = Math.min(currentPage, totalFiltered);
-            const startIndex = (safePage - 1) * WORDS_PER_PAGE;
-            const paginatedWords = filteredWords.slice(startIndex, startIndex + WORDS_PER_PAGE);
+            // Tính tổng số trang cho phân trang
+            const totalFiltered = totalPages;
 
             return (
               <>
                 {searchQuery && (
                   <p className="text-sm text-muted-foreground mb-3">
-                    Tìm thấy {filteredWords.length} từ{filteredWords.length !== words.length ? ` trong ${words.length} từ` : ""}
+                    Tìm thấy {isSearching ? allWords.length : allWords.length} từ trong bộ từ
                   </p>
                 )}
                 <div className="space-y-2">
-                  {paginatedWords.map((w) => (
+                  {words.map((w) => (
                     <div
                       key={w.id}
                       className="bg-white rounded-xl border border-border p-4 flex items-center justify-between"
@@ -659,7 +839,7 @@ export default function SetDetail({ set, onBack }) {
                 </div>
 
                 {/* Phân trang */}
-                {totalFiltered > 1 && (
+                {totalPages > 1 && (
                   <div className="flex items-center justify-center gap-2 mt-4">
                     <button
                       onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
@@ -668,7 +848,7 @@ export default function SetDetail({ set, onBack }) {
                     >
                       ←
                     </button>
-                    {Array.from({ length: totalFiltered }, (_, i) => i + 1).map((page) => (
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                       <button
                         key={page}
                         onClick={() => setCurrentPage(page)}
@@ -682,8 +862,8 @@ export default function SetDetail({ set, onBack }) {
                       </button>
                     ))}
                     <button
-                      onClick={() => setCurrentPage((p) => Math.min(totalFiltered, p + 1))}
-                      disabled={currentPage === totalFiltered}
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
                       className="px-3 py-1.5 rounded-lg border border-border text-sm font-medium hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       →
