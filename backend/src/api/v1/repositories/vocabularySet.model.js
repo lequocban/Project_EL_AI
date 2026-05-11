@@ -301,14 +301,20 @@ const findById = async (setId) => {
 };
 
 /**
- * Lấy danh sách từ vựng trong một bộ từ vựng.
+ * Lấy danh sách từ vựng trong một bộ từ vựng (có phân trang).
  * @param {string} setId
  * @param {Object} options
+ * @param {number} options.page - Trang (bắt đầu từ 1)
+ * @param {number} options.limit - Số từ mỗi trang (mặc định 15)
  * @param {string} options.sortField - Trường sắp xếp: "created_at" | "word"
  * @param {string} options.sortOrder - Thứ tự sắp xếp: "asc" | "desc"
- * @returns {Promise<Array>}
+ * @returns {Promise<{words: Array, total: number}>}
  */
-const getWordsInSet = async (setId, { sortField, sortOrder } = {}) => {
+const getWordsInSet = async (setId, { page = 1, limit = 15, sortField, sortOrder } = {}) => {
+  const safeLimit = Math.min(Math.max(1, limit), 100);
+  const from = (page - 1) * safeLimit;
+  const to = from + safeLimit - 1;
+
   const { sortColumn, ascending } = parseSortParams({
     sortField,
     sortOrder,
@@ -317,27 +323,34 @@ const getWordsInSet = async (setId, { sortField, sortOrder } = {}) => {
     defaultOrder: "asc",
   });
 
-  const { data, error } = await supabase
-    .from("vocabulary_set_words")
-    .select(`
-      word_id,
-      created_at,
-      words (
-        id,
-        word,
-        meaning,
-        phonetic,
-        audio_url,
-        created_at
-      )
-    `)
-    .eq("vocabulary_id", setId);
+  const [dataResult, countResult] = await Promise.all([
+    supabase
+      .from("vocabulary_set_words")
+      .select(`
+        word_id,
+        created_at,
+        words (
+          id,
+          word,
+          meaning,
+          phonetic,
+          audio_url,
+          created_at
+        )
+      `)
+      .eq("vocabulary_id", setId)
+      .range(from, to),
+    supabase
+      .from("vocabulary_set_words")
+      .select("*", { count: "exact", head: true })
+      .eq("vocabulary_id", setId),
+  ]);
 
-  if (error) {
-    throw new AppError(error.message, 500);
+  if (dataResult.error) {
+    throw new AppError(dataResult.error.message, 500);
   }
 
-  let rows = (data || []).map((row) => ({
+  let rows = (dataResult.data || []).map((row) => ({
     id: row.words.id,
     word: row.words.word,
     meaning: row.words.meaning,
@@ -346,7 +359,6 @@ const getWordsInSet = async (setId, { sortField, sortOrder } = {}) => {
     createdAt: row.words.created_at,
   }));
 
-  // Sắp xếp bằng JS (đáng tin cậy hơn foreignTable)
   rows.sort((a, b) => {
     const valA = sortColumn === "word" ? a.word : a.createdAt;
     const valB = sortColumn === "word" ? b.word : b.createdAt;
@@ -354,7 +366,8 @@ const getWordsInSet = async (setId, { sortField, sortOrder } = {}) => {
     return ascending ? cmp : -cmp;
   });
 
-  return rows;
+  const total = countResult.count || 0;
+  return { words: rows, total };
 };
 
 /**

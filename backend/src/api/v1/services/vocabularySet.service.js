@@ -160,9 +160,9 @@ const addWordsToSet = async (setId, userId, words) => {
 };
 
 /**
- * Lấy chi tiết một bộ từ vựng kèm danh sách từ vựng bên trong (có sắp xếp).
+ * Lấy chi tiết một bộ từ vựng kèm danh sách từ vựng bên trong (có phân trang, sắp xếp).
  */
-const getDetail = async (setId, userId, { sortField, sortOrder } = {}) => {
+const getDetail = async (setId, userId, { page = 1, limit = 15, sortField, sortOrder } = {}) => {
   const vocabularySet = await vocabularySetModel.findById(setId);
 
   if (!vocabularySet) {
@@ -173,9 +173,9 @@ const getDetail = async (setId, userId, { sortField, sortOrder } = {}) => {
     throw new AppError("Bạn không có quyền xem bộ từ vựng này", 403);
   }
 
-  const words = await vocabularySetModel.getWordsInSet(setId, { sortField, sortOrder });
+  const { words, total } = await vocabularySetModel.getWordsInSet(setId, { page, limit, sortField, sortOrder });
 
-  return {
+  const response = {
     id: vocabularySet.id,
     title: vocabularySet.title,
     description: vocabularySet.description,
@@ -183,9 +183,11 @@ const getDetail = async (setId, userId, { sortField, sortOrder } = {}) => {
     createdBy: vocabularySet.created_by,
     createdAt: vocabularySet.created_at,
     updatedAt: vocabularySet.updated_at,
-    wordCount: words.length,
-    words,
   };
+
+  const safeLimit = Math.min(Math.max(1, limit), 100);
+  response.words = buildPaginationResponse(words, { page, limit: safeLimit, total });
+  return response;
 };
 
 /**

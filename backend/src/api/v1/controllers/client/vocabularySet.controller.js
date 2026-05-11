@@ -118,16 +118,17 @@ const getPublicVocabularySets = async (req, res, next) => {
 
 /**
  * GET /api/v1/vocabulary-sets/:id
- * Lấy chi tiết bộ từ vựng kèm danh sách từ vựng (có sắp xếp).
+ * Lấy chi tiết bộ từ vựng kèm danh sách từ vựng (có phân trang, sắp xếp).
  */
 const getDetail = async (req, res, next) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
+    const { page, limit } = parsePagination(req.query, { defaultLimit: 15, maxLimit: 100 });
     const sortField = req.query.sortField || "";
     const sortOrder = req.query.sortOrder || "";
 
-    const result = await vocabularySetService.getDetail(id, userId, { sortField, sortOrder });
+    const result = await vocabularySetService.getDetail(id, userId, { page, limit, sortField, sortOrder });
 
     return success(res, result, "Lấy chi tiết bộ từ vựng thành công");
   } catch (error) {
