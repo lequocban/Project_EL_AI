@@ -1,21 +1,21 @@
 import { Toaster } from "@/components/ui/toaster";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClientInstance } from "@/lib/query-client";
-import { BrowserRouter as Router, Route, Routes, Navigate, Outlet } from "react-router-dom";
-import PageNotFound from "./lib/PageNotFound";
+import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom";
+import PageNotFound from "@/lib/PageNotFound";
 import { AuthProvider, useAuth } from "@/lib/AuthContext";
-import Layout from "./components/Layout";
-import Home from "./pages/Home";
-import Vocabulary from "./pages/Vocabulary";
-import LookUp from "./pages/LookUp";
-import Listening, { ListeningPractice } from "./pages/Listening";
-import Reading, { ReadingPractice } from "./pages/Reading";
-import Stats from "./pages/Stats";
-import Leaderboard from "./pages/Leaderboard";
-import Profile from "./pages/Profile";
-import Landing from "./pages/Landing";
-import Register from "./pages/Register";
-import Login from "./pages/Login";
+import ClientLayout from "@/components/layouts/ClientLayout";
+import Home from "@/pages/client/Home";
+import Vocabulary from "@/pages/client/Vocabulary";
+import LookUp from "@/pages/client/LookUp";
+import Listening, { ListeningPractice } from "@/pages/client/Listening";
+import Reading, { ReadingPractice } from "@/pages/client/Reading";
+import Stats from "@/pages/client/Stats";
+import Leaderboard from "@/pages/client/Leaderboard";
+import Profile from "@/pages/client/Profile";
+import Landing from "@/pages/client/Landing";
+import Register from "@/pages/client/Register";
+import Login from "@/pages/client/Login";
 
 const LoadingScreen = () => (
   <div className="fixed inset-0 flex items-center justify-center">
@@ -34,7 +34,7 @@ const ProtectedRoute = () => {
     return <Navigate to="/login" replace />;
   }
 
-  return <Layout />;
+  return <ClientLayout />;
 };
 
 const AuthenticatedApp = () => {

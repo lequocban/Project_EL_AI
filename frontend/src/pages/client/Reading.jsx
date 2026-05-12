@@ -22,7 +22,7 @@ import {
   Clock,
 } from "lucide-react";
 import { readingApi } from "@/api/readingApi";
-import PracticeHistoryModal from "@/components/PracticeHistoryModal";
+import PracticeHistoryModal from "@/components/client/practice/PracticeHistoryModal";
 
 const LEVEL_LABELS = {
   beginner: "Cơ bản",

@@ -11,9 +11,9 @@ import {
   Heart,
   Clock,
 } from "lucide-react";
-import CreateSetModal from "../components/vocabulary/CreateSetModal";
-import SetDetail from "../components/vocabulary/SetDetail";
-import PracticeHistoryModal from "../components/PracticeHistoryModal";
+import CreateSetModal from "@/components/client/vocabulary/CreateSetModal";
+import SetDetail from "@/components/client/vocabulary/SetDetail";
+import PracticeHistoryModal from "@/components/client/practice/PracticeHistoryModal";
 import { vocabularyApi } from "@/api/vocabularyApi";
 
 const LEVEL_LABELS = {
