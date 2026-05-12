@@ -4,7 +4,7 @@ import { appParams } from "@/lib/app-params";
 const API_BASE_URL = import.meta.env.VITE_BASE_URL || appParams.appBaseUrl || "";
 const AUTH_URL = `${API_BASE_URL}/api/v1/auth`;
 const PROFILE_URL = `${API_BASE_URL}/api/v1/profile`;
-const ACCESS_TOKEN_KEY = "base44_access_token";
+const ACCESS_TOKEN_KEY = "englishup_access_token";
 
 // Xử lý response từ API
 const handleResponse = async (res) => {

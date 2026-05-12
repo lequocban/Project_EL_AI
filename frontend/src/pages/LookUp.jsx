@@ -17,7 +17,7 @@ export default function LookUp() {
     setResult(null);
 
     try {
-      const token = localStorage.getItem("base44_access_token");
+      const token = localStorage.getItem("englishup_access_token");
       const res = await fetch(`${API_BASE_URL}/api/v1/vocabulary/lookup`, {
         method: "POST",
         credentials: "include",

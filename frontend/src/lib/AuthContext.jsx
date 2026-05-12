@@ -2,7 +2,7 @@ import React, { createContext, useState, useContext, useEffect } from "react";
 import { authApi } from "@/api/authApi";
 
 const AuthContext = createContext();
-const ACCESS_TOKEN_KEY = "base44_access_token";
+const ACCESS_TOKEN_KEY = "englishup_access_token";
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
