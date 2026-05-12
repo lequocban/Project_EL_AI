@@ -112,7 +112,11 @@ export const authApi = {
   updateProfile: async ({ userName, dayOfBirth }) => {
     return fetchWithAuth(`${PROFILE_URL}/me`, {
       method: "PATCH",
-      body: JSON.stringify({ userName, dayOfBirth }),
+      body: JSON.stringify({
+        userName,
+        dayOfBirth,
+        updated_at: new Date().toISOString(),
+      }),
     });
   },
 
