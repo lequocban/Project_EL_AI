@@ -77,6 +77,14 @@ export const vocabularyApi = {
     });
   },
 
+  // Cập nhật thông tin bộ từ vựng (title, description)
+  updateSet: async (id, { title, description }) => {
+    return fetchWithAuth(`${VOCABULARY_SET_URL}/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ title, description }),
+    });
+  },
+
   // Thêm danh sách từ vựng vào bộ từ
   addWordsToSet: async (id, words) => {
     return fetchWithAuth(`${VOCABULARY_SET_URL}/${id}/words`, {
