@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Users,
   BookOpen,
@@ -8,36 +8,37 @@ import {
   CheckCircle,
   Clock,
   Shield,
-  AlertTriangle,
+  RefreshCw,
   Loader2,
 } from "lucide-react";
 import { adminApi } from "@/api/admin/adminApi";
 import { useAdminAuth } from "@/lib/AdminAuthContext";
 
+// Hàm gọi API lấy stats (tách riêng để dùng với TanStack Query)
+const fetchDashboardStats = async () => {
+  const response = await adminApi.getStats();
+  return response.data;
+};
+
 export default function AdminDashboard() {
   const { admin } = useAdminAuth();
-  const [stats, setStats] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
 
   const isAdminOnly = admin?.role === "admin";
 
-  useEffect(() => {
-    loadStats();
-  }, []);
-
-  const loadStats = async () => {
-    try {
-      setIsLoading(true);
-      const response = await adminApi.getStats();
-      setStats(response.data);
-      setError("");
-    } catch (err) {
-      setError(err.message || "Không thể tải thống kê");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const {
+    data: stats,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isFetching,
+  } = useQuery({
+    queryKey: ["admin-dashboard-stats"],
+    queryFn: fetchDashboardStats,
+    retry: 2,
+    retryDelay: 1000,
+    staleTime: 30 * 1000,
+  });
 
   if (isLoading) {
     return (
@@ -47,6 +48,11 @@ export default function AdminDashboard() {
     );
   }
 
+  const totalPending =
+    (stats?.pendingVocabularySets ?? 0) +
+    (stats?.pendingReadingLessons ?? 0) +
+    (stats?.pendingListeningLessons ?? 0);
+
   return (
     <div className="p-6 lg:p-8">
       <div className="mb-8">
@@ -54,10 +60,26 @@ export default function AdminDashboard() {
         <p className="text-slate-500 mt-1 font-medium">Xem nhanh tình trạng hệ thống</p>
       </div>
 
-      {error && (
-        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-600 flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4" />
-          {error}
+      {isError && (
+        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm font-medium text-red-600">
+            <RefreshCw className="w-4 h-4" />
+            {error?.message || "Không thể tải thống kê"}
+          </div>
+          <button
+            onClick={() => refetch()}
+            className="flex items-center gap-1.5 text-sm font-semibold text-red-600 hover:text-red-700 transition-colors"
+          >
+            <RefreshCw className={`w-4 h-4 ${isFetching ? "animate-spin" : ""}`} />
+            Thử lại
+          </button>
+        </div>
+      )}
+
+      {isFetching && !isLoading && (
+        <div className="mb-4 flex items-center gap-2 text-sm text-slate-500">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Đang cập nhật...
         </div>
       )}
 
@@ -121,6 +143,11 @@ export default function AdminDashboard() {
         <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
           <Shield className="w-5 h-5 text-violet-500" />
           Nội dung chờ kiểm duyệt
+          {totalPending > 0 && (
+            <span className="ml-2 px-2 py-0.5 bg-red-100 text-red-600 text-xs font-bold rounded-full">
+              {totalPending}
+            </span>
+          )}
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <PendingCard
