@@ -38,9 +38,6 @@ const adminNavItems = [
     icon: Headphones,
     gradient: "from-green-500 to-teal-500",
   },
-];
-
-const adminOnlyNavItems = [
   {
     path: "/admin/users",
     label: "Người dùng",
@@ -54,11 +51,6 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const { admin, logout } = useAdminAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
-
-  const isAdminOnly = admin?.role === "admin";
-  const allNavItems = isAdminOnly
-    ? [...adminNavItems, ...adminOnlyNavItems]
-    : adminNavItems;
 
   const handleLogout = async () => {
     await logout();
@@ -77,14 +69,14 @@ export default function AdminLayout() {
             <div>
               <span className="text-xl font-black text-slate-900">Admin</span>
               <div className="text-xs text-slate-500 font-medium">
-                {isAdminOnly ? "Quản trị viên" : "Quản lý nội dung"}
+                {admin?.role === "admin" ? "Quản trị viên" : "Quản lý nội dung"}
               </div>
             </div>
           </Link>
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {allNavItems.map(({ path, label, icon: Icon, gradient }) => {
+          {adminNavItems.map(({ path, label, icon: Icon, gradient }) => {
             const active =
               location.pathname === path ||
               (path !== "/admin/dashboard" && location.pathname.startsWith(path));
@@ -148,7 +140,7 @@ export default function AdminLayout() {
             className="bg-white text-slate-900 w-72 h-full p-4 pt-16 space-y-1 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            {allNavItems.map(({ path, label, icon: Icon, gradient }) => {
+            {adminNavItems.map(({ path, label, icon: Icon, gradient }) => {
               const active =
                 location.pathname === path ||
                 (path !== "/admin/dashboard" && location.pathname.startsWith(path));
