@@ -1,10 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQueries } from "@tanstack/react-query";
 import {
   Users,
   BookOpen,
   BookText,
   Headphones,
-  TrendingUp,
   CheckCircle,
   Clock,
   Shield,
@@ -12,12 +11,81 @@ import {
   Loader2,
 } from "lucide-react";
 import { adminApi } from "@/api/admin/adminApi";
+import { vocabularyApi } from "@/api/client/vocabularyApi";
+import { readingApi } from "@/api/client/readingApi";
+import { listeningApi } from "@/api/client/listeningApi";
 import { useAdminAuth } from "@/lib/AdminAuthContext";
 
-// Hàm gọi API lấy stats (tách riêng để dùng với TanStack Query)
-const fetchDashboardStats = async () => {
-  const response = await adminApi.getStats();
-  return response.data;
+// Lấy tổng số người dùng (gọi API với limit=1 để lấy total từ phân trang)
+const fetchTotalUsers = async () => {
+  const res = await adminApi.getUsers({ page: 1, limit: 1 });
+  return res.data?.total ?? 0;
+};
+
+// Lấy số người dùng đang hoạt động
+const fetchActiveUsers = async () => {
+  const res = await adminApi.getUsers({ page: 1, limit: 1, status: "active" });
+  return res.data?.total ?? 0;
+};
+
+// Lấy số người dùng bị khóa
+const fetchInactiveUsers = async () => {
+  const res = await adminApi.getUsers({ page: 1, limit: 1, status: "inactive" });
+  return res.data?.total ?? 0;
+};
+
+// Lấy tổng số bộ từ vựng công khai
+const fetchTotalVocabularySets = async () => {
+  const res = await vocabularyApi.getPublicSets();
+  return Array.isArray(res) ? res.length : 0;
+};
+
+// Lấy số bộ từ vựng công khai
+const fetchPublicVocabularySets = async () => {
+  const res = await vocabularyApi.getPublicSets();
+  return Array.isArray(res) ? res.length : 0;
+};
+
+// Lấy số bộ từ vựng chờ duyệt
+const fetchPendingVocabularySets = async () => {
+  const res = await adminApi.getVocabPending({ page: 1, limit: 1 });
+  return res.data?.total ?? 0;
+};
+
+// Lấy tổng số bài luyện đọc công khai
+const fetchTotalReadingLessons = async () => {
+  const res = await readingApi.getPublicLessons({ page: 1, limit: 1 });
+  return res.total ?? 0;
+};
+
+// Lấy số bài luyện đọc công khai
+const fetchPublicReadingLessons = async () => {
+  const res = await readingApi.getPublicLessons({ page: 1, limit: 1 });
+  return res.total ?? 0;
+};
+
+// Lấy số bài luyện đọc chờ duyệt
+const fetchPendingReadingLessons = async () => {
+  const res = await adminApi.getReadingPending({ page: 1, limit: 1 });
+  return res.data?.total ?? 0;
+};
+
+// Lấy tổng số bài luyện nghe công khai
+const fetchTotalListeningLessons = async () => {
+  const res = await listeningApi.getPublicLessons({ page: 1, limit: 1 });
+  return res.total ?? 0;
+};
+
+// Lấy số bài luyện nghe công khai
+const fetchPublicListeningLessons = async () => {
+  const res = await listeningApi.getPublicLessons({ page: 1, limit: 1 });
+  return res.total ?? 0;
+};
+
+// Lấy số bài luyện nghe chờ duyệt
+const fetchPendingListeningLessons = async () => {
+  const res = await adminApi.getListeningPending({ page: 1, limit: 1 });
+  return res.data?.total ?? 0;
 };
 
 export default function AdminDashboard() {
@@ -25,20 +93,65 @@ export default function AdminDashboard() {
 
   const isAdminOnly = admin?.role === "admin";
 
-  const {
-    data: stats,
-    isLoading,
-    isError,
-    error,
-    refetch,
-    isFetching,
-  } = useQuery({
-    queryKey: ["admin-dashboard-stats"],
-    queryFn: fetchDashboardStats,
-    retry: 2,
-    retryDelay: 1000,
-    staleTime: 30 * 1000,
+  // Gọi song song tất cả các API để lấy số liệu
+  const queryResults = useQueries({
+    queries: [
+      { queryKey: ["admin", "totalUsers"], queryFn: fetchTotalUsers, staleTime: 60 * 1000, retry: 2 },
+      { queryKey: ["admin", "activeUsers"], queryFn: fetchActiveUsers, staleTime: 60 * 1000, retry: 2 },
+      { queryKey: ["admin", "inactiveUsers"], queryFn: fetchInactiveUsers, staleTime: 60 * 1000, retry: 2 },
+      { queryKey: ["admin", "totalVocabularySets"], queryFn: fetchTotalVocabularySets, staleTime: 60 * 1000, retry: 2 },
+      { queryKey: ["admin", "publicVocabularySets"], queryFn: fetchPublicVocabularySets, staleTime: 60 * 1000, retry: 2 },
+      { queryKey: ["admin", "pendingVocabularySets"], queryFn: fetchPendingVocabularySets, staleTime: 30 * 1000, retry: 2 },
+      { queryKey: ["admin", "totalReadingLessons"], queryFn: fetchTotalReadingLessons, staleTime: 60 * 1000, retry: 2 },
+      { queryKey: ["admin", "publicReadingLessons"], queryFn: fetchPublicReadingLessons, staleTime: 60 * 1000, retry: 2 },
+      { queryKey: ["admin", "pendingReadingLessons"], queryFn: fetchPendingReadingLessons, staleTime: 30 * 1000, retry: 2 },
+      { queryKey: ["admin", "totalListeningLessons"], queryFn: fetchTotalListeningLessons, staleTime: 60 * 1000, retry: 2 },
+      { queryKey: ["admin", "publicListeningLessons"], queryFn: fetchPublicListeningLessons, staleTime: 60 * 1000, retry: 2 },
+      { queryKey: ["admin", "pendingListeningLessons"], queryFn: fetchPendingListeningLessons, staleTime: 30 * 1000, retry: 2 },
+    ],
   });
+
+  const [
+    totalUsersResult,
+    activeUsersResult,
+    inactiveUsersResult,
+    totalVocabularySetsResult,
+    publicVocabularySetsResult,
+    pendingVocabularySetsResult,
+    totalReadingLessonsResult,
+    publicReadingLessonsResult,
+    pendingReadingLessonsResult,
+    totalListeningLessonsResult,
+    publicListeningLessonsResult,
+    pendingListeningLessonsResult,
+  ] = queryResults;
+
+  // Trạng thái loading: chỉ khi tất cả đang loading
+  const isLoading = queryResults.some((q) => q.isLoading);
+  const isFetching = queryResults.some((q) => q.isFetching);
+  const hasError = queryResults.some((q) => q.isError);
+
+  // Số liệu tổng hợp
+  const stats = {
+    totalUsers: totalUsersResult.data ?? 0,
+    activeUsers: activeUsersResult.data ?? 0,
+    inactiveUsers: inactiveUsersResult.data ?? 0,
+    totalVocabularySets: totalVocabularySetsResult.data ?? 0,
+    publicVocabularySets: publicVocabularySetsResult.data ?? 0,
+    pendingVocabularySets: pendingVocabularySetsResult.data ?? 0,
+    totalReadingLessons: totalReadingLessonsResult.data ?? 0,
+    publicReadingLessons: publicReadingLessonsResult.data ?? 0,
+    pendingReadingLessons: pendingReadingLessonsResult.data ?? 0,
+    totalListeningLessons: totalListeningLessonsResult.data ?? 0,
+    publicListeningLessons: publicListeningLessonsResult.data ?? 0,
+    pendingListeningLessons: pendingListeningLessonsResult.data ?? 0,
+  };
+
+  // Tổng số nội dung chờ duyệt
+  const totalPending =
+    stats.pendingVocabularySets +
+    stats.pendingReadingLessons +
+    stats.pendingListeningLessons;
 
   if (isLoading) {
     return (
@@ -48,11 +161,6 @@ export default function AdminDashboard() {
     );
   }
 
-  const totalPending =
-    (stats?.pendingVocabularySets ?? 0) +
-    (stats?.pendingReadingLessons ?? 0) +
-    (stats?.pendingListeningLessons ?? 0);
-
   return (
     <div className="p-6 lg:p-8">
       <div className="mb-8">
@@ -60,18 +168,18 @@ export default function AdminDashboard() {
         <p className="text-slate-500 mt-1 font-medium">Xem nhanh tình trạng hệ thống</p>
       </div>
 
-      {isError && (
+      {hasError && (
         <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm font-medium text-red-600">
             <RefreshCw className="w-4 h-4" />
-            {error?.message || "Không thể tải thống kê"}
+            Một số số liệu không thể tải. Hãy thử tải lại trang.
           </div>
           <button
-            onClick={() => refetch()}
+            onClick={() => window.location.reload()}
             className="flex items-center gap-1.5 text-sm font-semibold text-red-600 hover:text-red-700 transition-colors"
           >
             <RefreshCw className={`w-4 h-4 ${isFetching ? "animate-spin" : ""}`} />
-            Thử lại
+            Tải lại
           </button>
         </div>
       )}
@@ -88,28 +196,28 @@ export default function AdminDashboard() {
         <StatCard
           icon={Users}
           label="Tổng người dùng"
-          value={stats?.totalUsers ?? 0}
+          value={stats.totalUsers}
           color="from-violet-500 to-indigo-500"
         />
         <StatCard
           icon={BookOpen}
           label="Bộ từ vựng"
-          value={stats?.totalVocabularySets ?? 0}
-          sub={`${stats?.pendingVocabularySets ?? 0} chờ duyệt`}
+          value={stats.totalVocabularySets}
+          sub={`${stats.pendingVocabularySets} chờ duyệt`}
           color="from-blue-500 to-cyan-500"
         />
         <StatCard
           icon={BookText}
           label="Bài luyện đọc"
-          value={stats?.totalReadingLessons ?? 0}
-          sub={`${stats?.pendingReadingLessons ?? 0} chờ duyệt`}
+          value={stats.totalReadingLessons}
+          sub={`${stats.pendingReadingLessons} chờ duyệt`}
           color="from-orange-500 to-amber-500"
         />
         <StatCard
           icon={Headphones}
           label="Bài luyện nghe"
-          value={stats?.totalListeningLessons ?? 0}
-          sub={`${stats?.pendingListeningLessons ?? 0} chờ duyệt`}
+          value={stats.totalListeningLessons}
+          sub={`${stats.pendingListeningLessons} chờ duyệt`}
           color="from-green-500 to-teal-500"
         />
       </div>
@@ -120,19 +228,19 @@ export default function AdminDashboard() {
           <StatCard
             icon={CheckCircle}
             label="Tài khoản hoạt động"
-            value={stats?.activeUsers ?? 0}
+            value={stats.activeUsers}
             color="from-emerald-500 to-green-500"
           />
           <StatCard
             icon={Clock}
             label="Tài khoản bị khóa"
-            value={stats?.inactiveUsers ?? 0}
+            value={stats.inactiveUsers}
             color="from-red-500 to-rose-500"
           />
           <StatCard
-            icon={TrendingUp}
+            icon={Users}
             label="Tổng lượt luyện tập"
-            value={stats?.totalPracticeSessions ?? 0}
+            value={0}
             color="from-pink-500 to-rose-500"
           />
         </div>
@@ -152,21 +260,21 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <PendingCard
             label="Bộ từ vựng"
-            count={stats?.pendingVocabularySets ?? 0}
+            count={stats.pendingVocabularySets}
             href="/admin/vocabulary"
             color="bg-blue-50 text-blue-600"
             icon={BookOpen}
           />
           <PendingCard
             label="Bài luyện đọc"
-            count={stats?.pendingReadingLessons ?? 0}
+            count={stats.pendingReadingLessons}
             href="/admin/reading"
             color="bg-orange-50 text-orange-600"
             icon={BookText}
           />
           <PendingCard
             label="Bài luyện nghe"
-            count={stats?.pendingListeningLessons ?? 0}
+            count={stats.pendingListeningLessons}
             href="/admin/listening"
             color="bg-green-50 text-green-600"
             icon={Headphones}
@@ -180,19 +288,19 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <OverviewCard
             label="Bộ từ vựng công khai"
-            value={stats?.publicVocabularySets ?? 0}
+            value={stats.publicVocabularySets}
             icon={BookOpen}
             color="text-blue-600 bg-blue-50"
           />
           <OverviewCard
             label="Bài luyện đọc công khai"
-            value={stats?.publicReadingLessons ?? 0}
+            value={stats.publicReadingLessons}
             icon={BookText}
             color="text-orange-600 bg-orange-50"
           />
           <OverviewCard
             label="Bài luyện nghe công khai"
-            value={stats?.publicListeningLessons ?? 0}
+            value={stats.publicListeningLessons}
             icon={Headphones}
             color="text-green-600 bg-green-50"
           />

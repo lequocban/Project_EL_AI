@@ -37,6 +37,19 @@ export default function AdminVocabulary() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingSet, setEditingSet] = useState(null);
 
+  // Load allTotal ngay khi mount (chỉ chạy 1 lần)
+  useEffect(() => {
+    const loadAllTotal = async () => {
+      try {
+        const res = await adminApi.getAllVocabularySets({ page: 1, limit: 1000, keyword: "" });
+        setAllTotal(res.data?.items?.length || 0);
+      } catch {
+        // ignore
+      }
+    };
+    loadAllTotal();
+  }, []);
+
   useEffect(() => {
     loadData();
   }, [tab, pendingPage, allPage, search]);
@@ -54,12 +67,18 @@ export default function AdminVocabulary() {
         setPendingSets(res.data?.items || []);
         setPendingTotal(res.data?.total || 0);
       } else {
-        const res = await vocabularyApi.getMySets();
-        const filtered = search
-          ? res.filter((s) => s.title?.toLowerCase().includes(search.toLowerCase()))
-          : res;
-        setAllTotal(filtered.length);
-        setAllSets(filtered.slice((allPage - 1) * 15, allPage * 15));
+        // Gọi song song: lấy danh sách để hiển thị (phân trang) và lấy total (limit lớn)
+        const [listRes, totalRes] = await Promise.all([
+          adminApi.getAllVocabularySets({ page: allPage, limit: 15, keyword: search }),
+          adminApi.getAllVocabularySets({ page: 1, limit: 1000, keyword: "" }),
+        ]);
+        setAllSets(listRes.data?.items || []);
+        const totalItems = totalRes.data?.items || [];
+        // Lọc lại theo keyword nếu có
+        const filteredTotal = search
+          ? totalItems.filter((s) => s.title?.toLowerCase().includes(search.toLowerCase()))
+          : totalItems;
+        setAllTotal(filteredTotal.length);
       }
     } catch (err) {
       setError(err.message || "Không thể tải dữ liệu");

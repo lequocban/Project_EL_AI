@@ -280,4 +280,27 @@ export const adminApi = {
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
     return fetchAdminWithAuth("/api/v1/vocabulary-sets/" + setId + "/words?" + params, { method: "GET" });
   },
+
+  // ============ LẤY TẤT CẢ (CHO TAB "TẤT CẢ") ============
+
+  // Lấy tất cả bộ từ vựng (không phân biệt người tạo)
+  getAllVocabularySets: async ({ page = 1, limit = 15, keyword = "" } = {}) => {
+    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+    if (keyword) params.append("keyword", keyword);
+    return fetchAdminWithAuth("/api/v1/vocabulary-sets/public?" + params, { method: "GET" });
+  },
+
+  // Lấy tất cả bài luyện đọc (không phân biệt người tạo)
+  getAllReadingLessons: async ({ page = 1, limit = 15, keyword = "" } = {}) => {
+    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+    if (keyword) params.append("keyword", keyword);
+    return fetchAdminWithAuth("/api/v1/reading-lessons/public?" + params, { method: "GET" });
+  },
+
+  // Lấy tất cả bài luyện nghe (không phân biệt người tạo)
+  getAllListeningLessons: async ({ page = 1, limit = 15, keyword = "" } = {}) => {
+    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+    if (keyword) params.append("keyword", keyword);
+    return fetchAdminWithAuth("/api/v1/listening-lessons/public?" + params, { method: "GET" });
+  },
 };

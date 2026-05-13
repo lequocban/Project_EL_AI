@@ -37,6 +37,19 @@ export default function AdminListening() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingLesson, setEditingLesson] = useState(null);
 
+  // Load allTotal ngay khi mount (chỉ chạy 1 lần)
+  useEffect(() => {
+    const loadAllTotal = async () => {
+      try {
+        const res = await adminApi.getAllListeningLessons({ page: 1, limit: 1000, keyword: "" });
+        setAllTotal(res.data?.items?.length || 0);
+      } catch {
+        // ignore
+      }
+    };
+    loadAllTotal();
+  }, []);
+
   useEffect(() => {
     loadData();
   }, [tab, pendingPage, allPage, search]);
@@ -54,12 +67,18 @@ export default function AdminListening() {
         setPendingLessons(res.data?.items || []);
         setPendingTotal(res.data?.total || 0);
       } else {
-        const res = await listeningApi.getMyLessons({ limit: 100, search });
-        const filtered = search
-          ? res.items.filter((l) => l.title?.toLowerCase().includes(search.toLowerCase()))
-          : res.items;
-        setAllTotal(filtered.length);
-        setAllLessons(filtered.slice((allPage - 1) * 15, allPage * 15));
+        // Gọi song song: lấy danh sách để hiển thị (phân trang) và lấy total (limit lớn)
+        const [listRes, totalRes] = await Promise.all([
+          adminApi.getAllListeningLessons({ page: allPage, limit: 15, keyword: search }),
+          adminApi.getAllListeningLessons({ page: 1, limit: 1000, keyword: "" }),
+        ]);
+        setAllLessons(listRes.data?.items || []);
+        const totalItems = totalRes.data?.items || [];
+        // Lọc lại theo keyword nếu có
+        const filteredTotal = search
+          ? totalItems.filter((l) => l.title?.toLowerCase().includes(search.toLowerCase()))
+          : totalItems;
+        setAllTotal(filteredTotal.length);
       }
     } catch (err) {
       setError(err.message || "Không thể tải dữ liệu");
