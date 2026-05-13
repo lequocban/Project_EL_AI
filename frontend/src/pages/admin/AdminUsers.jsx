@@ -3,8 +3,6 @@ import {
   Users,
   Search,
   Loader2,
-  ChevronLeft,
-  ChevronRight,
   AlertTriangle,
   Shield,
   UserCog,
@@ -15,7 +13,17 @@ import {
   Eye,
   X,
   RefreshCw,
+  ChevronDown,
+  SlidersHorizontal,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
 import { adminApi } from "@/api/admin/adminApi";
 
 const ROLE_LABELS = {
@@ -40,19 +48,11 @@ const STATUS_COLORS = {
   inactive: "bg-red-50 text-red-600 border-red-200",
 };
 
-// Lấy role chính của user (ưu tiên: admin > content_manager > user)
-const getPrimaryRole = (roles = []) => {
-  if (!Array.isArray(roles) || roles.length === 0) return "user";
-  if (roles.includes("admin")) return "admin";
-  if (roles.includes("content_manager")) return "content_manager";
-  return "user";
-};
-
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
-  const [limit] = useState(20);
+  const [limit] = useState(10);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [sortField, setSortField] = useState("created_at");
@@ -71,7 +71,7 @@ export default function AdminUsers() {
   const [userDetail, setUserDetail] = useState(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
 
-  const totalPages = Math.ceil(total / limit) || 1;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
 
   // Debounce search input
   useEffect(() => {
@@ -96,7 +96,7 @@ export default function AdminUsers() {
         role,
       });
       setUsers(res.data?.items || []);
-      setTotal(res.data?.total || 0);
+      setTotal(res.data?.pagination?.total || 0);
     } catch (err) {
       setError(err.message || "Không thể tải danh sách người dùng");
     } finally {
@@ -199,7 +199,14 @@ export default function AdminUsers() {
     });
   };
 
-  const primaryRole = selectedUser ? getPrimaryRole(selectedUser.roles) : "user";
+  const getPrimaryRoleInline = (roles) => {
+    if (!Array.isArray(roles) || roles.length === 0) return "user";
+    if (roles.includes("admin")) return "admin";
+    if (roles.includes("content_manager")) return "content_manager";
+    return "user";
+  };
+
+  const primaryRole = selectedUser ? getPrimaryRoleInline(selectedUser.roles || []) : "user";
 
   return (
     <div className="p-6 lg:p-8">
@@ -229,52 +236,115 @@ export default function AdminUsers() {
           </div>
 
           {/* Role filter */}
-          <select
-            value={role}
-            onChange={(e) => {
-              setRole(e.target.value);
-              setPage(1);
-            }}
-            className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-pink-500/30 bg-white min-w-[160px]"
-          >
-            <option value="">Tất cả vai trò</option>
-            <option value="user">Người dùng</option>
-            <option value="content_manager">Quản lý nội dung</option>
-            <option value="admin">Quản trị viên</option>
-          </select>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium bg-white hover:bg-slate-50 transition-colors min-w-[160px] justify-between">
+                <span className="flex items-center gap-2">
+                  <SlidersHorizontal className="w-4 h-4 text-slate-400" />
+                  {role === "" ? "Tất cả vai trò" : ROLE_LABELS[role] || role}
+                </span>
+                <ChevronDown className="w-4 h-4 text-slate-400" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-[200px]">
+              <DropdownMenuItem onClick={() => { setRole(""); setPage(1); }} className={role === "" ? "bg-accent font-semibold" : ""}>
+                Tất cả vai trò
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => { setRole("user"); setPage(1); }} className={role === "user" ? "bg-accent font-semibold" : ""}>
+                <Shield className="w-4 h-4 mr-2 text-violet-600" />Người dùng
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { setRole("content_manager"); setPage(1); }} className={role === "content_manager" ? "bg-accent font-semibold" : ""}>
+                <UserCog className="w-4 h-4 mr-2 text-blue-600" />Quản lý nội dung
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { setRole("admin"); setPage(1); }} className={role === "admin" ? "bg-accent font-semibold" : ""}>
+                <Shield className="w-4 h-4 mr-2 text-violet-600" />Quản trị viên
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           {/* Status filter */}
-          <select
-            value={status}
-            onChange={(e) => {
-              setStatus(e.target.value);
-              setPage(1);
-            }}
-            className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-pink-500/30 bg-white min-w-[160px]"
-          >
-            <option value="">Tất cả trạng thái</option>
-            <option value="active">Hoạt động</option>
-            <option value="inactive">Bị khóa</option>
-          </select>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium bg-white hover:bg-slate-50 transition-colors min-w-[160px] justify-between">
+                <span className="flex items-center gap-2">
+                  <SlidersHorizontal className="w-4 h-4 text-slate-400" />
+                  {status === "" ? "Tất cả trạng thái" : STATUS_LABELS[status] || status}
+                </span>
+                <ChevronDown className="w-4 h-4 text-slate-400" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-[200px]">
+              <DropdownMenuItem onClick={() => { setStatus(""); setPage(1); }} className={status === "" ? "bg-accent font-semibold" : ""}>
+                Tất cả trạng thái
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => { setStatus("active"); setPage(1); }} className={status === "active" ? "bg-accent font-semibold" : ""}>
+                <CheckCircle className="w-4 h-4 mr-2 text-emerald-600" />Hoạt động
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { setStatus("inactive"); setPage(1); }} className={status === "inactive" ? "bg-accent font-semibold" : ""}>
+                <Lock className="w-4 h-4 mr-2 text-red-600" />Bị khóa
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           {/* Sort */}
-          <select
-            value={`${sortField}:${sortOrder}`}
-            onChange={(e) => {
-              const [field, order] = e.target.value.split(":");
-              setSortField(field);
-              setSortOrder(order);
-              setPage(1);
-            }}
-            className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-pink-500/30 bg-white min-w-[160px]"
-          >
-            <option value="created_at:desc">Mới nhất</option>
-            <option value="created_at:asc">Cũ nhất</option>
-            <option value="email:asc">Email A → Z</option>
-            <option value="email:desc">Email Z → A</option>
-            <option value="status:asc">Trạng thái A → Z</option>
-            <option value="status:desc">Trạng thái Z → A</option>
-          </select>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium bg-white hover:bg-slate-50 transition-colors min-w-[160px] justify-between">
+                <span className="flex items-center gap-2">
+                  <SlidersHorizontal className="w-4 h-4 text-slate-400" />
+                  {sortField === "created_at" && sortOrder === "desc" ? "Mới nhất" :
+                   sortField === "created_at" && sortOrder === "asc" ? "Cũ nhất" :
+                   sortField === "email" && sortOrder === "asc" ? "Email A → Z" :
+                   sortField === "email" && sortOrder === "desc" ? "Email Z → A" :
+                   sortField === "status" && sortOrder === "asc" ? "Trạng thái A → Z" :
+                   sortField === "status" && sortOrder === "desc" ? "Trạng thái Z → A" : "Sắp xếp"}
+                </span>
+                <ChevronDown className="w-4 h-4 text-slate-400" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-[200px]">
+              <DropdownMenuItem
+                onClick={() => { setSortField("created_at"); setSortOrder("desc"); setPage(1); }}
+                className={sortField === "created_at" && sortOrder === "desc" ? "bg-accent font-semibold" : ""}
+              >
+                Mới nhất
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => { setSortField("created_at"); setSortOrder("asc"); setPage(1); }}
+                className={sortField === "created_at" && sortOrder === "asc" ? "bg-accent font-semibold" : ""}
+              >
+                Cũ nhất
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => { setSortField("email"); setSortOrder("asc"); setPage(1); }}
+                className={sortField === "email" && sortOrder === "asc" ? "bg-accent font-semibold" : ""}
+              >
+                Email A → Z
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => { setSortField("email"); setSortOrder("desc"); setPage(1); }}
+                className={sortField === "email" && sortOrder === "desc" ? "bg-accent font-semibold" : ""}
+              >
+                Email Z → A
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => { setSortField("status"); setSortOrder("asc"); setPage(1); }}
+                className={sortField === "status" && sortOrder === "asc" ? "bg-accent font-semibold" : ""}
+              >
+                Trạng thái A → Z
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => { setSortField("status"); setSortOrder("desc"); setPage(1); }}
+                className={sortField === "status" && sortOrder === "desc" ? "bg-accent font-semibold" : ""}
+              >
+                Trạng thái Z → A
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -331,7 +401,7 @@ export default function AdminUsers() {
             ) : (
               users.map((user) => {
                 const uRoles = user.roles || [];
-                const uPrimaryRole = getPrimaryRole(uRoles);
+                const uPrimaryRole = getPrimaryRoleInline(uRoles);
                 return (
                   <tr
                     key={user.id}
@@ -347,19 +417,23 @@ export default function AdminUsers() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-5 py-4 text-center">
-                      <div className="flex flex-col items-center gap-1">
-                        <span
-                          className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full border ${ROLE_COLORS[uPrimaryRole]}`}
-                        >
-                          {uPrimaryRole === "admin" && <Shield className="w-3 h-3" />}
-                          {uPrimaryRole === "content_manager" && <UserCog className="w-3 h-3" />}
-                          {ROLE_LABELS[uPrimaryRole]}
-                        </span>
-                        {uRoles.length > 1 && (
-                          <span className="text-xs text-slate-400">
-                            +{uRoles.length - 1} vai trò
+                    <td className="px-5 py-4">
+                      <div className="flex flex-col items-start gap-1">
+                        {uRoles.length === 0 ? (
+                          <span className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full border ${ROLE_COLORS.user}`}>
+                            {ROLE_LABELS.user}
                           </span>
+                        ) : (
+                          uRoles.map((r) => (
+                            <span
+                              key={r}
+                              className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full border ${ROLE_COLORS[r] || ROLE_COLORS.user}`}
+                            >
+                              {r === "admin" && <Shield className="w-3 h-3" />}
+                              {r === "content_manager" && <UserCog className="w-3 h-3" />}
+                              {ROLE_LABELS[r]}
+                            </span>
+                          ))
                         )}
                       </div>
                     </td>
@@ -445,37 +519,34 @@ export default function AdminUsers() {
       </div>
 
       {/* Pagination */}
-      {!isLoading && users.length > 0 && (
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-6">
+      {totalPages > 1 && !isLoading && users.length > 0 && (
+        <div className="flex items-center justify-center gap-2 mt-6">
           <button
             onClick={() => setPage(Math.max(1, page - 1))}
-            disabled={page <= 1}
-            className="p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            disabled={page === 1}
+            className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            <ChevronLeft className="w-4 h-4" />
+            ←
           </button>
-          <div className="flex items-center gap-1.5 text-sm font-bold text-slate-600">
-            <span>Trang</span>
-            <input
-              type="number"
-              min={1}
-              max={totalPages}
-              value={page}
-              onChange={(e) => {
-                const val = parseInt(e.target.value, 10);
-                if (!isNaN(val) && val >= 1 && val <= totalPages) setPage(val);
-              }}
-              className="w-14 text-center px-2 py-1 rounded-lg border border-slate-200 font-bold focus:outline-none focus:ring-2 focus:ring-pink-500/30"
-            />
-            <span>/ {totalPages}</span>
-            <span className="text-slate-400 font-normal ml-2">— {total} người dùng</span>
-          </div>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+            <button
+              key={p}
+              onClick={() => setPage(p)}
+              className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${
+                page === p
+                  ? "bg-pink-500 text-white"
+                  : "border border-slate-200 hover:bg-slate-50"
+              }`}
+            >
+              {p}
+            </button>
+          ))}
           <button
             onClick={() => setPage(Math.min(totalPages, page + 1))}
-            disabled={page >= totalPages}
-            className="p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            disabled={page === totalPages}
+            className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            <ChevronRight className="w-4 h-4" />
+            →
           </button>
         </div>
       )}
