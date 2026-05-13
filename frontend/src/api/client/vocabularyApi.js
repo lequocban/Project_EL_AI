@@ -1,6 +1,6 @@
 import { fetchWithAuth } from "@/api/authApi";
 
-// Các endpoint API cho vocabulary
+// Các endpoint API cho vocabulary (phía client người dùng)
 const VOCABULARY_SET_URL = `/api/v1/vocabulary-sets`;
 const VOCABULARY_URL = `/api/v1/vocabulary`;
 const FAVORITE_URL = `/api/v1/favorites/vocabulary-sets`;

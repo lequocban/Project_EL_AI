@@ -1,6 +1,6 @@
 import { fetchWithAuth } from "@/api/authApi";
 
-// Các endpoint API cho listening
+// Các endpoint API cho listening (phía client người dùng)
 const LISTENING_LESSON_URL = `/api/v1/listening-lessons`;
 const LISTENING_PRACTICE_URL = `/api/v1/listening-lessons/practice`;
 

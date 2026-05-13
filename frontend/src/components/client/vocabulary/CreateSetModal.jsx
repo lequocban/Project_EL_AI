@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { X, Sparkles, Keyboard } from "lucide-react";
-import { vocabularyApi } from "@/api/vocabularyApi";
+import { vocabularyApi } from "@/api/client/vocabularyApi";
 
 export default function CreateSetModal({ onClose, onCreated }) {
   const [mode, setMode] = useState("manual");

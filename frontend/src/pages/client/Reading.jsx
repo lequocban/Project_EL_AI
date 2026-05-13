@@ -21,7 +21,7 @@ import {
   Wand2,
   Clock,
 } from "lucide-react";
-import { readingApi } from "@/api/readingApi";
+import { readingApi } from "@/api/client/readingApi";
 import PracticeHistoryModal from "@/components/client/practice/PracticeHistoryModal";
 
 const LEVEL_LABELS = {

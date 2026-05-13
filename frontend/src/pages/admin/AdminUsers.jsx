@@ -12,9 +12,8 @@ import {
   Unlock,
   Trash2,
   CheckCircle,
-  XCircle,
 } from "lucide-react";
-import { adminApi } from "@/api/adminApi";
+import { adminApi } from "@/api/admin/adminApi";
 import { useAdminAuth } from "@/lib/AdminAuthContext";
 
 const ROLE_LABELS = {

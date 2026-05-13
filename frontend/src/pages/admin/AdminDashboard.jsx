@@ -11,7 +11,7 @@ import {
   AlertTriangle,
   Loader2,
 } from "lucide-react";
-import { adminApi } from "@/api/adminApi";
+import { adminApi } from "@/api/admin/adminApi";
 import { useAdminAuth } from "@/lib/AdminAuthContext";
 
 export default function AdminDashboard() {

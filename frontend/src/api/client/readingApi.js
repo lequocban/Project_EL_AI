@@ -1,6 +1,6 @@
 import { fetchWithAuth } from "@/api/authApi";
 
-// Các endpoint API cho reading
+// Các endpoint API cho reading (phía client người dùng)
 const READING_LESSON_URL = `/api/v1/reading-lessons`;
 const READING_PRACTICE_URL = `/api/v1/reading-lessons/practice`;
 

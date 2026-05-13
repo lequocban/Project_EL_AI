@@ -9,9 +9,9 @@ import {
   BookText,
   TrendingUp,
 } from "lucide-react";
-import { vocabularyApi } from "@/api/vocabularyApi";
-import { listeningApi } from "@/api/listeningApi";
-import { readingApi } from "@/api/readingApi";
+import { vocabularyApi } from "@/api/client/vocabularyApi";
+import { listeningApi } from "@/api/client/listeningApi";
+import { readingApi } from "@/api/client/readingApi";
 
 const MODULE_COLORS = {
   vocabulary: "from-violet-500 to-indigo-500",

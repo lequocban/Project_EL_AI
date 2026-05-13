@@ -17,8 +17,8 @@ import {
   Lock,
   FileAudio,
 } from "lucide-react";
-import { adminApi } from "@/api/adminApi";
-import { listeningApi } from "@/api/listeningApi";
+import { adminApi } from "@/api/admin/adminApi";
+import { listeningApi } from "@/api/client/listeningApi";
 
 export default function AdminListening() {
   const [tab, setTab] = useState("pending");

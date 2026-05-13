@@ -17,8 +17,8 @@ import {
   Lock,
   FileText,
 } from "lucide-react";
-import { adminApi } from "@/api/adminApi";
-import { vocabularyApi } from "@/api/vocabularyApi";
+import { adminApi } from "@/api/admin/adminApi";
+import { vocabularyApi } from "@/api/client/vocabularyApi";
 
 export default function AdminVocabulary() {
   const [tab, setTab] = useState("pending"); // "pending" | "all"

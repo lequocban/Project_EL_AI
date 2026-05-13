@@ -22,7 +22,7 @@ import MultipleChoiceGame from "./MultipleChoiceGame";
 import TypingGame from "./TypingGame";
 import DictationGame from "./DictationGame";
 import ExamGame from "./ExamGame";
-import { vocabularyApi } from "@/api/vocabularyApi";
+import { vocabularyApi } from "@/api/client/vocabularyApi";
 
 const MODES = [
   {

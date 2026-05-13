@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from "react";
-import { adminApi } from "@/api/adminApi";
+import { adminApi } from "@/api/admin/adminApi";
 
 const AdminAuthContext = createContext();
 const ADMIN_ACCESS_TOKEN_KEY = "englishup_admin_token";

@@ -8,7 +8,7 @@ import {
   AlertCircle,
   Target,
 } from "lucide-react";
-import { statsApi } from "@/api/statsApi";
+import { statsApi } from "@/api/client/statsApi";
 
 /**
  * Trang tổng hợp thống kê học tập: điểm trung bình, KPI từng phần, bảng chi tiết.

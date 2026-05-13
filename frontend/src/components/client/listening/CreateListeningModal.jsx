@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { X, Sparkles } from "lucide-react";
-import { listeningApi } from "@/api/listeningApi";
+import { listeningApi } from "@/api/client/listeningApi";
 
 const LEVEL_OPTIONS = [
   { value: "beginner", label: "Cơ bản" },

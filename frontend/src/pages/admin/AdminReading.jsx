@@ -15,10 +15,9 @@ import {
   Clock,
   Globe,
   Lock,
-  FileText,
 } from "lucide-react";
-import { adminApi } from "@/api/adminApi";
-import { readingApi } from "@/api/readingApi";
+import { adminApi } from "@/api/admin/adminApi";
+import { readingApi } from "@/api/client/readingApi";
 
 export default function AdminReading() {
   const [tab, setTab] = useState("pending");

@@ -14,7 +14,7 @@ import {
 import CreateSetModal from "@/components/client/vocabulary/CreateSetModal";
 import SetDetail from "@/components/client/vocabulary/SetDetail";
 import PracticeHistoryModal from "@/components/client/practice/PracticeHistoryModal";
-import { vocabularyApi } from "@/api/vocabularyApi";
+import { vocabularyApi } from "@/api/client/vocabularyApi";
 
 const LEVEL_LABELS = {
   beginner: "Cơ bản",
