@@ -22,6 +22,7 @@ import {
   FileText,
   Wand2,
   Clock,
+  Upload,
 } from "lucide-react";
 import { listeningApi } from "@/api/client/listeningApi";
 import PracticeHistoryModal from "@/components/client/practice/PracticeHistoryModal";
@@ -302,10 +303,104 @@ function CreateListeningModal({ onClose, onCreated }) {
   const [transcript, setTranscript] = useState("");
   const [transcriptVi, setTranscriptVi] = useState("");
 
+  // Upload audio
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+
   // Form AI
   const [aiTitle, setAiTitle] = useState("");
   const [aiTopic, setAiTopic] = useState("");
   const [aiQuestionCount, setAiQuestionCount] = useState(3);
+
+  // Xử lý chọn file
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleSelectFile(file);
+    }
+  };
+
+  // Xử lý khi chọn file
+  const handleSelectFile = (file) => {
+    // Validate file type
+    if (!file.type.includes("audio")) {
+      setError("Vui lòng chọn file audio (mp3, wav, v.v.)");
+      return;
+    }
+    // Validate file size (max 50MB)
+    const maxSize = 50 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setError("File audio quá lớn. Vui lòng chọn file nhỏ hơn 50MB");
+      return;
+    }
+    setSelectedFile(file);
+    setError("");
+  };
+
+  // Xử lý drag over
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  // Xử lý drag leave
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  // Xử lý drop file
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      handleSelectFile(file);
+    }
+  };
+
+  // Xóa file đã chọn
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    setAudioUrl("");
+    setUploadProgress(0);
+  };
+
+  // Upload file lên Supabase
+  const handleUploadFile = async () => {
+    if (!selectedFile) return;
+    if (!title.trim()) {
+      setError("Vui lòng nhập tiêu đề trước khi upload file audio");
+      return;
+    }
+
+    setIsUploading(true);
+    setError("");
+    setUploadProgress(10);
+
+    try {
+      setUploadProgress(30);
+      const uploadedUrl = await listeningApi.uploadAudio(selectedFile, title, (progress) => {
+        setUploadProgress(Math.round(progress * 0.6 + 30)); // Scale 30-90%
+      });
+      setUploadProgress(100);
+
+      // Cập nhật audioUrl với URL từ Supabase
+      setAudioUrl(uploadedUrl);
+      setSelectedFile(null);
+    } catch (err) {
+      console.error("Upload error:", err);
+      setError(err.message || "Không thể upload file audio. Vui lòng thử lại.");
+      setUploadProgress(0);
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleManualSubmit = async () => {
     if (!title.trim()) {
@@ -417,8 +512,121 @@ function CreateListeningModal({ onClose, onCreated }) {
             </div>
             <div>
               <label className="block text-sm font-semibold text-foreground mb-2">
-                Link audio (tùy chọn)
+                File audio (mp3)
               </label>
+
+              {/* Trạng thái: Đã upload thành công */}
+              {audioUrl && (
+                <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded-xl">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span className="text-sm font-semibold text-green-700">Đã upload audio thành công</span>
+                    </div>
+                    <button
+                      onClick={handleRemoveFile}
+                      className="text-green-600 hover:text-green-800 transition-colors"
+                      title="Xóa file"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <audio
+                    src={audioUrl}
+                    controls
+                    className="w-full mt-2 h-10 rounded-lg"
+                  />
+                </div>
+              )}
+
+              {/* Trạng thái: Đang upload */}
+              {isUploading && (
+                <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                  <div className="flex items-center gap-3">
+                    <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                    <div className="flex-1">
+                      <span className="text-sm font-semibold text-blue-700">Đang upload audio...</span>
+                      <div className="mt-1.5 w-full bg-blue-200 rounded-full h-1.5">
+                        <div
+                          className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
+                          style={{ width: `${uploadProgress}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Trạng thái: Chọn file */}
+              {!audioUrl && !isUploading && (
+                <>
+                  {/* File đã chọn */}
+                  {selectedFile ? (
+                    <div className="mb-3 p-3 bg-primary/5 border border-primary/20 rounded-xl">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                          </svg>
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">{selectedFile.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={handleUploadFile}
+                            className="px-3 py-1.5 bg-green-500 text-white text-xs font-bold rounded-lg hover:bg-green-600 transition-colors"
+                          >
+                            Upload
+                          </button>
+                          <button
+                            onClick={handleRemoveFile}
+                            className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Drop zone */
+                    <div
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                      className={`relative border-2 border-dashed rounded-xl p-6 text-center transition-all cursor-pointer ${
+                        isDragging
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:border-primary/50 hover:bg-muted/50"
+                      }`}
+                      onClick={() => document.getElementById("audio-file-input").click()}
+                    >
+                      <input
+                        id="audio-file-input"
+                        type="file"
+                        accept="audio/*"
+                        onChange={handleFileChange}
+                        className="hidden"
+                      />
+                      <Upload className={`w-8 h-8 mx-auto mb-2 ${isDragging ? "text-primary" : "text-muted-foreground"}`} />
+                      <p className="text-sm font-semibold text-foreground">
+                        Kéo thả file audio vào đây
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        hoặc nhấn để chọn file (mp3, tối đa 50MB)
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Link audio thủ công (ẩn đi, thay bằng upload) */}
+              {/*
               <input
                 type="text"
                 value={audioUrl}
@@ -426,6 +634,7 @@ function CreateListeningModal({ onClose, onCreated }) {
                 className="w-full px-3 py-2.5 rounded-xl border border-border bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
                 placeholder="https://example.com/audio.mp3"
               />
+              */}
             </div>
             <div>
               <label className="block text-sm font-semibold text-foreground mb-2">
