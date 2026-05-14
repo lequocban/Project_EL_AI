@@ -1,8 +1,10 @@
-import React, { createContext, useState, useContext, useEffect } from "react";
-import { adminApi } from "@/api/admin/adminApi";
+import React, { createContext, useState, useContext, useEffect, useRef } from "react";
+import { adminApi, refreshAdminToken, clearAdminSession, getTokenExpiresAt } from "@/api/admin/adminApi";
 
 const AdminAuthContext = createContext();
 const ADMIN_ACCESS_TOKEN_KEY = "englishup_admin_token";
+const ADMIN_TOKEN_EXPIRES_AT_KEY = "englishup_admin_token_expires_at";
+const REFRESH_BUFFER_SECONDS = 300;
 
 export const AdminAuthProvider = ({ children }) => {
   const [admin, setAdmin] = useState(null);
@@ -10,8 +12,69 @@ export const AdminAuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const refreshIntervalRef = useRef(null);
+
+  // Tính thời gian (ms) đến khi cần refresh
+  const getMsUntilRefresh = () => {
+    const expiresAt = getTokenExpiresAt();
+    if (!expiresAt) return null;
+    const now = Date.now();
+    const bufferMs = REFRESH_BUFFER_SECONDS * 1000;
+    // expiresAt từ backend là epoch seconds, nhân 1000 để so sánh với milliseconds
+    return Math.max(0, expiresAt * 1000 - bufferMs - now);
+  };
+
+  // Kiểm tra token có sắp hết hạn không
+  const isTokenExpiringSoon = () => {
+    const expiresAt = getTokenExpiresAt();
+    if (!expiresAt) return false;
+    const now = Date.now();
+    const bufferMs = REFRESH_BUFFER_SECONDS * 1000;
+    // expiresAt từ backend là epoch seconds, nhân 1000 để so sánh với milliseconds
+    return expiresAt * 1000 - bufferMs < now;
+  };
+
+  // Thiết lập interval tự động refresh token trước khi hết hạn
+  const setupProactiveRefresh = () => {
+    if (refreshIntervalRef.current) {
+      clearInterval(refreshIntervalRef.current);
+      if (typeof refreshIntervalRef.current === "number") {
+        clearTimeout(refreshIntervalRef.current);
+      }
+      refreshIntervalRef.current = null;
+    }
+
+    const msUntilRefresh = getMsUntilRefresh();
+    if (msUntilRefresh === null) return;
+
+    const startDelay = Math.min(msUntilRefresh, 60 * 1000);
+
+    const timeoutId = setTimeout(() => {
+      refreshIntervalRef.current = setInterval(async () => {
+        if (isTokenExpiringSoon()) {
+          try {
+            await refreshAdminToken();
+          } catch {
+            // Refresh thất bại - sẽ được xử lý bởi fetchAdminWithAuth
+          }
+        }
+      }, 60 * 1000);
+    }, startDelay);
+
+    refreshIntervalRef.current = timeoutId;
+  };
+
   useEffect(() => {
     checkAdminAuth();
+
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+        if (typeof refreshIntervalRef.current === "number") {
+          clearTimeout(refreshIntervalRef.current);
+        }
+      }
+    };
   }, []);
 
   // Kiểm tra auth khi app mount - chỉ gọi khi có token
@@ -33,8 +96,11 @@ export const AdminAuthProvider = ({ children }) => {
       });
       setIsAuthenticated(true);
       setError("");
+
+      // Thiết lập proactive refresh
+      setupProactiveRefresh();
     } catch (err) {
-      localStorage.removeItem(ADMIN_ACCESS_TOKEN_KEY);
+      clearAdminSession();
       setAdmin(null);
       setIsAuthenticated(false);
     } finally {
@@ -48,13 +114,16 @@ export const AdminAuthProvider = ({ children }) => {
       const response = await adminApi.login(email, password);
       if (response.data?.accessToken) {
         localStorage.setItem(ADMIN_ACCESS_TOKEN_KEY, response.data.accessToken);
+        if (response.data.expiresAt) {
+          localStorage.setItem(ADMIN_TOKEN_EXPIRES_AT_KEY, String(response.data.expiresAt));
+        }
       }
       // Backend đã validate role bằng requireManagerOrAdmin
       // Nếu role không phải admin/content_manager sẽ throw error
       await checkAdminAuth();
       return response;
     } catch (err) {
-      localStorage.removeItem(ADMIN_ACCESS_TOKEN_KEY);
+      clearAdminSession();
       setAdmin(null);
       setIsAuthenticated(false);
       const msg = err.message || "Đăng nhập thất bại";
@@ -64,12 +133,21 @@ export const AdminAuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
+    // Dừng interval refresh
+    if (refreshIntervalRef.current) {
+      clearInterval(refreshIntervalRef.current);
+      if (typeof refreshIntervalRef.current === "number") {
+        clearTimeout(refreshIntervalRef.current);
+      }
+      refreshIntervalRef.current = null;
+    }
+
     try {
       await adminApi.logout();
     } catch {
       // Bỏ qua lỗi khi logout
     }
-    localStorage.removeItem(ADMIN_ACCESS_TOKEN_KEY);
+    clearAdminSession();
     setAdmin(null);
     setIsAuthenticated(false);
     window.location.href = "/admin/login";

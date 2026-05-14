@@ -57,6 +57,12 @@ const getAppParams = () => {
     appBaseUrl: getAppParamValue("app_base_url", {
       defaultValue: import.meta.env.VITE_APP_BASE_URL,
     }),
+    supabaseUrl: getAppParamValue("supabase_url", {
+      defaultValue: import.meta.env.VITE_SUPABASE_URL,
+    }),
+    supabaseAnonKey: getAppParamValue("supabase_anon_key", {
+      defaultValue: import.meta.env.VITE_SUPABASE_ANON_KEY,
+    }),
   };
 };
 

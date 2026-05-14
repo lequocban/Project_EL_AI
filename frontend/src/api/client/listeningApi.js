@@ -1,4 +1,5 @@
 import { fetchWithAuth } from "@/api/authApi";
+import { uploadAudioToCloudinary } from "@/services/cloudinary";
 
 // Các endpoint API cho listening (phía client người dùng)
 const LISTENING_LESSON_URL = `/api/v1/listening-lessons`;
@@ -196,5 +197,18 @@ export const listeningApi = {
       method: "DELETE",
     });
     return response.data || {};
+  },
+
+  /**
+   * Upload file audio lên Cloudinary.
+   * Sử dụng Cloudinary unsigned upload (Upload Preset).
+   * @param {File} file - File audio (mp3)
+   * @param {string} title - Tiêu đề bài nghe (để tạo tên file)
+   * @param {Function} onProgress - Callback progress (0-100)
+   * @returns {Promise<string>} - URL công khai của file audio
+   */
+  uploadAudio: async (file, title, onProgress) => {
+    const url = await uploadAudioToCloudinary(file, title, onProgress);
+    return url;
   },
 };
