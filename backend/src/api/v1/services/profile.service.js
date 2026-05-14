@@ -24,6 +24,8 @@ const updateProfile = async (accessToken, userId, { userName, dayOfBirth }) => {
   const updates = {};
   if (userName !== undefined) updates.user_name = userName;
   if (dayOfBirth !== undefined) updates.day_of_birth = toDbDate(dayOfBirth);
+  // Luôn cập nhật updated_at khi có thay đổi
+  updates.updated_at = new Date().toISOString();
 
   if (Object.keys(updates).length === 0) {
     throw new AppError("Không có thông tin nào để cập nhật", 400);
