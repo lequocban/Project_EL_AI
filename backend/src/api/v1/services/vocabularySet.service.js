@@ -322,6 +322,35 @@ const makePrivate = async (setId, userId) => {
   return formatVocabularySet(updated);
 };
 
+/**
+ * Thay đổi trạng thái bộ từ vựng (chỉ dành cho content_manager hoặc admin).
+ * Cho phép chuyển trực tiếp giữa các trạng thái mà không cần qua kiểm duyệt.
+ * Lưu ý: kiểm tra quyền manager/admin đã được middleware requireManagerOrAdmin xử lý.
+ */
+const setStatus = async (setId, userId, newStatus) => {
+  const allowedStatuses = ["private", "public"];
+  if (!allowedStatuses.includes(newStatus)) {
+    throw new AppError("Trạng thái không hợp lệ. Chỉ chấp nhận: private, public", 400);
+  }
+
+  const vocabularySet = await vocabularySetModel.findById(setId);
+
+  if (!vocabularySet) {
+    throw new AppError("Không tìm thấy bộ từ vựng", 404);
+  }
+
+  if (vocabularySet.created_by !== userId) {
+    throw new AppError("Bạn không có quyền thay đổi bộ từ vựng này", 403);
+  }
+
+  if (vocabularySet.status === newStatus) {
+    throw new AppError("Bộ từ vựng đã ở trạng thái này", 400);
+  }
+
+  const updated = await vocabularySetModel.updateStatus(setId, newStatus);
+  return formatVocabularySet(updated);
+};
+
 module.exports = {
   createVocabularySet,
   updateVocabularySet,
@@ -339,4 +368,5 @@ module.exports = {
   approvePublic,
   rejectPublic,
   makePrivate,
+  setStatus,
 };

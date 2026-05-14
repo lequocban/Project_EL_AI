@@ -8,7 +8,7 @@ const {
   removeWordsSchema,
 } = require("../../validations/vocabularySet.validation");
 const { validateBody } = require("../../validations/validate");
-const { verifyToken, requireAuth } = require("../../middlewares/auth.middleware");
+const { verifyToken, requireAuth, requireManagerOrAdmin } = require("../../middlewares/auth.middleware");
 
 router.post(
   "/",
@@ -89,6 +89,15 @@ router.post(
   verifyToken,
   requireAuth,
   vocabularySetController.makePrivate
+);
+
+// PATCH /api/v1/vocabulary-sets/:id/set-status — Thay đổi trạng thái bộ từ vựng (chỉ content_manager/admin, không cần kiểm duyệt)
+router.patch(
+  "/:id/set-status",
+  verifyToken,
+  requireAuth,
+  requireManagerOrAdmin,
+  vocabularySetController.setStatus
 );
 
 // DELETE /api/v1/vocabulary-sets/:id/words/remove — Xóa một hoặc nhiều từ khỏi bộ từ vựng

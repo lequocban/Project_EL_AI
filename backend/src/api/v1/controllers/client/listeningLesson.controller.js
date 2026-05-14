@@ -155,6 +155,25 @@ const makePrivate = async (req, res, next) => {
   }
 };
 
+/**
+ * PATCH /api/v1/listening-lessons/:id/set-status
+ * Thay đổi trạng thái bài luyện nghe (chỉ dành cho content_manager hoặc admin, và phải là chủ sở hữu).
+ * Cho phép chuyển trực tiếp giữa private và public mà không cần qua kiểm duyệt.
+ */
+const setStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const userId = req.user.id;
+
+    const result = await listeningLessonService.setStatus(id, userId, status);
+
+    return success(res, result, "Thay đổi trạng thái bài luyện nghe thành công");
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   createLesson,
   updateLesson,
@@ -164,4 +183,5 @@ module.exports = {
   getDetail,
   requestPublic,
   makePrivate,
+  setStatus,
 };

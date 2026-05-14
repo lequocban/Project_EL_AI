@@ -6,7 +6,7 @@ const {
   updateReadingLessonSchema,
 } = require("../../validations/readingLesson.validation");
 const { validateBody } = require("../../validations/validate");
-const { verifyToken, requireAuth } = require("../../middlewares/auth.middleware");
+const { verifyToken, requireAuth, requireManagerOrAdmin } = require("../../middlewares/auth.middleware");
 
 // POST /api/v1/reading-lessons/generate-with-ai — Tạo bài luyện đọc bằng AI
 router.post(
@@ -81,6 +81,15 @@ router.post(
   verifyToken,
   requireAuth,
   readingLessonController.makePrivate
+);
+
+// PATCH /api/v1/reading-lessons/:id/set-status — Thay đổi trạng thái bài luyện đọc (chỉ content_manager/admin, không cần kiểm duyệt)
+router.patch(
+  "/:id/set-status",
+  verifyToken,
+  requireAuth,
+  requireManagerOrAdmin,
+  readingLessonController.setStatus
 );
 
 module.exports = router;

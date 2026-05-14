@@ -7,7 +7,7 @@ const {
 } = require("../../validations/listeningLesson.validation");
 const { createListeningByAISchema } = require("../../validations/generateListening.validation");
 const { validateBody } = require("../../validations/validate");
-const { verifyToken, requireAuth } = require("../../middlewares/auth.middleware");
+const { verifyToken, requireAuth, requireManagerOrAdmin } = require("../../middlewares/auth.middleware");
 
 // POST /api/v1/listening-lessons/generate-ai — Tạo bài luyện nghe bằng AI
 router.post(
@@ -82,6 +82,15 @@ router.post(
   verifyToken,
   requireAuth,
   listeningLessonController.makePrivate
+);
+
+// PATCH /api/v1/listening-lessons/:id/set-status — Thay đổi trạng thái bài luyện nghe (chỉ content_manager/admin, không cần kiểm duyệt)
+router.patch(
+  "/:id/set-status",
+  verifyToken,
+  requireAuth,
+  requireManagerOrAdmin,
+  listeningLessonController.setStatus
 );
 
 module.exports = router;

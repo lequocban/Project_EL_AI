@@ -296,6 +296,35 @@ const rejectPublic = async (id) => {
   return formatLesson(updated);
 };
 
+/**
+ * Thay đổi trạng thái bài luyện nghe (chỉ dành cho content_manager hoặc admin).
+ * Cho phép chuyển trực tiếp giữa các trạng thái mà không cần qua kiểm duyệt.
+ * Lưu ý: kiểm tra quyền manager/admin đã được middleware requireManagerOrAdmin xử lý.
+ */
+const setStatus = async (id, userId, newStatus) => {
+  const allowedStatuses = ["private", "public"];
+  if (!allowedStatuses.includes(newStatus)) {
+    throw new AppError("Trạng thái không hợp lệ. Chỉ chấp nhận: private, public", 400);
+  }
+
+  const lesson = await listeningLessonModel.findById(id);
+
+  if (!lesson) {
+    throw new AppError("Không tìm thấy bài luyện nghe", 404);
+  }
+
+  if (lesson.created_by !== userId) {
+    throw new AppError("Bạn không có quyền thay đổi bài luyện nghe này", 403);
+  }
+
+  if (lesson.status === newStatus) {
+    throw new AppError("Bài luyện nghe đã ở trạng thái này", 400);
+  }
+
+  const updated = await listeningLessonModel.updateStatus(id, newStatus);
+  return formatLesson(updated);
+};
+
 module.exports = {
   createLesson,
   updateLesson,
@@ -311,4 +340,5 @@ module.exports = {
   formatLesson,
   formatLessonDetail,
   formatListItem,
+  setStatus,
 };
