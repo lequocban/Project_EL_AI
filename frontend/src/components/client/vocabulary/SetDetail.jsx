@@ -840,31 +840,46 @@ export default function SetDetail({ set, onBack }) {
 
                 {/* Phân trang */}
                 {totalPages > 1 && (
-                  <div className="flex items-center justify-center gap-2 mt-4">
+                  <div className="flex items-center justify-center gap-1 mt-4">
                     <button
                       onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                       disabled={currentPage === 1}
-                      className="px-3 py-1.5 rounded-lg border border-border text-sm font-medium hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="w-9 h-9 rounded-lg border border-border text-sm font-medium hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center"
                     >
                       ←
                     </button>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                      <button
-                        key={page}
-                        onClick={() => setCurrentPage(page)}
-                        className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${
-                          currentPage === page
-                            ? "bg-primary text-white"
-                            : "border border-border hover:bg-muted"
-                        }`}
-                      >
-                        {page}
-                      </button>
-                    ))}
+                    {(() => {
+                      const pages = [];
+                      const maxVisible = 3;
+                      if (totalPages <= maxVisible) {
+                        for (let i = 1; i <= totalPages; i++) pages.push(i);
+                      } else {
+                        if (currentPage <= 2) {
+                          pages.push(1, 2, 3);
+                        } else if (currentPage >= totalPages - 1) {
+                          pages.push(totalPages - 2, totalPages - 1, totalPages);
+                        } else {
+                          pages.push(currentPage - 1, currentPage, currentPage + 1);
+                        }
+                      }
+                      return pages.map((p) => (
+                        <button
+                          key={p}
+                          onClick={() => setCurrentPage(p)}
+                          className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${
+                            currentPage === p
+                              ? "bg-primary text-white"
+                              : "border border-border hover:bg-muted"
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      ));
+                    })()}
                     <button
                       onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                       disabled={currentPage === totalPages}
-                      className="px-3 py-1.5 rounded-lg border border-border text-sm font-medium hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="w-9 h-9 rounded-lg border border-border text-sm font-medium hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center"
                     >
                       →
                     </button>

@@ -23,21 +23,68 @@ const normalizeWord = (word) => ({
 });
 
 export const vocabularyApi = {
-  // Lấy danh sách bộ từ vựng của user hiện tại
-  getMySets: async () => {
-    const response = await fetchWithAuth(`${VOCABULARY_SET_URL}/my?limit=15`, {
+  // Lấy danh sách bộ từ vựng của user hiện tại (có phân trang)
+  getMySets: async ({ page = 1, limit = 15, keyword = "", sortField = "created_at", sortOrder = "desc" } = {}) => {
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+    });
+    if (keyword) params.append("keyword", keyword);
+    if (sortField) params.append("sortField", sortField);
+    if (sortOrder) params.append("sortOrder", sortOrder);
+    const response = await fetchWithAuth(`${VOCABULARY_SET_URL}/my?${params}`, {
       method: "GET",
     });
-    console.debug("[DEBUG getMySets] response:", JSON.stringify(response));
-    return (response.data?.items || []).map(normalizeSet);
+    const pagination = response.data?.pagination || response.data || {};
+    return {
+      items: (response.data?.items || []).map(normalizeSet),
+      total: pagination.total ?? 0,
+      page: pagination.page ?? page,
+      limit: pagination.limit ?? limit,
+      totalPages: pagination.totalPages ?? 1,
+    };
   },
 
-  // Lấy danh sách bộ từ vựng công khai
-  getPublicSets: async () => {
-    const response = await fetchWithAuth(`${VOCABULARY_SET_URL}/public?limit=15`, {
+  // Lấy danh sách bộ từ vựng công khai (có phân trang)
+  getPublicSets: async ({ page = 1, limit = 15, keyword = "", sortField = "created_at", sortOrder = "desc" } = {}) => {
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+    });
+    if (keyword) params.append("keyword", keyword);
+    if (sortField) params.append("sortField", sortField);
+    if (sortOrder) params.append("sortOrder", sortOrder);
+    const response = await fetchWithAuth(`${VOCABULARY_SET_URL}/public?${params}`, {
       method: "GET",
     });
-    return (response.data?.items || []).map(normalizeSet);
+    const pagination = response.data?.pagination || response.data || {};
+    return {
+      items: (response.data?.items || []).map(normalizeSet),
+      total: pagination.total ?? 0,
+      page: pagination.page ?? page,
+      limit: pagination.limit ?? limit,
+      totalPages: pagination.totalPages ?? 1,
+    };
+  },
+
+  // Lấy danh sách bộ từ yêu thích của user (có phân trang)
+  getFavorites: async ({ page = 1, limit = 15, keyword = "", sortField = "created_at", sortOrder = "desc" } = {}) => {
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+    });
+    if (keyword) params.append("keyword", keyword);
+    if (sortField) params.append("sortField", sortField);
+    if (sortOrder) params.append("sortOrder", sortOrder);
+    const response = await fetchWithAuth(FAVORITE_URL + "?" + params.toString(), { method: "GET" });
+    const pagination = response.data?.pagination || response.data || {};
+    return {
+      items: (response.data?.items || []).map(normalizeSet),
+      total: pagination.total ?? 0,
+      page: pagination.page ?? page,
+      limit: pagination.limit ?? limit,
+      totalPages: pagination.totalPages ?? 1,
+    };
   },
 
   // Lấy chi tiết một bộ từ vựng, có hỗ trợ phân trang và sắp xếp từ vựng
@@ -124,10 +171,6 @@ export const vocabularyApi = {
   },
 
   // Lấy danh sách bộ từ yêu thích của user
-  getFavorites: async () => {
-    const response = await fetchWithAuth(FAVORITE_URL, { method: "GET" });
-    return (response.data?.items || []).map(normalizeSet);
-  },
 
   // Thêm một bộ từ vựng vào danh sách yêu thích
   addFavorite: async (setId) => {
@@ -172,7 +215,7 @@ export const vocabularyApi = {
   },
 
   // Nộp bài luyện tập từ vựng (gồm 4 loại: quiz, listening_quiz, translate_write, listen_write)
-  // Khi nộp bài, backend sẽ lưu lịch sử vào database
+  // Khi nộp bài, backend sẽ lưu lịch sử vào database và trả về practice ID
   submitPractice: async ({ setId, type, answers, timeSpent }) => {
     const response = await fetchWithAuth(`${VOCABULARY_PRACTICE_URL}/submit`, {
       method: "POST",

@@ -176,7 +176,36 @@ export default function ExamGame({ words, onBack, examType: initialExamType = nu
         answer: q.userAnswer ?? "",
       }));
       try {
-        await onSubmit({ setId, type: examType, answers, timeSpent: elapsed });
+        const result = await onSubmit({ setId, type: examType, answers, timeSpent: elapsed });
+        // Lưu chi tiết kết quả vào localStorage để xem lại sau
+        const practiceId = result?.id;
+        if (practiceId) {
+          const detailData = {
+            id: practiceId,
+            setId,
+            type: examType,
+            score: Math.round((correctCount / questions.length) * 100),
+            totalQuestions: questions.length,
+            correctAnswers: correctCount,
+            wrongCount: questions.length - correctCount,
+            timeSpent: elapsed,
+            questions: updated.map((q) => ({
+              wordId: q.wordId,
+              word: q.word,
+              correctAnswer: q.correct,
+              userAnswer: q.userAnswer,
+              isCorrect: q.isCorrect,
+              meaning: q.meaning || null,
+              choices: q.choices || null,
+            })),
+            completedAt: new Date().toISOString(),
+          };
+          try {
+            const stored = JSON.parse(localStorage.getItem("vocab_practice_details") || "{}");
+            stored[practiceId] = detailData;
+            localStorage.setItem("vocab_practice_details", JSON.stringify(stored));
+          } catch {}
+        }
       } catch {
         // Lỗi không ảnh hưởng đến việc hiển thị kết quả
       }
