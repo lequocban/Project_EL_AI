@@ -176,6 +176,25 @@ const makePrivate = async (req, res, next) => {
   }
 };
 
+/**
+ * PATCH /api/v1/reading-lessons/:id/set-status
+ * Thay đổi trạng thái bài luyện đọc (chỉ dành cho content_manager hoặc admin, và phải là chủ sở hữu).
+ * Cho phép chuyển trực tiếp giữa private và public mà không cần qua kiểm duyệt.
+ */
+const setStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const userId = req.user.id;
+
+    const result = await readingLessonService.setStatus(id, userId, status);
+
+    return success(res, result, "Thay đổi trạng thái bài luyện đọc thành công");
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   generateWithAI,
   createLesson,
@@ -186,4 +205,5 @@ module.exports = {
   getDetail,
   requestPublic,
   makePrivate,
+  setStatus,
 };

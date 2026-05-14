@@ -211,6 +211,25 @@ const makePrivate = async (req, res, next) => {
   }
 };
 
+/**
+ * PATCH /api/v1/vocabulary-sets/:id/set-status
+ * Thay đổi trạng thái bộ từ vựng (chỉ dành cho content_manager hoặc admin, và phải là chủ sở hữu).
+ * Cho phép chuyển trực tiếp giữa private và public mà không cần qua kiểm duyệt.
+ */
+const setStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const userId = req.user.id;
+
+    const result = await vocabularySetService.setStatus(id, userId, status);
+
+    return success(res, result, "Thay đổi trạng thái bộ từ vựng thành công");
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   createVocabularySet,
   updateVocabularySet,
@@ -223,4 +242,5 @@ module.exports = {
   removeWords,
   requestPublic,
   makePrivate,
+  setStatus,
 };
