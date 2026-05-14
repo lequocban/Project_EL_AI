@@ -20,6 +20,7 @@ const listeningPracticeRoutes = require("./client/listeningPractice.routes");
 const readingPracticeRoutes = require("./client/readingPractice.routes");
 const listeningQuestionRoutes = require("./client/listeningQuestion.routes");
 const learningStatsRoutes = require("./client/learningStats.routes");
+const leaderboardRoutes = require("./client/leaderboard.routes");
 
 router.get("/health", (req, res) => {
   res.json({ status: "ok" });
@@ -66,6 +67,9 @@ router.use("/reading-questions", readingQuestionRoutes);
 
 // Thống kê học tập
 router.use("/learning-stats", learningStatsRoutes);
+
+// Bảng xếp hạng
+router.use("/leaderboard", leaderboardRoutes);
 
 module.exports = router;
 
