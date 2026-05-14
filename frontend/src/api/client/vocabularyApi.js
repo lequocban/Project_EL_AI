@@ -221,6 +221,8 @@ export const vocabularyApi = {
       method: "POST",
       body: JSON.stringify({ setId, type, answers, timeSpent }),
     });
+    // Backend trả về: { code, success, message, data: { id, score, ... } }
+    // Chỉ cần trả về data để caller có thể dùng
     return response.data || {};
   },
 };

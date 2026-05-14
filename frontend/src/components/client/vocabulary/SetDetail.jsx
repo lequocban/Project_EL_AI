@@ -354,12 +354,7 @@ export default function SetDetail({ set, onBack }) {
 
   // Gửi kết quả bài kiểm tra lên backend để lưu lịch sử
   const handlePracticeSubmit = async ({ setId, type, answers, timeSpent }) => {
-    try {
-      await vocabularyApi.submitPractice({ setId, type, answers, timeSpent });
-    } catch (err) {
-      // Lỗi không ảnh hưởng trải nghiệm người dùng
-      console.error("Không thể lưu lịch sử bài kiểm tra:", err.message);
-    }
+    return vocabularyApi.submitPractice({ setId, type, answers, timeSpent });
   };
 
   // Phát âm từ vựng. Nếu từ chưa có audioUrl thì gọi lookup để lấy từ backend.

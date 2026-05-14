@@ -31,9 +31,10 @@ const mapHistoryItem = (item, type) => {
         timeSpent: item.timeSpent ?? item.time_spent ?? 0,
         wrongWords: item.wrongWords ?? item.wrong_words ?? [],
         completedAt: item.completedAt ?? item.complete_at ?? item.createdAt ?? item.created_at,
-        title: item.vocabularySetTitle ?? item.setTitle ?? "Bài luyện tập",
-        totalQuestions: null, // Vocabulary practice không trả về totalQuestions trong history
-        correctAnswers: null, // Sẽ tính từ wrongWords
+        // Backend trả về setTitle, map sang vocabularySetTitle để hiển thị
+        title: item.vocabularySetTitle ?? item.setTitle ?? item.set_title ?? "Bài luyện tập",
+        totalQuestions: item.totalQuestions ?? item.total_questions ?? null,
+        correctAnswers: item.correctAnswers ?? item.correct_answers ?? null,
       };
     case "listening":
     case "reading":
@@ -64,8 +65,8 @@ const mapPracticeDetail = (detail, type) => {
       return {
         score: detail.score ?? 0,
         totalQuestions: detail.totalQuestions ?? detail.total_questions ?? 0,
-        correctAnswers: detail.correctCount ?? detail.correct_count ?? 0,
-        wrongCount: detail.wrongCount ?? detail.wrong_count ?? 0,
+        correctAnswers: detail.correctAnswers ?? detail.correct_answers ?? 0,
+        wrongCount: detail.wrongCount ?? detail.wrong_count ?? detail.wrongAnswers ?? (detail.totalQuestions ?? 0) - (detail.correctAnswers ?? 0),
         timeSpent: detail.timeSpent ?? detail.time_spent ?? 0,
         wrongWords: (detail.wrongWords ?? detail.wrong_words ?? []).map((w) => {
           // Hỗ trợ cấu trúc từ localStorage (ExamGame)

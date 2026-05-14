@@ -36,17 +36,18 @@ export const listeningApi = {
     const params = new URLSearchParams({
       page: String(page),
       limit: String(limit),
-      ...(search ? { search } : {}),
+      ...(search ? { keyword: search } : {}),
     });
     const response = await fetchWithAuth(`${LISTENING_LESSON_URL}/public?${params}`, {
       method: "GET",
     });
     const items = response.data?.items || [];
+    const pagination = response.data?.pagination || response.data || {};
     return {
       items: items.map(normalizeLesson),
-      total: response.data?.total ?? items.length,
-      page: response.data?.page ?? page,
-      totalPages: response.data?.totalPages ?? 1,
+      total: pagination.total ?? items.length,
+      page: pagination.page ?? page,
+      totalPages: pagination.totalPages ?? 1,
     };
   },
 
@@ -55,17 +56,18 @@ export const listeningApi = {
     const params = new URLSearchParams({
       page: String(page),
       limit: String(limit),
-      ...(search ? { search } : {}),
+      ...(search ? { keyword: search } : {}),
     });
     const response = await fetchWithAuth(`${LISTENING_LESSON_URL}/my?${params}`, {
       method: "GET",
     });
     const items = response.data?.items || [];
+    const pagination = response.data?.pagination || response.data || {};
     return {
       items: items.map(normalizeLesson),
-      total: response.data?.total ?? items.length,
-      page: response.data?.page ?? page,
-      totalPages: response.data?.totalPages ?? 1,
+      total: pagination.total ?? items.length,
+      page: pagination.page ?? page,
+      totalPages: pagination.totalPages ?? 1,
     };
   },
 
@@ -157,6 +159,14 @@ export const listeningApi = {
     const response = await fetchWithAuth(`${LISTENING_LESSON_URL}/${id}`, {
       method: "PATCH",
       body: JSON.stringify(data),
+    });
+    return response.data || {};
+  },
+
+  // Xóa bài luyện nghe
+  deleteLesson: async (id) => {
+    const response = await fetchWithAuth(`${LISTENING_LESSON_URL}/${id}`, {
+      method: "DELETE",
     });
     return response.data || {};
   },
