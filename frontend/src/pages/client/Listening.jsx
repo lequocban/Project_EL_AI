@@ -1360,6 +1360,9 @@ function LessonPlayer({ lesson, onBack }) {
   const [questions] = useState(lesson.questions || []);
   const [transcriptEn] = useState(lesson.transcript || lesson.audio_script || "");
   const [transcriptVi] = useState(lesson.vi_translation || "");
+  const [aiExplainingIndex, setAiExplainingIndex] = useState(null); // index của câu đang giải thích AI
+  const [aiExplanation, setAiExplanation] = useState(""); // nội dung giải thích AI
+  const [aiModalOpen, setAiModalOpen] = useState(false); // dialog AI đang mở
 
   useEffect(() => {
     return () => {
@@ -1433,6 +1436,27 @@ function LessonPlayer({ lesson, onBack }) {
     } catch (err) {
       setSubmitError(err.message || "Không thể nộp bài");
       setSubmitting(false);
+    }
+  };
+
+  // Gọi AI giải thích đáp án cho một câu hỏi
+  const handleExplainWithAI = async (q, qi) => {
+    setAiModalOpen(true);
+    setAiExplainingIndex(qi);
+    setAiExplanation("");
+    try {
+      const explanation = await listeningApi.explainAnswer({
+        content: transcriptEn,
+        viTranslation: transcriptVi,
+        question: q.question,
+        allAnswers: { a: q.options[0], b: q.options[1], c: q.options[2], d: q.options[3] },
+        userAnswer: q.userAnswer,
+        correctAnswer: q.correct_answer,
+      });
+      // Xóa ký tự ** trong giải thích
+      setAiExplanation(explanation.replace(/\*\*/g, ""));
+    } catch (err) {
+      setAiExplanation(`Lỗi: ${err.message || "Không thể lấy giải thích từ AI. Vui lòng thử lại."}`);
     }
   };
 
@@ -1513,7 +1537,7 @@ function LessonPlayer({ lesson, onBack }) {
   // Trang kết quả chi tiết
   if (submitted) {
     return (
-      <div className="min-h-screen bg-background p-6 lg:p-8">
+      <div className="min-h-screen bg-background p-6 lg:p-10">
         <button
           onClick={() => {
             stopAudio();
@@ -1525,7 +1549,7 @@ function LessonPlayer({ lesson, onBack }) {
         </button>
 
         {/* Tổng kết quả */}
-        <div className="bg-white rounded-2xl p-6 max-w-lg mx-auto text-center shadow-md mb-6">
+        <div className="bg-white rounded-2xl p-6 max-w-5xl mx-auto text-center shadow-md mb-6">
           <h2 className="text-lg font-black mb-1">Kết quả bài luyện nghe</h2>
           <div className="text-5xl font-black text-primary my-3">{percentage}%</div>
           <p className="text-muted-foreground font-medium">
@@ -1546,7 +1570,7 @@ function LessonPlayer({ lesson, onBack }) {
         </div>
 
         {/* Audio player */}
-        <div className="max-w-lg mx-auto mb-6">
+        <div className="max-w-5xl mx-auto mb-6">
           <div className="bg-gradient-to-br from-green-500 to-teal-600 rounded-2xl p-6 text-white shadow-lg">
             <div className="flex items-center gap-4">
               <div className="flex gap-3">
@@ -1589,7 +1613,7 @@ function LessonPlayer({ lesson, onBack }) {
 
         {/* Transcript */}
         {(transcriptEn || transcriptVi) && (
-          <div className="max-w-lg mx-auto mb-6">
+          <div className="max-w-5xl mx-auto mb-6">
             <div className="bg-white rounded-2xl border border-border overflow-hidden shadow-md">
               <button
                 onClick={() => setShowTranscript(!showTranscript)}
@@ -1639,7 +1663,7 @@ function LessonPlayer({ lesson, onBack }) {
         )}
 
         {/* Chi tiết từng câu */}
-        <div className="space-y-4 max-w-lg mx-auto">
+        <div className="space-y-4 max-w-5xl mx-auto">
           {results.map((q, qi) => {
             const borderColor = q.isCorrect
               ? "border-green-400 bg-green-50"
@@ -1705,12 +1729,20 @@ function LessonPlayer({ lesson, onBack }) {
                     <strong>Giải thích:</strong> {q.explain}
                   </div>
                 )}
+                {/* Nút giải thích bằng AI */}
+                <button
+                  onClick={() => handleExplainWithAI(q, qi)}
+                  className="mt-3 flex items-center gap-2 gradient-green text-white px-3 py-2 rounded-lg text-xs font-bold hover:opacity-90 transition-all"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Giải thích bằng AI
+                </button>
               </div>
             );
           })}
         </div>
 
-        <div className="max-w-lg mx-auto mt-6">
+        <div className="max-w-5xl mx-auto mt-6">
           <button
             onClick={() => {
               stopAudio();
@@ -1721,6 +1753,44 @@ function LessonPlayer({ lesson, onBack }) {
             Quay lại danh sách bài
           </button>
         </div>
+
+        {/* Dialog giải thích bằng AI */}
+        {aiModalOpen && (
+          <div
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={() => setAiModalOpen(false)}
+          >
+            <div
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-6 border-b border-border">
+                <div className="flex items-center gap-3">
+                  <Sparkles className="w-6 h-6 text-green-500" />
+                  <h3 className="text-xl font-black text-foreground">Giải thích bằng AI</h3>
+                </div>
+                <button
+                  onClick={() => setAiModalOpen(false)}
+                  className="p-2 hover:bg-muted rounded-lg transition-all"
+                >
+                  <X className="w-6 h-6 text-muted-foreground" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-8">
+                {aiExplanation ? (
+                  <p className="text-base text-foreground whitespace-pre-line leading-relaxed">
+                    {aiExplanation}
+                  </p>
+                ) : (
+                  <div className="flex items-center justify-center py-10 gap-3 text-muted-foreground text-base">
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                    <span>Đang tải giải thích...</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

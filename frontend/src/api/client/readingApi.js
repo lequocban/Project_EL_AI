@@ -206,4 +206,36 @@ export const readingApi = {
     });
     return response.data || {};
   },
+
+  /**
+   * Gọi AI giải thích chi tiết đáp án cho một câu hỏi luyện đọc.
+   * Kết quả trả về ngay lập tức, không lưu vào database.
+   * @param {object} params
+   * @param {string} params.content - Nội dung bài đọc tiếng Anh
+   * @param {string} params.viTranslation - Bản dịch tiếng Việt (tùy chọn)
+   * @param {string} params.question - Câu hỏi bằng tiếng Anh
+   * @param {object} params.allAnswers - Object chứa 4 đáp án { a, b, c, d }
+   * @param {string} params.userAnswer - Đáp án người dùng đã chọn (A/B/C/D)
+   * @param {string} params.correctAnswer - Đáp án đúng (A/B/C/D)
+   * @returns {Promise<string>} - Chuỗi giải thích từ AI
+   */
+  explainAnswer: async ({ content, viTranslation, question, allAnswers, userAnswer, correctAnswer }) => {
+    // Chỉ truyền viTranslation khi có nội dung, tránh lỗi validation backend (.min(1))
+    const body = {
+      lessonType: "reading",
+      content,
+      question,
+      allAnswers,
+      userAnswer,
+      correctAnswer,
+    };
+    if (viTranslation && viTranslation.trim()) {
+      body.viTranslation = viTranslation;
+    }
+    const response = await fetchWithAuth(`/api/v1/explain-by-ai`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+    return response.data?.explanation || "";
+  },
 };
