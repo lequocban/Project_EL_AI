@@ -337,9 +337,9 @@ export default function PracticeHistoryModal({ type, onClose, getHistory, getDet
                           Đáp án đúng: <span className="font-semibold">{w.correctAnswer}</span>
                         </p>
                       )}
-                      {w.yourAnswer !== undefined && (
+                      {(w.yourAnswer !== undefined || w.user_answer !== undefined || w.userAnswer !== undefined) && (
                         <p className="text-xs text-red-500 mt-0.5">
-                          Bạn đã trả lời: <span className="font-semibold">{w.yourAnswer}</span>
+                          Bạn đã trả lời: <span className="font-semibold">{w.yourAnswer ?? w.user_answer ?? w.userAnswer}</span>
                         </p>
                       )}
                     </div>
