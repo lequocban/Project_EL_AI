@@ -2,3 +2,5 @@ node_modules/
 CLAUDE.md
 docs
 *.md
+
+!api-documentation.md

@@ -1,4 +1,4 @@
-const listeningQuestionModel = require("../repositories/listeningQuestion.model");
+const listeningQuestionRepository = require("../repositories/listeningQuestion.repository");
 const { AppError } = require("../../../utils/appError");
 
 /**
@@ -7,7 +7,7 @@ const { AppError } = require("../../../utils/appError");
  * @param {string} userId
  */
 const checkLessonOwnership = async (lessonId, userId) => {
-  const lesson = await listeningQuestionModel.findLessonById(lessonId);
+  const lesson = await listeningQuestionRepository.findLessonById(lessonId);
 
   if (!lesson) {
     throw new AppError("Không tìm thấy bài luyện nghe", 404);
@@ -85,7 +85,7 @@ const createQuestion = async (userId, { lesson_id, question, option_a, option_b,
     throw new AppError("Giải thích không được dài quá 2000 ký tự", 400);
   }
 
-  const created = await listeningQuestionModel.create({
+  const created = await listeningQuestionRepository.create({
     lesson_id,
     question: question.trim(),
     option_a: option_a?.trim() || null,
@@ -142,7 +142,7 @@ const createManyQuestions = async (userId, lessonId, questions) => {
     correct_answer: q.correct_answer.trim().toUpperCase(),
   }));
 
-  const created = await listeningQuestionModel.createMany(lessonId, formatted);
+  const created = await listeningQuestionRepository.createMany(lessonId, formatted);
   return created.map(formatQuestion);
 };
 
@@ -151,7 +151,7 @@ const createManyQuestions = async (userId, lessonId, questions) => {
  * Chỉ chủ sở hữu lesson mới được cập nhật câu hỏi.
  */
 const updateQuestion = async (userId, id, { question, option_a, option_b, option_c, option_d, correct_answer, explain }) => {
-  const existing = await listeningQuestionModel.findById(id);
+  const existing = await listeningQuestionRepository.findById(id);
 
   if (!existing) {
     throw new AppError("Không tìm thấy câu hỏi", 404);
@@ -193,7 +193,7 @@ const updateQuestion = async (userId, id, { question, option_a, option_b, option
     throw new AppError("Giải thích không được dài quá 2000 ký tự", 400);
   }
 
-  const updated = await listeningQuestionModel.update(id, {
+  const updated = await listeningQuestionRepository.update(id, {
     question: question?.trim(),
     option_a: option_a?.trim(),
     option_b: option_b?.trim(),
@@ -211,7 +211,7 @@ const updateQuestion = async (userId, id, { question, option_a, option_b, option
  * Chỉ chủ sở hữu lesson mới được xóa câu hỏi.
  */
 const deleteQuestion = async (userId, id) => {
-  const existing = await listeningQuestionModel.findById(id);
+  const existing = await listeningQuestionRepository.findById(id);
 
   if (!existing) {
     throw new AppError("Không tìm thấy câu hỏi", 404);
@@ -219,7 +219,7 @@ const deleteQuestion = async (userId, id) => {
 
   await checkLessonOwnership(existing.lesson_id, userId);
 
-  const deleted = await listeningQuestionModel.deleteById(id);
+  const deleted = await listeningQuestionRepository.deleteById(id);
   return formatQuestion(deleted);
 };
 
@@ -236,14 +236,14 @@ const deleteManyQuestions = async (userId, ids) => {
   }
 
   for (const id of ids) {
-    const existing = await listeningQuestionModel.findById(id);
+    const existing = await listeningQuestionRepository.findById(id);
     if (!existing) {
       throw new AppError(`Không tìm thấy câu hỏi với id: ${id}`, 404);
     }
     await checkLessonOwnership(existing.lesson_id, userId);
   }
 
-  await listeningQuestionModel.deleteMany(ids);
+  await listeningQuestionRepository.deleteMany(ids);
 };
 
 /**
@@ -252,7 +252,7 @@ const deleteManyQuestions = async (userId, ids) => {
  * Chủ sở hữu xem được với lesson private/req_public.
  */
 const getQuestionsByLesson = async (userId, lessonId) => {
-  const lesson = await listeningQuestionModel.findLessonById(lessonId);
+  const lesson = await listeningQuestionRepository.findLessonById(lessonId);
 
   if (!lesson) {
     throw new AppError("Không tìm thấy bài luyện nghe", 404);
@@ -266,7 +266,7 @@ const getQuestionsByLesson = async (userId, lessonId) => {
     throw new AppError("Bạn không có quyền xem câu hỏi của bài luyện nghe này", 403);
   }
 
-  const questions = await listeningQuestionModel.findByLessonId(lessonId);
+  const questions = await listeningQuestionRepository.findByLessonId(lessonId);
   return questions.map(formatQuestion);
 };
 

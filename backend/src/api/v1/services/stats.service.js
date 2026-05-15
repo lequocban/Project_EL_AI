@@ -7,7 +7,7 @@ const {
   countReadingPractice,
   countListeningLessons,
   countListeningPractice,
-} = require("../repositories/stats.model");
+} = require("../repositories/stats.repository");
 
 /**
  * Lấy toàn bộ thống kê hệ thống.

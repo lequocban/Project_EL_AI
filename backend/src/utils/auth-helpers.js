@@ -1,6 +1,6 @@
 const { AppError } = require("./appError");
-const profileModel = require("../api/v1/repositories/profile.model");
-const roleModel = require("../api/v1/repositories/role.model");
+const profileRepository = require("../api/v1/repositories/profile.repository");
+const roleRepository = require("../api/v1/repositories/role.repository");
 const {
   formatUser,
   formatProfile,
@@ -52,10 +52,10 @@ const buildAuthResponse = async (user, session) => {
 
   const [profile, roleIds] = await Promise.all([
     accessToken && userId
-      ? profileModel.getProfileById(accessToken, userId)
+      ? profileRepository.getProfileById(accessToken, userId)
       : Promise.resolve(null),
     accessToken && userId
-      ? roleModel.getRoleIdsByUserId(accessToken, userId)
+      ? roleRepository.getRoleIdsByUserId(accessToken, userId)
       : Promise.resolve([]),
   ]);
 

@@ -1,6 +1,6 @@
-const readingPracticeModel = require("../repositories/readingPractice.model");
-const readingLessonModel = require("../repositories/readingLesson.model");
-const readingQuestionModel = require("../repositories/readingQuestion.model");
+const readingPracticeRepository = require("../repositories/readingPractice.repository");
+const readingLessonRepository = require("../repositories/readingLesson.repository");
+const readingQuestionRepository = require("../repositories/readingQuestion.repository");
 const { AppError } = require("../../../utils/appError");
 const { buildPaginationResponse } = require("../../../utils/paginationResponse");
 
@@ -39,12 +39,12 @@ const gradeAnswer = (userAnswer, correctAnswer) => {
  * 5. Lưu kết quả vào bảng reading_practice
  */
 const submitReadingPractice = async (userId, lessonId, answers) => {
-  const lesson = await readingLessonModel.findById(lessonId);
+  const lesson = await readingLessonRepository.findById(lessonId);
   if (!lesson) {
     throw new AppError("Không tìm thấy bài luyện đọc", 404);
   }
 
-  const questions = await readingQuestionModel.findByLessonId(lessonId);
+  const questions = await readingQuestionRepository.findByLessonId(lessonId);
   if (questions.length === 0) {
     throw new AppError("Bài luyện đọc không có câu hỏi nào", 400);
   }
@@ -89,7 +89,7 @@ const submitReadingPractice = async (userId, lessonId, answers) => {
 
   const userAnswerJson = JSON.stringify(answers);
 
-  const savedResult = await readingPracticeModel.create({
+  const savedResult = await readingPracticeRepository.create({
     userId,
     lessonId,
     userAnswer: userAnswerJson,
@@ -111,13 +111,13 @@ const submitReadingPractice = async (userId, lessonId, answers) => {
  * Lấy lịch sử luyện đọc của user (có phân trang, sắp xếp).
  */
 const getPracticeHistory = async (userId, { page = 1, limit = 10, sortField, sortOrder } = {}) => {
-  const { data, total } = await readingPracticeModel.getHistoryByUser(userId, { page, limit, sortField, sortOrder });
+  const { data, total } = await readingPracticeRepository.getHistoryByUser(userId, { page, limit, sortField, sortOrder });
 
   const items = await Promise.all(
     data.map(async (item) => {
       let lessonTitle = null;
       if (item.lesson_id) {
-        const lesson = await readingLessonModel.findById(item.lesson_id);
+        const lesson = await readingLessonRepository.findById(item.lesson_id);
         lessonTitle = lesson?.title || null;
       }
       return {
@@ -138,7 +138,7 @@ const getPracticeHistory = async (userId, { page = 1, limit = 10, sortField, sor
  * Chỉ chủ nhân mới được xem chi tiết bài làm của mình.
  */
 const getPracticeDetail = async (practiceId, userId) => {
-  const practice = await readingPracticeModel.findById(practiceId);
+  const practice = await readingPracticeRepository.findById(practiceId);
   if (!practice) {
     throw new AppError("Không tìm thấy kết quả luyện đọc", 404);
   }
@@ -147,8 +147,8 @@ const getPracticeDetail = async (practiceId, userId) => {
     throw new AppError("Bạn không có quyền xem kết quả này", 403);
   }
 
-  const lesson = await readingLessonModel.findById(practice.lesson_id);
-  const questions = await readingQuestionModel.findByLessonId(practice.lesson_id);
+  const lesson = await readingLessonRepository.findById(practice.lesson_id);
+  const questions = await readingQuestionRepository.findByLessonId(practice.lesson_id);
 
   let userAnswers = [];
   try {

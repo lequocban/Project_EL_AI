@@ -4,7 +4,7 @@ const {
   getUserById,
   deleteUserPermanently,
   updateUserRole: updateUserRoleModel,
-} = require("../repositories/user.model");
+} = require("../repositories/user.repository");
 const { AppError } = require("../../../utils/appError");
 const { toApiDate } = require("../../../utils/date.utils");
 const { parsePagination } = require("../../../utils/pagination");

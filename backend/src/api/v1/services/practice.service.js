@@ -1,5 +1,5 @@
-const vocabularySetModel = require("../repositories/vocabularySet.model");
-const practiceModel = require("../repositories/practice.model");
+const vocabularySetRepository = require("../repositories/vocabularySet.repository");
+const practiceRepository = require("../repositories/practice.repository");
 const { AppError } = require("../../../utils/appError");
 const { buildPaginationResponse } = require("../../../utils/paginationResponse");
 
@@ -21,7 +21,7 @@ const normalizeAnswer = (answer) => {
  * Lấy danh sách từ trong bộ từ vựng để đối chiếu đáp án.
  */
 const getWordMap = async (setId) => {
-  const { words } = await vocabularySetModel.getWordsInSet(setId);
+  const { words } = await vocabularySetRepository.getWordsInSet(setId);
   const wordMap = new Map();
   for (const w of words) {
     wordMap.set(w.id, w);
@@ -48,7 +48,7 @@ const gradeTextAnswer = (userAnswer, correctAnswer) => {
  * - listen_write: Nghe audio → nhập từ tiếng Anh
  */
 const submitPractice = async (userId, setId, type, timeSpent, answers) => {
-  const vocabularySet = await vocabularySetModel.findById(setId);
+  const vocabularySet = await vocabularySetRepository.findById(setId);
   if (!vocabularySet) {
     throw new AppError("Không tìm thấy bộ từ vựng", 404);
   }
@@ -99,7 +99,7 @@ const submitPractice = async (userId, setId, type, timeSpent, answers) => {
   const totalQuestions = wordMap.size;
   const score = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0;
 
-  const result = await practiceModel.createPracticeResult({
+  const result = await practiceRepository.createPracticeResult({
     userId,
     vocabularyId: setId,
     type,
@@ -124,13 +124,13 @@ const submitPractice = async (userId, setId, type, timeSpent, answers) => {
  * Lấy lịch sử luyện tập của user (có phân trang).
  */
 const getPracticeHistory = async (userId, { page = 1, limit = 10 } = {}) => {
-  const { data, total } = await practiceModel.getUserPracticeHistory(userId, { page, limit });
+  const { data, total } = await practiceRepository.getUserPracticeHistory(userId, { page, limit });
 
   const items = await Promise.all(
     data.map(async (item) => {
       let vocabularyTitle = null;
       if (item.vocabulary_id) {
-        const vocabSet = await vocabularySetModel.getVocabularySetById(item.vocabulary_id);
+        const vocabSet = await vocabularySetRepository.getVocabularySetById(item.vocabulary_id);
         vocabularyTitle = vocabSet?.title || null;
       }
       return {

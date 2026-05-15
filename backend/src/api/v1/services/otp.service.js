@@ -1,7 +1,7 @@
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
-const otpModel = require("../repositories/otp.model");
-const authModel = require("../repositories/auth.model");
+const otpRepository = require("../repositories/otp.repository");
+const authRepository = require("../repositories/auth.repository");
 const { sendMail } = require("../../../utils/sendMail");
 const { AppError } = require("../../../utils/appError");
 const env = require("../../../config/env.config");
@@ -24,7 +24,7 @@ const generateOtp = (length = env.otpLength) => {
  */
 const requestOtp = async (email) => {
   const normalizedEmail = email.toLowerCase().trim();
-  const userExists = await authModel.findUserByEmail(normalizedEmail);
+  const userExists = await authRepository.findUserByEmail(normalizedEmail);
   if (!userExists) {
     throw new AppError("Email không tồn tại trong hệ thống", 404);
   }
@@ -33,7 +33,7 @@ const requestOtp = async (email) => {
   const hashedOtp = await bcrypt.hash(otp, SALT_ROUNDS);
   const expiresAt = new Date(Date.now() + env.otpExpiresInMinutes * 60 * 1000);
 
-  await otpModel.saveOtp({
+  await otpRepository.saveOtp({
     email: normalizedEmail,
     hashedOtp,
     expiresAt,
@@ -79,7 +79,7 @@ const requestOtp = async (email) => {
 const resetPassword = async ({ email, otp, newPassword }) => {
   const normalizedEmail = email.toLowerCase().trim();
 
-  const otpRecord = await otpModel.findValidOtp(normalizedEmail);
+  const otpRecord = await otpRepository.findValidOtp(normalizedEmail);
 
   if (!otpRecord) {
     throw new AppError("Mã OTP không hợp lệ hoặc đã hết hạn", 400);
@@ -91,10 +91,10 @@ const resetPassword = async ({ email, otp, newPassword }) => {
     throw new AppError("Mã OTP không chính xác", 400);
   }
 
-  await authModel.updateUserPassword(normalizedEmail, newPassword);
+  await authRepository.updateUserPassword(normalizedEmail, newPassword);
 
   // Xóa luôn OTP sau khi đổi mật khẩu thành công
-  await otpModel.deleteOtp(otpRecord.id);
+  await otpRepository.deleteOtp(otpRecord.id);
 };
 
 module.exports = {

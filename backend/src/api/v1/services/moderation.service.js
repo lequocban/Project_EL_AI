@@ -1,20 +1,20 @@
-const moderationModel = require("../repositories/moderation.model");
-const vocabularySetModel = require("../repositories/vocabularySet.model");
+const moderationRepository = require("../repositories/moderation.repository");
+const vocabularySetRepository = require("../repositories/vocabularySet.repository");
 const { AppError } = require("../../../utils/appError");
 
-let readingLessonModel = null;
-let listeningLessonModel = null;
+let readingLessonRepository = null;
+let listeningLessonRepository = null;
 
 try {
-  readingLessonModel = require("../repositories/readingLesson.model");
+  readingLessonRepository = require("../repositories/readingLesson.repository");
 } catch {
-  // readingLesson.model chưa tồn tại
+  // readingLesson.repository chưa tồn tại
 }
 
 try {
-  listeningLessonModel = require("../repositories/listeningLesson.model");
+  listeningLessonRepository = require("../repositories/listeningLesson.repository");
 } catch {
-  // listeningLesson.model chưa tồn tại
+  // listeningLesson.repository chưa tồn tại
 }
 
 const SUPPORTED_CONTENT_TYPES = ["vocabulary_set", "reading_lesson", "listening_lesson"];
@@ -65,7 +65,7 @@ const createModerationRequest = async (accessToken, userId, { contentType, conte
     );
   }
 
-  const existingRequest = await moderationModel.existsPendingRequest(
+  const existingRequest = await moderationRepository.existsPendingRequest(
     accessToken,
     contentId,
     contentType,
@@ -78,7 +78,7 @@ const createModerationRequest = async (accessToken, userId, { contentType, conte
     );
   }
 
-  const request = await moderationModel.createModerationRequest(accessToken, {
+  const request = await moderationRepository.createModerationRequest(accessToken, {
     contentType,
     contentId,
     requestedBy: userId,
@@ -91,7 +91,7 @@ const createModerationRequest = async (accessToken, userId, { contentType, conte
  * Lấy danh sách yêu cầu kiểm duyệt của user (có sắp xếp).
  */
 const getMyRequests = async (accessToken, userId, { keyword, status, page, limit, sortField, sortOrder }) => {
-  const { data, total } = await moderationModel.getRequestsByUser(accessToken, userId, {
+  const { data, total } = await moderationRepository.getRequestsByUser(accessToken, userId, {
     keyword,
     status,
     page,
@@ -132,7 +132,7 @@ const verifyContentOwnership = async (contentType, contentId, userId) => {
 };
 
 const verifyVocabularySetOwnership = async (setId, userId) => {
-  const set = await vocabularySetModel.findById(setId);
+  const set = await vocabularySetRepository.findById(setId);
   if (!set) {
     return { exists: false, isOwner: false, isPrivate: false, currentStatus: null, content: null };
   }
@@ -146,10 +146,10 @@ const verifyVocabularySetOwnership = async (setId, userId) => {
 };
 
 const verifyReadingLessonOwnership = async (lessonId, userId) => {
-  if (!readingLessonModel) {
+  if (!readingLessonRepository) {
     return { exists: false, isOwner: false, isPrivate: false, currentStatus: null, content: null };
   }
-  const lesson = await readingLessonModel.findById(lessonId);
+  const lesson = await readingLessonRepository.findById(lessonId);
   if (!lesson) {
     return { exists: false, isOwner: false, isPrivate: false, currentStatus: null, content: null };
   }
@@ -163,10 +163,10 @@ const verifyReadingLessonOwnership = async (lessonId, userId) => {
 };
 
 const verifyListeningLessonOwnership = async (lessonId, userId) => {
-  if (!listeningLessonModel) {
+  if (!listeningLessonRepository) {
     return { exists: false, isOwner: false, isPrivate: false, currentStatus: null, content: null };
   }
-  const lesson = await listeningLessonModel.findById(lessonId);
+  const lesson = await listeningLessonRepository.findById(lessonId);
   if (!lesson) {
     return { exists: false, isOwner: false, isPrivate: false, currentStatus: null, content: null };
   }
@@ -185,19 +185,19 @@ const verifyListeningLessonOwnership = async (lessonId, userId) => {
 const getContentInfo = async (contentType, contentId) => {
   switch (contentType) {
     case "vocabulary_set": {
-      const set = await vocabularySetModel.getVocabularySetById(contentId);
+      const set = await vocabularySetRepository.getVocabularySetById(contentId);
       if (!set) return null;
       return { id: set.id, title: set.title, description: set.description };
     }
     case "reading_lesson": {
-      if (!readingLessonModel) return null;
-      const lesson = await readingLessonModel.findById(contentId);
+      if (!readingLessonRepository) return null;
+      const lesson = await readingLessonRepository.findById(contentId);
       if (!lesson) return null;
       return { id: lesson.id, title: lesson.title };
     }
     case "listening_lesson": {
-      if (!listeningLessonModel) return null;
-      const lesson = await listeningLessonModel.findById(contentId);
+      if (!listeningLessonRepository) return null;
+      const lesson = await listeningLessonRepository.findById(contentId);
       if (!lesson) return null;
       return { id: lesson.id, title: lesson.title };
     }

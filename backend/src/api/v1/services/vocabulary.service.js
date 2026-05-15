@@ -1,4 +1,4 @@
-const vocabularyModel = require("../repositories/vocabulary.model");
+const vocabularyRepository = require("../repositories/vocabulary.repository");
 const { AppError } = require("../../../utils/appError");
 
 /**
@@ -106,7 +106,7 @@ const lookupWord = async (accessToken, word) => {
     throw new AppError("Vui lòng nhập từ cần tra", 400);
   }
 
-  const existing = await vocabularyModel.findByWord(accessToken, normalizedWord);
+  const existing = await vocabularyRepository.findByWord(accessToken, normalizedWord);
 
   if (existing) {
     return formatVocabulary(existing);
@@ -117,7 +117,7 @@ const lookupWord = async (accessToken, word) => {
     fetchMeaning(normalizedWord),
   ]);
 
-  const vocabulary = await vocabularyModel.create(accessToken, {
+  const vocabulary = await vocabularyRepository.create(accessToken, {
     word: normalizedWord,
     phonetic: dictionaryData.phonetic,
     audioUrl: dictionaryData.audioUrl,

@@ -1,10 +1,10 @@
-const moderationModel = require("../repositories/moderation.model");
-const vocabularySetModel = require("../repositories/vocabularySet.model");
+const moderationRepository = require("../repositories/moderation.repository");
+const vocabularySetRepository = require("../repositories/vocabularySet.repository");
 const vocabularyService = require("./vocabulary.service");
-const readingLessonModel = require("../repositories/readingLesson.model");
-const readingQuestionModel = require("../repositories/readingQuestion.model");
-const listeningLessonModel = require("../repositories/listeningLesson.model");
-const listeningQuestionModel = require("../repositories/listeningQuestion.model");
+const readingLessonRepository = require("../repositories/readingLesson.repository");
+const readingQuestionRepository = require("../repositories/readingQuestion.repository");
+const listeningLessonRepository = require("../repositories/listeningLesson.repository");
+const listeningQuestionRepository = require("../repositories/listeningQuestion.repository");
 const { AppError } = require("../../../utils/appError");
 const { parsePagination } = require("../../../utils/pagination");
 const { buildPaginationResponse } = require("../../../utils/paginationResponse");
@@ -19,7 +19,7 @@ const VALID_CONTENT_TYPES = ["vocabulary_set", "reading_lesson", "listening_less
  * @param {string} contentType
  */
 const requirePendingModeration = async (contentId, contentType) => {
-  const pending = await moderationModel.checkPendingModeration(contentId, contentType);
+  const pending = await moderationRepository.checkPendingModeration(contentId, contentType);
   if (!pending) {
     throw new AppError(
       "Không tìm thấy yêu cầu kiểm duyệt đang chờ cho nội dung này",
@@ -35,19 +35,19 @@ const requirePendingModeration = async (contentId, contentType) => {
 const getContentBasicInfo = async (contentType, contentId) => {
   switch (contentType) {
     case "vocabulary_set": {
-      const set = await vocabularySetModel.getVocabularySetById(contentId);
+      const set = await vocabularySetRepository.getVocabularySetById(contentId);
       if (!set) return null;
       return { id: set.id, title: set.title };
     }
     case "reading_lesson": {
-      if (!readingLessonModel) return null;
-      const lesson = await readingLessonModel.findById(contentId);
+      if (!readingLessonRepository) return null;
+      const lesson = await readingLessonRepository.findById(contentId);
       if (!lesson) return null;
       return { id: lesson.id, title: lesson.title };
     }
     case "listening_lesson": {
-      if (!listeningLessonModel) return null;
-      const lesson = await listeningLessonModel.findById(contentId);
+      if (!listeningLessonRepository) return null;
+      const lesson = await listeningLessonRepository.findById(contentId);
       if (!lesson) return null;
       return { id: lesson.id, title: lesson.title };
     }
@@ -104,7 +104,7 @@ const getModerationRequestsByContentType = async (accessToken, contentType, quer
 
   const status = queryParams.status || "";
 
-  const { data, total } = await moderationModel.getRequestsByContentType(
+  const { data, total } = await moderationRepository.getRequestsByContentType(
     accessToken,
     contentType,
     {
@@ -166,12 +166,12 @@ const getModerationRequestsByContentType = async (accessToken, contentType, quer
 const updateVocabularySet = async (accessToken, setId, updateData) => {
   await requirePendingModeration(setId, "vocabulary_set");
 
-  const existing = await vocabularySetModel.findById(setId);
+  const existing = await vocabularySetRepository.findById(setId);
   if (!existing) {
     throw new AppError("Không tìm thấy bộ từ vựng", 404);
   }
 
-  const updated = await vocabularySetModel.update(setId, {
+  const updated = await vocabularySetRepository.update(setId, {
     title: updateData.title,
     description: updateData.description,
   });
@@ -193,12 +193,12 @@ const updateVocabularySet = async (accessToken, setId, updateData) => {
 const updateReadingLesson = async (accessToken, lessonId, updateData) => {
   await requirePendingModeration(lessonId, "reading_lesson");
 
-  const existing = await readingLessonModel.findById(lessonId);
+  const existing = await readingLessonRepository.findById(lessonId);
   if (!existing) {
     throw new AppError("Không tìm thấy bài luyện đọc", 404);
   }
 
-  const updated = await readingLessonModel.update(lessonId, {
+  const updated = await readingLessonRepository.update(lessonId, {
     title: updateData.title,
     content: updateData.content,
     vi_translation: updateData.vi_translation,
@@ -223,7 +223,7 @@ const updateReadingLesson = async (accessToken, lessonId, updateData) => {
 const updateReadingQuestion = async (accessToken, questionId, lessonId, updateData) => {
   await requirePendingModeration(lessonId, "reading_lesson");
 
-  const existing = await readingQuestionModel.findById(questionId);
+  const existing = await readingQuestionRepository.findById(questionId);
   if (!existing) {
     throw new AppError("Không tìm thấy câu hỏi", 404);
   }
@@ -239,7 +239,7 @@ const updateReadingQuestion = async (accessToken, questionId, lessonId, updateDa
     }
   }
 
-  const updated = await readingQuestionModel.update(questionId, {
+  const updated = await readingQuestionRepository.update(questionId, {
     question: updateData.question,
     option_a: updateData.option_a,
     option_b: updateData.option_b,
@@ -271,12 +271,12 @@ const updateReadingQuestion = async (accessToken, questionId, lessonId, updateDa
 const updateListeningLesson = async (accessToken, lessonId, updateData) => {
   await requirePendingModeration(lessonId, "listening_lesson");
 
-  const existing = await listeningLessonModel.findById(lessonId);
+  const existing = await listeningLessonRepository.findById(lessonId);
   if (!existing) {
     throw new AppError("Không tìm thấy bài luyện nghe", 404);
   }
 
-  const updated = await listeningLessonModel.update(lessonId, {
+  const updated = await listeningLessonRepository.update(lessonId, {
     title: updateData.title,
     audio_url: updateData.audio_url,
     transcript: updateData.transcript,
@@ -302,7 +302,7 @@ const updateListeningLesson = async (accessToken, lessonId, updateData) => {
 const updateListeningQuestion = async (accessToken, questionId, lessonId, updateData) => {
   await requirePendingModeration(lessonId, "listening_lesson");
 
-  const existing = await listeningQuestionModel.findById(questionId);
+  const existing = await listeningQuestionRepository.findById(questionId);
   if (!existing) {
     throw new AppError("Không tìm thấy câu hỏi", 404);
   }
@@ -318,7 +318,7 @@ const updateListeningQuestion = async (accessToken, questionId, lessonId, update
     }
   }
 
-  const updated = await listeningQuestionModel.update(questionId, {
+  const updated = await listeningQuestionRepository.update(questionId, {
     question: updateData.question,
     option_a: updateData.option_a,
     option_b: updateData.option_b,
@@ -379,11 +379,11 @@ const getModerationRequestDetail = async (requestId) => {
 
   switch (request.content_type) {
     case "vocabulary_set": {
-      const set = await vocabularySetModel.findById(request.content_id);
+      const set = await vocabularySetRepository.findById(request.content_id);
       if (!set) {
         throw new AppError("Không tìm thấy bộ từ vựng", 404);
       }
-      const words = await vocabularySetModel.getWordsInSet(request.content_id, {});
+      const words = await vocabularySetRepository.getWordsInSet(request.content_id, {});
       contentDetail = {
         id: set.id,
         title: set.title,
@@ -398,11 +398,11 @@ const getModerationRequestDetail = async (requestId) => {
       break;
     }
     case "reading_lesson": {
-      const lesson = await readingLessonModel.findById(request.content_id);
+      const lesson = await readingLessonRepository.findById(request.content_id);
       if (!lesson) {
         throw new AppError("Không tìm thấy bài luyện đọc", 404);
       }
-      const questions = await readingQuestionModel.findByLessonId(request.content_id);
+      const questions = await readingQuestionRepository.findByLessonId(request.content_id);
       contentDetail = {
         id: lesson.id,
         title: lesson.title,
@@ -428,11 +428,11 @@ const getModerationRequestDetail = async (requestId) => {
       break;
     }
     case "listening_lesson": {
-      const lesson = await listeningLessonModel.findById(request.content_id);
+      const lesson = await listeningLessonRepository.findById(request.content_id);
       if (!lesson) {
         throw new AppError("Không tìm thấy bài luyện nghe", 404);
       }
-      const questions = await listeningQuestionModel.findByLessonId(request.content_id);
+      const questions = await listeningQuestionRepository.findByLessonId(request.content_id);
       contentDetail = {
         id: lesson.id,
         title: lesson.title,
@@ -496,7 +496,7 @@ const getModerationRequestDetail = async (requestId) => {
 const addWordsToVocabularySet = async (accessToken, setId, words) => {
   await requirePendingModeration(setId, "vocabulary_set");
 
-  const existing = await vocabularySetModel.findById(setId);
+  const existing = await vocabularySetRepository.findById(setId);
   if (!existing) {
     throw new AppError("Không tìm thấy bộ từ vựng", 404);
   }
@@ -518,7 +518,7 @@ const addWordsToVocabularySet = async (accessToken, setId, words) => {
   const addedWords = [];
 
   for (const wordText of uniqueWords) {
-    let wordRecord = await vocabularySetModel.findWordByText(wordText);
+    let wordRecord = await vocabularySetRepository.findWordByText(wordText);
 
     if (!wordRecord) {
       try {
@@ -527,14 +527,14 @@ const addWordsToVocabularySet = async (accessToken, setId, words) => {
           vocabularyService.fetchMeaning(wordText),
         ]);
 
-        wordRecord = await vocabularySetModel.createWord({
+        wordRecord = await vocabularySetRepository.createWord({
           word: wordText,
           phonetic: dictionaryData.phonetic,
           audioUrl: dictionaryData.audioUrl,
           meaning,
         });
       } catch (err) {
-        wordRecord = await vocabularySetModel.createWord({
+        wordRecord = await vocabularySetRepository.createWord({
           word: wordText,
           phonetic: null,
           audioUrl: null,
@@ -544,7 +544,7 @@ const addWordsToVocabularySet = async (accessToken, setId, words) => {
     }
 
     if (wordRecord) {
-      await vocabularySetModel.addWordsToSet(setId, [wordRecord.id]);
+      await vocabularySetRepository.addWordsToSet(setId, [wordRecord.id]);
       addedWords.push({
         id: wordRecord.id,
         word: wordRecord.word,
@@ -569,7 +569,7 @@ const addWordsToVocabularySet = async (accessToken, setId, words) => {
 const removeWordsFromVocabularySet = async (accessToken, setId, wordIds) => {
   await requirePendingModeration(setId, "vocabulary_set");
 
-  const existing = await vocabularySetModel.findById(setId);
+  const existing = await vocabularySetRepository.findById(setId);
   if (!existing) {
     throw new AppError("Không tìm thấy bộ từ vựng", 404);
   }
@@ -578,7 +578,7 @@ const removeWordsFromVocabularySet = async (accessToken, setId, wordIds) => {
     throw new AppError("Danh sách wordIds không hợp lệ hoặc trống", 400);
   }
 
-  await vocabularySetModel.removeWordsFromSet(setId, wordIds);
+  await vocabularySetRepository.removeWordsFromSet(setId, wordIds);
 
   return {
     setId,
@@ -613,7 +613,7 @@ const reviewModerationRequest = async (reviewerId, requestId, { action, reason, 
 
   const targetStatus = action === "approve" ? "approved" : "rejected";
 
-  const updated = await moderationModel.updateModerationRequest(requestId, reviewerId, {
+  const updated = await moderationRepository.updateModerationRequest(requestId, reviewerId, {
     status: targetStatus,
     reason: reason || null,
     notes: notes || null,
