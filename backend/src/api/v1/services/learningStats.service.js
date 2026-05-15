@@ -1,4 +1,4 @@
-const learningStatsModel = require("../repositories/learningStats.model");
+const learningStatsRepository = require("../repositories/learningStats.repository");
 
 /**
  * Lấy thống kê học tập của user.
@@ -6,7 +6,7 @@ const learningStatsModel = require("../repositories/learningStats.model");
  * @returns {Promise<Object>}
  */
 const getStats = async (userId) => {
-  const stats = await learningStatsModel.getLearningStats(userId);
+  const stats = await learningStatsRepository.getLearningStats(userId);
 
   const defaultSection = () => ({
     ownedCount: 0,

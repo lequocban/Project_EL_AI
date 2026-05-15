@@ -1,4 +1,4 @@
-const leaderboardModel = require("../repositories/leaderboard.model");
+const leaderboardRepository = require("../repositories/leaderboard.repository");
 const { buildPaginationResponse } = require("../../../utils/paginationResponse");
 
 /**
@@ -25,7 +25,7 @@ const getLeaderboard = async ({ page = 1, limit = 10, currentUserId = null } = {
   if (page < 1) page = 1;
   if (limit < 1 || limit > 50) limit = 10;
 
-  const allStats = await leaderboardModel.getAllUsersWithStats();
+  const allStats = await leaderboardRepository.getAllUsersWithStats();
 
   const withScores = allStats.map((user) => ({
     ...user,
@@ -43,7 +43,7 @@ const getLeaderboard = async ({ page = 1, limit = 10, currentUserId = null } = {
   const paginated = withScores.slice(offset, offset + limit);
 
   const userIds = paginated.map((u) => u.user_id);
-  const profiles = await leaderboardModel.getProfilesByIds(userIds);
+  const profiles = await leaderboardRepository.getProfilesByIds(userIds);
 
   const profileMap = new Map(profiles.map((p) => [p.id, p]));
 

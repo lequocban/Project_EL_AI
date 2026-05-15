@@ -1,6 +1,6 @@
 const aiService = require("./ai.service");
-const listeningLessonModel = require("../repositories/listeningLesson.model");
-const listeningQuestionModel = require("../repositories/listeningQuestion.model");
+const listeningLessonRepository = require("../repositories/listeningLesson.repository");
+const listeningQuestionRepository = require("../repositories/listeningQuestion.repository");
 const { AppError } = require("../../../utils/appError");
 
 /**
@@ -51,7 +51,7 @@ const createListeningLessonByAI = async (userId, { title, topic, questionCount }
   const audioUrl = await uploadAudioToSupabase(audioBuffer, title);
 
   // Bước 4: Tạo lesson trong database
-  const lesson = await listeningLessonModel.create({
+  const lesson = await listeningLessonRepository.create({
     title: title.trim(),
     audio_url: audioUrl,
     transcript: transcript,
@@ -64,7 +64,7 @@ const createListeningLessonByAI = async (userId, { title, topic, questionCount }
   const questions = await aiService.generateListeningQuestionsByAI(transcript, viTranslation, safeCount);
 
   // Bước 6: Lưu câu hỏi vào database
-  const createdQuestions = await listeningQuestionModel.createMany(lesson.id, questions);
+  const createdQuestions = await listeningQuestionRepository.createMany(lesson.id, questions);
 
   // Format kết quả trả về
   return {

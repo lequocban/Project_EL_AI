@@ -1,6 +1,6 @@
-const listeningPracticeModel = require("../repositories/listeningPractice.model");
-const listeningLessonModel = require("../repositories/listeningLesson.model");
-const listeningQuestionModel = require("../repositories/listeningQuestion.model");
+const listeningPracticeRepository = require("../repositories/listeningPractice.repository");
+const listeningLessonRepository = require("../repositories/listeningLesson.repository");
+const listeningQuestionRepository = require("../repositories/listeningQuestion.repository");
 const { AppError } = require("../../../utils/appError");
 const { buildPaginationResponse } = require("../../../utils/paginationResponse");
 
@@ -89,7 +89,7 @@ const submitListeningPractice = async (userId, lessonId, answers) => {
 
   const userAnswerJson = JSON.stringify(answers);
 
-  const savedResult = await listeningPracticeModel.create({
+  const savedResult = await listeningPracticeRepository.create({
     userId,
     lessonId,
     userAnswer: userAnswerJson,
@@ -111,7 +111,7 @@ const submitListeningPractice = async (userId, lessonId, answers) => {
  * Lấy lịch sử luyện nghe của user (có phân trang, sắp xếp).
  */
 const getPracticeHistory = async (userId, { page = 1, limit = 10, sortField, sortOrder } = {}) => {
-  const { data, total } = await listeningPracticeModel.getHistoryByUser(userId, { page, limit, sortField, sortOrder });
+  const { data, total } = await listeningPracticeRepository.getHistoryByUser(userId, { page, limit, sortField, sortOrder });
 
   const items = await Promise.all(
     data.map(async (item) => {
@@ -138,7 +138,7 @@ const getPracticeHistory = async (userId, { page = 1, limit = 10, sortField, sor
  * Chỉ chủ nhân mới được xem chi tiết bài làm của mình.
  */
 const getPracticeDetail = async (practiceId, userId) => {
-  const practice = await listeningPracticeModel.findById(practiceId);
+  const practice = await listeningPracticeRepository.findById(practiceId);
   if (!practice) {
     throw new AppError("Không tìm thấy kết quả luyện nghe", 404);
   }

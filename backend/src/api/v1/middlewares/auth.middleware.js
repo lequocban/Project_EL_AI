@@ -1,6 +1,6 @@
 const { supabase } = require("../../../config/supabase");
 const { AppError } = require("../../../utils/appError");
-const { getRoleIdsByUserIdService } = require("../repositories/role.model");
+const { getRoleIdsByUserIdService } = require("../repositories/role.repository");
 
 /**
  * Lấy token từ header Authorization: Bearer <token>

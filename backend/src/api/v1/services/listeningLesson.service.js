@@ -1,4 +1,4 @@
-const listeningLessonModel = require("../repositories/listeningLesson.model");
+const listeningLessonRepository = require("../repositories/listeningLesson.repository");
 const listeningQuestionService = require("./listeningQuestion.service");
 const { AppError } = require("../../../utils/appError");
 const { buildPaginationResponse } = require("../../../utils/paginationResponse");
@@ -56,7 +56,7 @@ const createLesson = async ({ title, audioUrl, transcript, viTranslation, create
     throw new AppError("Bản dịch tiếng Việt không được dài quá 50000 ký tự", 400);
   }
 
-  const lesson = await listeningLessonModel.create({
+  const lesson = await listeningLessonRepository.create({
     title: title.trim(),
     audio_url: audioUrl?.trim() || null,
     transcript: transcript?.trim() || null,
@@ -74,7 +74,7 @@ const createLesson = async ({ title, audioUrl, transcript, viTranslation, create
  * Không cho phép cập nhật trường status qua API này.
  */
 const updateLesson = async (id, userId, { title, audioUrl, transcript, viTranslation }) => {
-  const lesson = await listeningLessonModel.findById(id);
+  const lesson = await listeningLessonRepository.findById(id);
 
   if (!lesson) {
     throw new AppError("Không tìm thấy bài luyện nghe", 404);
@@ -105,7 +105,7 @@ const updateLesson = async (id, userId, { title, audioUrl, transcript, viTransla
     throw new AppError("Bản dịch tiếng Việt không được dài quá 50000 ký tự", 400);
   }
 
-  const updated = await listeningLessonModel.update(id, {
+  const updated = await listeningLessonRepository.update(id, {
     title: title?.trim(),
     audio_url: audioUrl?.trim(),
     transcript: transcript?.trim(),
@@ -120,7 +120,7 @@ const updateLesson = async (id, userId, { title, audioUrl, transcript, viTransla
  * Chỉ chủ sở hữu mới được xóa.
  */
 const deleteLesson = async (id, userId) => {
-  const lesson = await listeningLessonModel.findById(id);
+  const lesson = await listeningLessonRepository.findById(id);
 
   if (!lesson) {
     throw new AppError("Không tìm thấy bài luyện nghe", 404);
@@ -130,7 +130,7 @@ const deleteLesson = async (id, userId) => {
     throw new AppError("Bạn không có quyền xóa bài luyện nghe này", 403);
   }
 
-  const deleted = await listeningLessonModel.softDelete(id);
+  const deleted = await listeningLessonRepository.softDelete(id);
   return formatLesson(deleted);
 };
 
@@ -169,7 +169,7 @@ const formatLessonDetail = (lesson, questions) => ({
  * Bài private / req_public: chỉ chủ sở hữu xem được.
  */
 const getDetail = async (id, userId) => {
-  const lesson = await listeningLessonModel.findById(id);
+  const lesson = await listeningLessonRepository.findById(id);
 
   if (!lesson) {
     throw new AppError("Không tìm thấy bài luyện nghe", 404);
@@ -188,7 +188,7 @@ const getDetail = async (id, userId) => {
  * Lấy danh sách bài luyện nghe public (phân trang, tìm kiếm, sắp xếp).
  */
 const getPublicLessons = async ({ keyword, page, limit, sortField, sortOrder }) => {
-  const { data, total } = await listeningLessonModel.getPublicLessons({ keyword, page, limit, sortField, sortOrder });
+  const { data, total } = await listeningLessonRepository.getPublicLessons({ keyword, page, limit, sortField, sortOrder });
 
   const items = data.map(formatLesson);
   return buildPaginationResponse(items, { page, limit, total });
@@ -198,7 +198,7 @@ const getPublicLessons = async ({ keyword, page, limit, sortField, sortOrder }) 
  * Lấy danh sách bài luyện nghe của user (phân trang, tìm kiếm, sắp xếp).
  */
 const getMyLessons = async (userId, { keyword, page, limit, sortField, sortOrder }) => {
-  const { data, total } = await listeningLessonModel.getMyLessons(userId, { keyword, page, limit, sortField, sortOrder });
+  const { data, total } = await listeningLessonRepository.getMyLessons(userId, { keyword, page, limit, sortField, sortOrder });
 
   const items = data.map(formatListItem);
   return buildPaginationResponse(items, { page, limit, total });
@@ -209,7 +209,7 @@ const getMyLessons = async (userId, { keyword, page, limit, sortField, sortOrder
  * Chỉ bài ở trạng thái 'private' mới được yêu cầu.
  */
 const requestPublic = async (id, userId) => {
-  const lesson = await listeningLessonModel.findById(id);
+  const lesson = await listeningLessonRepository.findById(id);
 
   if (!lesson) {
     throw new AppError("Không tìm thấy bài luyện nghe", 404);
@@ -223,7 +223,7 @@ const requestPublic = async (id, userId) => {
     throw new AppError("Chỉ bài luyện nghe ở trạng thái private mới có thể yêu cầu public", 400);
   }
 
-  const updated = await listeningLessonModel.updateStatus(id, "req_public");
+  const updated = await listeningLessonRepository.updateStatus(id, "req_public");
   return formatLesson(updated);
 };
 
@@ -232,7 +232,7 @@ const requestPublic = async (id, userId) => {
  * Chỉ chủ sở hữu mới được thực hiện.
  */
 const makePrivate = async (id, userId) => {
-  const lesson = await listeningLessonModel.findById(id);
+  const lesson = await listeningLessonRepository.findById(id);
 
   if (!lesson) {
     throw new AppError("Không tìm thấy bài luyện nghe", 404);
@@ -246,7 +246,7 @@ const makePrivate = async (id, userId) => {
     throw new AppError("Chỉ bài luyện nghe ở trạng thái public mới có thể chuyển thành private", 400);
   }
 
-  const updated = await listeningLessonModel.updateStatus(id, "private");
+  const updated = await listeningLessonRepository.updateStatus(id, "private");
   return formatLesson(updated);
 };
 
@@ -254,7 +254,7 @@ const makePrivate = async (id, userId) => {
  * Lấy danh sách bài đang chờ duyệt public (content_manager/admin).
  */
 const getPendingPublicLessons = async ({ keyword, page, limit }) => {
-  const { data, total } = await listeningLessonModel.getPendingPublicLessons({ keyword, page, limit });
+  const { data, total } = await listeningLessonRepository.getPendingPublicLessons({ keyword, page, limit });
 
   const items = data.map(formatListItem);
   return buildPaginationResponse(items, { page, limit, total });
@@ -264,7 +264,7 @@ const getPendingPublicLessons = async ({ keyword, page, limit }) => {
  * Duyệt public bài luyện nghe (content_manager/admin).
  */
 const approvePublic = async (id) => {
-  const lesson = await listeningLessonModel.findById(id);
+  const lesson = await listeningLessonRepository.findById(id);
 
   if (!lesson) {
     throw new AppError("Không tìm thấy bài luyện nghe", 404);
@@ -274,7 +274,7 @@ const approvePublic = async (id) => {
     throw new AppError("Bài luyện nghe không ở trạng thái chờ duyệt", 400);
   }
 
-  const updated = await listeningLessonModel.updateStatus(id, "public");
+  const updated = await listeningLessonRepository.updateStatus(id, "public");
   return formatLesson(updated);
 };
 
@@ -282,7 +282,7 @@ const approvePublic = async (id) => {
  * Từ chối duyệt public bài luyện nghe (content_manager/admin).
  */
 const rejectPublic = async (id) => {
-  const lesson = await listeningLessonModel.findById(id);
+  const lesson = await listeningLessonRepository.findById(id);
 
   if (!lesson) {
     throw new AppError("Không tìm thấy bài luyện nghe", 404);
@@ -292,7 +292,7 @@ const rejectPublic = async (id) => {
     throw new AppError("Bài luyện nghe không ở trạng thái chờ duyệt", 400);
   }
 
-  const updated = await listeningLessonModel.updateStatus(id, "private");
+  const updated = await listeningLessonRepository.updateStatus(id, "private");
   return formatLesson(updated);
 };
 
@@ -307,7 +307,7 @@ const setStatus = async (id, userId, newStatus) => {
     throw new AppError("Trạng thái không hợp lệ. Chỉ chấp nhận: private, public", 400);
   }
 
-  const lesson = await listeningLessonModel.findById(id);
+  const lesson = await listeningLessonRepository.findById(id);
 
   if (!lesson) {
     throw new AppError("Không tìm thấy bài luyện nghe", 404);
@@ -321,7 +321,7 @@ const setStatus = async (id, userId, newStatus) => {
     throw new AppError("Bài luyện nghe đã ở trạng thái này", 400);
   }
 
-  const updated = await listeningLessonModel.updateStatus(id, newStatus);
+  const updated = await listeningLessonRepository.updateStatus(id, newStatus);
   return formatLesson(updated);
 };
 

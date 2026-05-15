@@ -1,4 +1,4 @@
-const vocabularySetModel = require("../repositories/vocabularySet.model");
+const vocabularySetRepository = require("../repositories/vocabularySet.repository");
 const vocabularyService = require("./vocabulary.service");
 const { generateVocabularyByAI } = require("./ai.service");
 const { AppError } = require("../../../utils/appError");
@@ -50,7 +50,7 @@ const createVocabularySet = async ({ title, description, createdBy }) => {
   validateTitle(title);
   validateDescription(description);
 
-  const vocabularySet = await vocabularySetModel.create({
+  const vocabularySet = await vocabularySetRepository.create({
     title: title.trim(),
     description: description?.trim() || null,
     status: "private",
@@ -67,7 +67,7 @@ const updateVocabularySet = async (id, { title, description }) => {
   if (title !== undefined) validateTitle(title);
   if (description !== undefined) validateDescription(description);
 
-  const vocabularySet = await vocabularySetModel.update(id, {
+  const vocabularySet = await vocabularySetRepository.update(id, {
     title: title?.trim(),
     description: description?.trim() || null,
   });
@@ -79,7 +79,7 @@ const updateVocabularySet = async (id, { title, description }) => {
  * Xóa mềm vocabulary set.
  */
 const softDeleteVocabularySet = async (id) => {
-  const vocabularySet = await vocabularySetModel.softDelete(id);
+  const vocabularySet = await vocabularySetRepository.softDelete(id);
   return formatVocabularySet(vocabularySet);
 };
 
@@ -87,8 +87,8 @@ const softDeleteVocabularySet = async (id) => {
  * Lấy danh sách bộ từ vựng của user (có phân trang, tìm kiếm, sắp xếp).
  */
 const getMySets = async (userId, { keyword, page = 1, limit = 15, sortField, sortOrder }) => {
-  const { data, total } = await vocabularySetModel.getMySets(userId, { keyword, page, limit, sortField, sortOrder });
-  const items = await enrichWithWordCount(data, (setId) => vocabularySetModel.countWordsInSet(setId));
+  const { data, total } = await vocabularySetRepository.getMySets(userId, { keyword, page, limit, sortField, sortOrder });
+  const items = await enrichWithWordCount(data, (setId) => vocabularySetRepository.countWordsInSet(setId));
   return buildPaginationResponse(items, { page, limit, total });
 };
 
@@ -96,8 +96,8 @@ const getMySets = async (userId, { keyword, page = 1, limit = 15, sortField, sor
  * Lấy danh sách bộ từ vựng public (có phân trang, tìm kiếm, sắp xếp).
  */
 const getPublicSets = async ({ keyword, page = 1, limit = 15, sortField, sortOrder }) => {
-  const { data, total } = await vocabularySetModel.getPublicSets({ keyword, page, limit, sortField, sortOrder });
-  const items = await enrichWithWordCount(data, (setId) => vocabularySetModel.countWordsInSet(setId));
+  const { data, total } = await vocabularySetRepository.getPublicSets({ keyword, page, limit, sortField, sortOrder });
+  const items = await enrichWithWordCount(data, (setId) => vocabularySetRepository.countWordsInSet(setId));
   return buildPaginationResponse(items, { page, limit, total });
 };
 
@@ -119,7 +119,7 @@ const addWordsToSet = async (setId, userId, words) => {
     throw new AppError("Số từ vựng không được vượt quá 100 từ mỗi lần thêm", 400);
   }
 
-  const vocabularySet = await vocabularySetModel.findById(setId);
+  const vocabularySet = await vocabularySetRepository.findById(setId);
 
   if (!vocabularySet) {
     throw new AppError("Không tìm thấy bộ từ vựng", 404);
@@ -132,7 +132,7 @@ const addWordsToSet = async (setId, userId, words) => {
   const wordIds = [];
 
   for (const wordText of uniqueWords) {
-    const existingWord = await vocabularySetModel.findWordByText(wordText);
+    const existingWord = await vocabularySetRepository.findWordByText(wordText);
 
     if (existingWord) {
       wordIds.push(existingWord.id);
@@ -142,7 +142,7 @@ const addWordsToSet = async (setId, userId, words) => {
         vocabularyService.fetchMeaning(wordText),
       ]);
 
-      const newWord = await vocabularySetModel.createWord({
+      const newWord = await vocabularySetRepository.createWord({
         word: wordText,
         phonetic: dictionaryData.phonetic,
         audioUrl: dictionaryData.audioUrl,
@@ -153,8 +153,8 @@ const addWordsToSet = async (setId, userId, words) => {
     }
   }
 
-  await vocabularySetModel.addWordsToSet(setId, wordIds);
-  const totalWords = await vocabularySetModel.countWordsInSet(setId);
+  await vocabularySetRepository.addWordsToSet(setId, wordIds);
+  const totalWords = await vocabularySetRepository.countWordsInSet(setId);
 
   return { setId, addedCount: wordIds.length, totalWords };
 };
@@ -163,7 +163,7 @@ const addWordsToSet = async (setId, userId, words) => {
  * Lấy chi tiết một bộ từ vựng kèm danh sách từ vựng bên trong (có phân trang, sắp xếp).
  */
 const getDetail = async (setId, userId, { page = 1, limit = 15, sortField, sortOrder } = {}) => {
-  const vocabularySet = await vocabularySetModel.findById(setId);
+  const vocabularySet = await vocabularySetRepository.findById(setId);
 
   if (!vocabularySet) {
     throw new AppError("Không tìm thấy bộ từ vựng", 404);
@@ -173,7 +173,7 @@ const getDetail = async (setId, userId, { page = 1, limit = 15, sortField, sortO
     throw new AppError("Bạn không có quyền xem bộ từ vựng này", 403);
   }
 
-  const { words, total } = await vocabularySetModel.getWordsInSet(setId, { page, limit, sortField, sortOrder });
+  const { words, total } = await vocabularySetRepository.getWordsInSet(setId, { page, limit, sortField, sortOrder });
 
   const response = {
     id: vocabularySet.id,
@@ -198,7 +198,7 @@ const generateWordsByTopic = async (userId, title, description, topic, wordCount
   validateDescription(description);
   validateTopic(topic);
 
-  const vocabularySet = await vocabularySetModel.create({
+  const vocabularySet = await vocabularySetRepository.create({
     title: title.trim(),
     description: description?.trim() || null,
     status: "private",
@@ -217,7 +217,7 @@ const removeWordsFromSet = async (setId, userId, wordIds) => {
     throw new AppError("Vui lòng gửi danh sách ID từ vựng cần xóa", 400);
   }
 
-  const vocabularySet = await vocabularySetModel.findById(setId);
+  const vocabularySet = await vocabularySetRepository.findById(setId);
 
   if (!vocabularySet) {
     throw new AppError("Không tìm thấy bộ từ vựng", 404);
@@ -227,8 +227,8 @@ const removeWordsFromSet = async (setId, userId, wordIds) => {
     throw new AppError("Bạn không có quyền xóa từ khỏi bộ từ vựng này", 403);
   }
 
-  await vocabularySetModel.removeWordsFromSet(setId, wordIds);
-  const totalWords = await vocabularySetModel.countWordsInSet(setId);
+  await vocabularySetRepository.removeWordsFromSet(setId, wordIds);
+  const totalWords = await vocabularySetRepository.countWordsInSet(setId);
 
   return { setId, removedCount: wordIds.length, totalWords };
 };
@@ -237,7 +237,7 @@ const removeWordsFromSet = async (setId, userId, wordIds) => {
  * Yêu cầu public một bộ từ vựng.
  */
 const requestPublic = async (setId, userId) => {
-  const vocabularySet = await vocabularySetModel.findById(setId);
+  const vocabularySet = await vocabularySetRepository.findById(setId);
 
   if (!vocabularySet) {
     throw new AppError("Không tìm thấy bộ từ vựng", 404);
@@ -251,7 +251,7 @@ const requestPublic = async (setId, userId) => {
     throw new AppError("Chỉ bộ từ vựng ở trạng thái private mới có thể yêu cầu public", 400);
   }
 
-  const updated = await vocabularySetModel.updateStatus(setId, "req_public");
+  const updated = await vocabularySetRepository.updateStatus(setId, "req_public");
   return formatVocabularySet(updated);
 };
 
@@ -259,8 +259,8 @@ const requestPublic = async (setId, userId) => {
  * Lấy danh sách bộ từ vựng đang chờ duyệt public.
  */
 const getPendingPublicSets = async ({ keyword, page = 1, limit = 15 }) => {
-  const { data, total } = await vocabularySetModel.getPendingPublicSets({ keyword, page, limit });
-  const items = await enrichWithWordCount(data, (setId) => vocabularySetModel.countWordsInSet(setId));
+  const { data, total } = await vocabularySetRepository.getPendingPublicSets({ keyword, page, limit });
+  const items = await enrichWithWordCount(data, (setId) => vocabularySetRepository.countWordsInSet(setId));
   return buildPaginationResponse(items, { page, limit, total });
 };
 
@@ -268,7 +268,7 @@ const getPendingPublicSets = async ({ keyword, page = 1, limit = 15 }) => {
  * Duyệt public một bộ từ vựng.
  */
 const approvePublic = async (setId) => {
-  const vocabularySet = await vocabularySetModel.findById(setId);
+  const vocabularySet = await vocabularySetRepository.findById(setId);
 
   if (!vocabularySet) {
     throw new AppError("Không tìm thấy bộ từ vựng", 404);
@@ -278,7 +278,7 @@ const approvePublic = async (setId) => {
     throw new AppError("Bộ từ vựng không ở trạng thái chờ duyệt", 400);
   }
 
-  const updated = await vocabularySetModel.updateStatus(setId, "public");
+  const updated = await vocabularySetRepository.updateStatus(setId, "public");
   return formatVocabularySet(updated);
 };
 
@@ -286,7 +286,7 @@ const approvePublic = async (setId) => {
  * Từ chối duyệt public một bộ từ vựng.
  */
 const rejectPublic = async (setId) => {
-  const vocabularySet = await vocabularySetModel.findById(setId);
+  const vocabularySet = await vocabularySetRepository.findById(setId);
 
   if (!vocabularySet) {
     throw new AppError("Không tìm thấy bộ từ vựng", 404);
@@ -296,7 +296,7 @@ const rejectPublic = async (setId) => {
     throw new AppError("Bộ từ vựng không ở trạng thái chờ duyệt", 400);
   }
 
-  const updated = await vocabularySetModel.updateStatus(setId, "private");
+  const updated = await vocabularySetRepository.updateStatus(setId, "private");
   return formatVocabularySet(updated);
 };
 
@@ -304,7 +304,7 @@ const rejectPublic = async (setId) => {
  * Chuyển bộ từ vựng từ public về private.
  */
 const makePrivate = async (setId, userId) => {
-  const vocabularySet = await vocabularySetModel.findById(setId);
+  const vocabularySet = await vocabularySetRepository.findById(setId);
 
   if (!vocabularySet) {
     throw new AppError("Không tìm thấy bộ từ vựng", 404);
@@ -318,7 +318,7 @@ const makePrivate = async (setId, userId) => {
     throw new AppError("Chỉ bộ từ vựng ở trạng thái public mới có thể chuyển về private", 400);
   }
 
-  const updated = await vocabularySetModel.updateStatus(setId, "private");
+  const updated = await vocabularySetRepository.updateStatus(setId, "private");
   return formatVocabularySet(updated);
 };
 
@@ -333,7 +333,7 @@ const setStatus = async (setId, userId, newStatus) => {
     throw new AppError("Trạng thái không hợp lệ. Chỉ chấp nhận: private, public", 400);
   }
 
-  const vocabularySet = await vocabularySetModel.findById(setId);
+  const vocabularySet = await vocabularySetRepository.findById(setId);
 
   if (!vocabularySet) {
     throw new AppError("Không tìm thấy bộ từ vựng", 404);
@@ -347,7 +347,7 @@ const setStatus = async (setId, userId, newStatus) => {
     throw new AppError("Bộ từ vựng đã ở trạng thái này", 400);
   }
 
-  const updated = await vocabularySetModel.updateStatus(setId, newStatus);
+  const updated = await vocabularySetRepository.updateStatus(setId, newStatus);
   return formatVocabularySet(updated);
 };
 

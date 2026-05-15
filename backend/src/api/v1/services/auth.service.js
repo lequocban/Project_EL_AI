@@ -1,6 +1,6 @@
-const authModel = require("../repositories/auth.model");
-const profileModel = require("../repositories/profile.model");
-const { getRoleIdsByUserIdService } = require("../repositories/role.model");
+const authRepository = require("../repositories/auth.repository");
+const profileRepository = require("../repositories/profile.repository");
+const { getRoleIdsByUserIdService } = require("../repositories/role.repository");
 const { AppError } = require("../../../utils/appError");
 const { formatSession } = require("../../../utils/auth-formatters");
 const { mapAuthError, buildAuthResponse } = require("../../../utils/auth-helpers");
@@ -20,7 +20,7 @@ const register = async ({ email, password, userName, dayOfBirth }) => {
     payload.options = { data: userData };
   }
 
-  const { data, error } = await authModel.signUp(payload);
+  const { data, error } = await authRepository.signUp(payload);
 
   if (error) {
     throw mapAuthError(error);
@@ -33,7 +33,7 @@ const register = async ({ email, password, userName, dayOfBirth }) => {
 
   // Nếu user có session (email confirmation tắt), cập nhật profile nếu có dữ liệu bổ sung
   if (accessToken && userId && Object.keys(userData).length > 0) {
-    await profileModel.updateProfile(accessToken, userId, userData);
+    await profileRepository.updateProfile(accessToken, userId, userData);
   }
 
   return buildAuthResponse(user, session);
@@ -43,7 +43,7 @@ const register = async ({ email, password, userName, dayOfBirth }) => {
 // Login
 // -------------------------------------------------------
 const login = async ({ email, password }) => {
-  const { data, error } = await authModel.signInWithPassword({ email, password });
+  const { data, error } = await authRepository.signInWithPassword({ email, password });
 
   if (error) {
     throw mapAuthError(error);
@@ -52,7 +52,7 @@ const login = async ({ email, password }) => {
   const user = data.user;
 
   // Kiểm tra status của user — chỉ cho phép đăng nhập khi status = 'active'
-  const status = await profileModel.getStatusByUserId(user.id);
+  const status = await profileRepository.getStatusByUserId(user.id);
   if (status !== "active") {
     throw new AppError("Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.", 403);
   }
@@ -68,7 +68,7 @@ const logout = async (accessToken) => {
     throw new AppError("Không tìm thấy phiên đăng nhập", 401);
   }
 
-  const { error } = await authModel.signOut(accessToken);
+  const { error } = await authRepository.signOut(accessToken);
 
   if (error) {
     throw new AppError(error.message, 400);
@@ -83,7 +83,7 @@ const refreshToken = async (refreshTokenValue) => {
     throw new AppError("Refresh token không hợp lệ", 401);
   }
 
-  const { data, error } = await authModel.refreshSession(refreshTokenValue);
+  const { data, error } = await authRepository.refreshSession(refreshTokenValue);
 
   if (error) {
     throw new AppError("Refresh token hết hạn hoặc không hợp lệ", 401);
@@ -95,7 +95,7 @@ const refreshToken = async (refreshTokenValue) => {
 };
 
 const changePassword = async ({ userId, email, currentPassword, newPassword }) => {
-  const { error } = await authModel.signInWithPassword({
+  const { error } = await authRepository.signInWithPassword({
     email,
     password: currentPassword,
   });
@@ -104,7 +104,7 @@ const changePassword = async ({ userId, email, currentPassword, newPassword }) =
     throw new AppError("Mật khẩu hiện tại không chính xác", 400);
   }
 
-  await authModel.updateUserPasswordById(userId, newPassword);
+  await authRepository.updateUserPasswordById(userId, newPassword);
 };
 
 // -------------------------------------------------------
@@ -113,7 +113,7 @@ const changePassword = async ({ userId, email, currentPassword, newPassword }) =
 // và status = 'active'
 // -------------------------------------------------------
 const adminLogin = async ({ email, password }) => {
-  const { data, error } = await authModel.signInWithPassword({ email, password });
+  const { data, error } = await authRepository.signInWithPassword({ email, password });
 
   if (error) {
     throw mapAuthError(error);
@@ -123,7 +123,7 @@ const adminLogin = async ({ email, password }) => {
   const session = data.session;
 
   // Kiểm tra status của user — chỉ cho phép đăng nhập khi status = 'active'
-  const status = await profileModel.getStatusByUserId(user.id);
+  const status = await profileRepository.getStatusByUserId(user.id);
   if (status !== "active") {
     throw new AppError("Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.", 403);
   }
@@ -151,7 +151,7 @@ const adminLogin = async ({ email, password }) => {
 // -------------------------------------------------------
 const getAdminProfile = async (user, accessToken) => {
   const [profile, roleIds] = await Promise.all([
-    accessToken ? profileModel.getProfileById(accessToken, user.id) : Promise.resolve(null),
+    accessToken ? profileRepository.getProfileById(accessToken, user.id) : Promise.resolve(null),
     getRoleIdsByUserIdService(user.id),
   ]);
 
