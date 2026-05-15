@@ -117,7 +117,7 @@ const getPracticeHistory = async (userId, { page = 1, limit = 10, sortField, sor
     data.map(async (item) => {
       let lessonTitle = null;
       if (item.lesson_id) {
-        const lesson = await listeningLessonModel.findById(item.lesson_id);
+        const lesson = await listeningLessonRepository.findById(item.lesson_id);
         lessonTitle = lesson?.title || null;
       }
       return {
@@ -147,8 +147,8 @@ const getPracticeDetail = async (practiceId, userId) => {
     throw new AppError("Bạn không có quyền xem kết quả này", 403);
   }
 
-  const lesson = await listeningLessonModel.findById(practice.lesson_id);
-  const questions = await listeningQuestionModel.findByLessonId(practice.lesson_id);
+  const lesson = await listeningLessonRepository.findById(practice.lesson_id);
+  const questions = await listeningQuestionRepository.findByLessonId(practice.lesson_id);
 
   let userAnswers = [];
   try {
