@@ -21,7 +21,7 @@ const normalizeAnswer = (answer) => {
  * Lấy danh sách từ trong bộ từ vựng để đối chiếu đáp án.
  */
 const getWordMap = async (setId) => {
-  const words = await vocabularySetModel.getWordsInSet(setId);
+  const { words } = await vocabularySetModel.getWordsInSet(setId);
   const wordMap = new Map();
   for (const w of words) {
     wordMap.set(w.id, w);
