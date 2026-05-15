@@ -16,22 +16,6 @@ export const statsApi = {
     const reading = raw.reading || {};
     const listening = raw.listening || {};
 
-    // Tổng hợp
-    const totalPracticeCount =
-      (vocab.practiceCount || 0) +
-      (reading.practiceCount || 0) +
-      (listening.practiceCount || 0);
-
-    const allScores = [
-      ...(vocab.avgScore ? [vocab.avgScore] : []),
-      ...(reading.avgScore ? [reading.avgScore] : []),
-      ...(listening.avgScore ? [listening.avgScore] : []),
-    ];
-    const overallAvgScore =
-      allScores.length > 0
-        ? Math.round(allScores.reduce((a, b) => a + b, 0) / allScores.length)
-        : 0;
-
     return {
       vocabulary: {
         ownedCount: vocab.ownedCount || 0,
@@ -54,9 +38,6 @@ export const statsApi = {
       // Các trường backend chưa có, đánh dấu là null để UI hiển thị placeholder
       currentStreak: null,
       totalDaysActive: null,
-      // Trường tổng hợp
-      totalPracticeCount,
-      overallAvgScore,
     };
   },
 };

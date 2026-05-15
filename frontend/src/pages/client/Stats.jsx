@@ -109,6 +109,20 @@ export default function Stats() {
   const reading = data.reading;
   const listening = data.listening;
 
+  // Tính tổng hợp từ dữ liệu API
+  const totalPracticeCount =
+    (vocab.practiceCount || 0) +
+    (reading.practiceCount || 0) +
+    (listening.practiceCount || 0);
+  const totalScore =
+    (vocab.avgScore || 0) * (vocab.practiceCount || 0) +
+    (reading.avgScore || 0) * (reading.practiceCount || 0) +
+    (listening.avgScore || 0) * (listening.practiceCount || 0);
+  const overallAvgScore =
+    totalPracticeCount > 0
+      ? Math.round(totalScore / totalPracticeCount)
+      : 0;
+
   return (
     <div className="min-h-screen bg-background p-6 lg:p-8">
       {/* Header */}
@@ -141,7 +155,7 @@ export default function Stats() {
             <div>
               <p className="text-pink-200 font-semibold text-sm">Điểm trung bình chung</p>
               <p className="text-5xl font-black leading-none">
-                {data.overallAvgScore}
+                {overallAvgScore}
                 <span className="text-2xl ml-1">/ 100</span>
               </p>
             </div>
@@ -149,7 +163,7 @@ export default function Stats() {
           <div className="text-right">
             <p className="text-pink-200 font-semibold text-sm">Tổng buổi luyện tập</p>
             <p className="text-3xl font-black">
-              {data.totalPracticeCount}
+              {totalPracticeCount}
               <span className="text-base ml-1 font-bold">bài</span>
             </p>
           </div>
