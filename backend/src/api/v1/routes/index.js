@@ -21,6 +21,7 @@ const readingPracticeRoutes = require("./client/readingPractice.routes");
 const listeningQuestionRoutes = require("./client/listeningQuestion.routes");
 const learningStatsRoutes = require("./client/learningStats.routes");
 const leaderboardRoutes = require("./client/leaderboard.routes");
+const explainByAIRoutes = require("./client/explainByAI.routes");
 
 router.get("/health", (req, res) => {
   res.json({ status: "ok" });
@@ -70,6 +71,9 @@ router.use("/learning-stats", learningStatsRoutes);
 
 // Bảng xếp hạng
 router.use("/leaderboard", leaderboardRoutes);
+
+// Giải thích đáp án bằng AI
+router.use("/explain-by-ai", explainByAIRoutes);
 
 module.exports = router;
 
