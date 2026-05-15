@@ -35,7 +35,7 @@ export default function Home() {
     try {
       const sets = await vocabularyApi.getMySets();
       console.debug("[Home loadData] sets:", JSON.stringify(sets));
-      setMySets(sets);
+      setMySets(sets.items || []);
     } catch {
       setMySets([]);
     }

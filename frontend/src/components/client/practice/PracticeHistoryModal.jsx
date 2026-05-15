@@ -31,9 +31,10 @@ const mapHistoryItem = (item, type) => {
         timeSpent: item.timeSpent ?? item.time_spent ?? 0,
         wrongWords: item.wrongWords ?? item.wrong_words ?? [],
         completedAt: item.completedAt ?? item.complete_at ?? item.createdAt ?? item.created_at,
-        title: item.vocabularySetTitle ?? item.setTitle ?? "Bài luyện tập",
-        totalQuestions: null, // Vocabulary practice không trả về totalQuestions trong history
-        correctAnswers: null, // Sẽ tính từ wrongWords
+        // Backend trả về setTitle, map sang vocabularySetTitle để hiển thị
+        title: item.vocabularySetTitle ?? item.setTitle ?? item.set_title ?? "Bài luyện tập",
+        totalQuestions: item.totalQuestions ?? item.total_questions ?? null,
+        correctAnswers: item.correctAnswers ?? item.correct_answers ?? null,
       };
     case "listening":
     case "reading":
@@ -64,16 +65,32 @@ const mapPracticeDetail = (detail, type) => {
       return {
         score: detail.score ?? 0,
         totalQuestions: detail.totalQuestions ?? detail.total_questions ?? 0,
-        correctAnswers: detail.correctCount ?? detail.correct_count ?? 0,
-        wrongCount: detail.wrongCount ?? detail.wrong_count ?? 0,
+        correctAnswers: detail.correctAnswers ?? detail.correct_answers ?? 0,
+        wrongCount: detail.wrongCount ?? detail.wrong_count ?? detail.wrongAnswers ?? (detail.totalQuestions ?? 0) - (detail.correctAnswers ?? 0),
         timeSpent: detail.timeSpent ?? detail.time_spent ?? 0,
-        wrongWords: (detail.wrongWords ?? detail.wrong_words ?? []).map((w) => ({
-          ...w,
-          wordId: w.word_id ?? w.wordId,
-          yourAnswer: w.yourAnswer ?? w.user_answer,
-          correctAnswer: w.correctAnswer ?? w.correct_answer,
-        })),
+        wrongWords: (detail.wrongWords ?? detail.wrong_words ?? []).map((w) => {
+          // Hỗ trợ cấu trúc từ localStorage (ExamGame)
+          if (w.word !== undefined || w.correctAnswer !== undefined) {
+            return {
+              word: w.word,
+              word_text: w.word,
+              correctAnswer: w.correctAnswer,
+              correct_answer: w.correctAnswer,
+              yourAnswer: w.userAnswer,
+              user_answer: w.userAnswer,
+              isCorrect: w.isCorrect,
+            };
+          }
+          // Cấu trúc từ API backend
+          return {
+            ...w,
+            wordId: w.word_id ?? w.wordId,
+            yourAnswer: w.yourAnswer ?? w.user_answer,
+            correctAnswer: w.correctAnswer ?? w.correct_answer,
+          };
+        }),
         completedAt: detail.completedAt ?? detail.complete_at,
+        questions: detail.questions ?? null,
       };
     case "listening":
     case "reading":
@@ -125,9 +142,26 @@ export default function PracticeHistoryModal({ type, onClose, getHistory, getDet
 
   const handleViewDetail = async (item) => {
     setSelectedItem(item);
-    // Vocabulary practice: backend không có endpoint chi tiết riêng,
-    // dữ liệu wrongWords đã có sẵn trong history item.
+
+    // Vocabulary practice: thử đọc chi tiết từ localStorage trước
     if (type === "vocabulary") {
+      try {
+        const stored = JSON.parse(localStorage.getItem("vocab_practice_details") || "{}");
+        const localDetail = stored[item.id];
+        if (localDetail) {
+          // Xóa trường id khỏi wrongWords để mapPracticeDetail xử lý đúng
+          if (localDetail.wrongWords) {
+            localDetail.wrongWords = localDetail.wrongWords.map((w) => {
+              const { id, ...rest } = w;
+              return rest;
+            });
+          }
+          const mapped = mapPracticeDetail(localDetail, type);
+          setDetail(mapped);
+          return;
+        }
+      } catch {}
+      // Fallback: dùng dữ liệu có sẵn trong history item
       const mapped = mapPracticeDetail({ ...item }, type);
       setDetail(mapped);
       return;
@@ -289,7 +323,7 @@ export default function PracticeHistoryModal({ type, onClose, getHistory, getDet
               <h3 className="font-black text-sm text-foreground">Từ sai</h3>
               {detail.wrongWords.map((w, idx) => (
                 <div
-                  key={w.word_id || w.wordId || idx}
+                  key={w.wordId || w.word_id || idx}
                   className="rounded-xl p-3 bg-red-50 border border-red-200"
                 >
                   <div className="flex items-start gap-2">
@@ -312,6 +346,50 @@ export default function PracticeHistoryModal({ type, onClose, getHistory, getDet
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Chi tiết từ sai từ questions (cấu trúc mới từ localStorage) */}
+          {detail && !detailLoading && detail.questions && detail.questions.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="font-black text-sm text-foreground">Chi tiết bài làm</h3>
+              {detail.questions.map((q, idx) => {
+                const isCorrect = q.isCorrect ?? q.is_correct ?? false;
+                return (
+                  <div
+                    key={q.wordId || q.word_id || idx}
+                    className={`rounded-xl p-3 border ${isCorrect ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}`}
+                  >
+                    <div className="flex items-start gap-2">
+                      {isCorrect ? (
+                        <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+                      ) : (
+                        <XCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+                      )}
+                      <div className="flex-1">
+                        <p className="text-sm font-bold text-foreground">
+                          {q.word || q.word_text || `Câu ${idx + 1}`}
+                        </p>
+                        {!isCorrect && q.correctAnswer && (
+                          <p className="text-xs text-green-600 mt-1">
+                            Đáp án đúng: <span className="font-semibold">{q.correctAnswer}</span>
+                          </p>
+                        )}
+                        {q.userAnswer !== undefined && (
+                          <p className={`text-xs mt-0.5 ${isCorrect ? "text-green-600" : "text-red-500"}`}>
+                            Bạn đã trả lời: <span className="font-semibold">{q.userAnswer || "(trống)"}</span>
+                          </p>
+                        )}
+                        {q.meaning && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Nghĩa: {q.meaning}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
 

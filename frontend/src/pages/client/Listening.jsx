@@ -38,6 +38,8 @@ const LEVEL_COLORS = {
   advanced: "bg-purple-100 text-purple-700",
 };
 
+const LESSONS_PER_PAGE = 6;
+
 export default function Listening() {
   const [lessons, setLessons] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -48,14 +50,11 @@ export default function Listening() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   const loadDataRef = useRef(null);
-
-  const filteredLessons = search.trim()
-    ? lessons.filter((l) =>
-        l.title?.toLowerCase().includes(search.toLowerCase().trim())
-      )
-    : lessons;
+  const safePage = Math.min(currentPage, totalPages);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -63,16 +62,22 @@ export default function Listening() {
     try {
       const data =
         tab === "mine"
-          ? await listeningApi.getMyLessons({ search })
-          : await listeningApi.getPublicLessons({ search });
+          ? await listeningApi.getMyLessons({ page: currentPage, limit: LESSONS_PER_PAGE, search })
+          : await listeningApi.getPublicLessons({
+              page: currentPage,
+              limit: LESSONS_PER_PAGE,
+              search,
+            });
       setLessons(data.items || []);
+      setTotalPages(Math.max(1, data.totalPages || 1));
     } catch (err) {
       setError(err.message || "Không thể tải dữ liệu luyện nghe");
       setLessons([]);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
-  }, [tab, search]);
+  }, [tab, search, currentPage]);
 
   loadDataRef.current = loadData;
 
@@ -81,7 +86,34 @@ export default function Listening() {
       loadDataRef.current?.();
     }, 300);
     return () => clearTimeout(timer);
+  }, [tab, search, currentPage]);
+
+  // Reset về trang 1 khi tab hoặc search thay đổi
+  useEffect(() => {
+    setCurrentPage(1);
   }, [tab, search]);
+
+  // Hàm xóa bài luyện nghe
+  const handleDeleteLesson = async (e, lessonId) => {
+    e.stopPropagation();
+    if (!window.confirm("Bạn có chắc muốn xóa bài luyện nghe này không?")) return;
+    try {
+      // Gọi API xóa trên backend (xóa mềm)
+      await listeningApi.deleteLesson(lessonId);
+
+      // Nếu trang hiện tại chỉ còn đúng 1 item thì lùi về trang trước
+      // rồi loadData sẽ tự fetch đúng trang mới
+      if (lessons.length === 1 && currentPage > 1) {
+        setCurrentPage((p) => p - 1);
+        // useEffect theo dõi currentPage sẽ tự gọi loadData
+      } else {
+        // Vẫn ở trang hiện tại, gọi lại API để bù item từ trang kế
+        await loadData();
+      }
+    } catch (err) {
+      alert(err.message || "Không thể xóa bài luyện nghe");
+    }
+  };
 
   const handleCreated = async (lesson) => {
     await loadData();
@@ -188,7 +220,7 @@ export default function Listening() {
             </div>
           ))}
         </div>
-      ) : filteredLessons.length === 0 ? (
+      ) : lessons.length === 0 ? (
         <div className="text-center py-16">
           <Globe className="w-16 h-16 mx-auto text-muted-foreground/30 mb-4" />
           <p className="text-muted-foreground font-semibold">
@@ -196,82 +228,130 @@ export default function Listening() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filteredLessons.map((lesson) => (
-            <div
-              key={lesson.id}
-              onClick={async () => {
-                setDetailLoading(true);
-                try {
-                  const detail = await listeningApi.getLessonById(lesson.id);
-                  setStartLesson(detail);
-                } catch (err) {
-                  setError(err.message || "Không thể tải chi tiết bài luyện nghe");
-                } finally {
-                  setDetailLoading(false);
-                }
-              }}
-              className="bg-white rounded-2xl p-5 border border-border card-hover cursor-pointer group"
-            >
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-teal-600 rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
-                  <svg
-                    className="w-6 h-6 text-white"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {lessons.map((lesson) => (
+              <div
+                key={lesson.id}
+                onClick={async () => {
+                  setDetailLoading(true);
+                  try {
+                    const detail = await listeningApi.getLessonById(lesson.id);
+                    setStartLesson(detail);
+                  } catch (err) {
+                    setError(err.message || "Không thể tải chi tiết bài luyện nghe");
+                  } finally {
+                    setDetailLoading(false);
+                  }
+                }}
+                className="bg-white rounded-2xl p-5 border border-border card-hover cursor-pointer group relative"
+              >
+                {tab === "mine" && (
+                  <button
+                    type="button"
+                    onClick={(e) => handleDeleteLesson(e, lesson.id)}
+                    className="absolute top-3 right-3 p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100 z-10"
+                    title="Xóa bài luyện nghe"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"
-                    />
-                  </svg>
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-bold text-foreground group-hover:text-primary transition-colors">
-                    {lesson.title}
-                  </h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    {lesson.level && (
-                      <span
-                        className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
-                          LEVEL_COLORS[lesson.level] || "bg-gray-100 text-gray-700"
-                        }`}
-                      >
-                        {LEVEL_LABELS[lesson.level] || lesson.level}
-                      </span>
-                    )}
-                    {tab === "mine" ? (
-                      lesson.is_public ? (
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+                <div className="flex items-start gap-4 pr-8">
+                  <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-teal-600 rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
+                    <svg
+                      className="w-6 h-6 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"
+                      />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-foreground group-hover:text-primary transition-colors">
+                      {lesson.title}
+                    </h3>
+                    <div className="flex items-center gap-2 mt-1">
+                      {tab === "mine" ? (
+                        lesson.is_public ? (
+                          <Globe
+                            className="w-3.5 h-3.5 text-blue-400"
+                            title="Công khai"
+                          />
+                        ) : (
+                          <Lock
+                            className="w-3.5 h-3.5 text-muted-foreground/50"
+                            title="Riêng tư"
+                          />
+                        )
+                      ) : (
                         <Globe
                           className="w-3.5 h-3.5 text-blue-400"
-                          title="Công khai"
+                          title="Cộng đồng"
                         />
-                      ) : (
-                        <Lock
-                          className="w-3.5 h-3.5 text-muted-foreground/50"
-                          title="Riêng tư"
-                        />
-                      )
-                    ) : (
-                      <Globe
-                        className="w-3.5 h-3.5 text-blue-400"
-                        title="Cộng đồng"
-                      />
+                      )}
+                    </div>
+                    {lesson.description && (
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                        {lesson.description}
+                      </p>
                     )}
                   </div>
-                  {lesson.description && (
-                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                      {lesson.description}
-                    </p>
-                  )}
                 </div>
               </div>
+            ))}
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-1 mt-4">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={safePage === 1}
+                className="w-9 h-9 rounded-lg border border-border text-sm font-medium hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center"
+              >
+                ←
+              </button>
+              {(() => {
+                const pages = [];
+                const maxVisible = 3;
+                if (totalPages <= maxVisible) {
+                  for (let i = 1; i <= totalPages; i++) pages.push(i);
+                } else if (safePage <= 2) {
+                  pages.push(1, 2, 3);
+                } else if (safePage >= totalPages - 1) {
+                  pages.push(totalPages - 2, totalPages - 1, totalPages);
+                } else {
+                  pages.push(safePage - 1, safePage, safePage + 1);
+                }
+                return pages.map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setCurrentPage(p)}
+                    className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${
+                      safePage === p
+                        ? "bg-primary text-white"
+                        : "border border-border hover:bg-muted"
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ));
+              })()}
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={safePage === totalPages}
+                className="w-9 h-9 rounded-lg border border-border text-sm font-medium hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center"
+              >
+                →
+              </button>
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
       {showCreateModal && (
         <CreateListeningModal

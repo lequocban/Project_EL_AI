@@ -139,6 +139,38 @@ export default function ExamGame({ words, onBack, examType: initialExamType = nu
     }
   }, [phase, submitted]);
 
+  // Khi component được mount, sync các kết quả đang chờ trong localStorage lên backend
+  useEffect(() => {
+    const syncPendingResults = async () => {
+      let pending;
+      try {
+        pending = JSON.parse(localStorage.getItem("pending_vocabulary_results") || "[]");
+      } catch {
+        return;
+      }
+      if (!pending.length || !onSubmit) return;
+
+      const remaining = [];
+      for (const item of pending) {
+        try {
+          await onSubmit({
+            setId: item.setId,
+            type: item.type,
+            answers: item.answers,
+            timeSpent: item.timeSpent,
+          });
+        } catch {
+          // Giữ lại item để retry lần sau
+          remaining.push(item);
+        }
+      }
+      localStorage.setItem("pending_vocabulary_results", JSON.stringify(remaining));
+    };
+
+    syncPendingResults();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const startExam = (type) => {
     setExamType(type);
     setQuestions(buildQuestions(words, type));
@@ -146,6 +178,36 @@ export default function ExamGame({ words, onBack, examType: initialExamType = nu
     setScore(0);
     setPhase("doing");
     setCurrentIndex(0);
+  };
+
+  // Gửi kết quả bài kiểm tra lên backend (có retry để đảm bảo luôn thành công)
+  const savePracticeResult = async ({ setId, type, answers, timeSpent }) => {
+    const MAX_RETRIES = 3;
+    let lastError = null;
+
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        await onSubmit({ setId, type, answers, timeSpent });
+        return; // Thành công, thoát hàm
+      } catch (err) {
+        lastError = err;
+        if (attempt < MAX_RETRIES) {
+          // Chờ trước khi retry (exponential backoff): 500ms, 1s, 2s
+          const delay = Math.min(500 * Math.pow(2, attempt - 1), 2000);
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        }
+      }
+    }
+    // Nếu thử MAX_RETRIES lần vẫn thất bại, lưu vào localStorage để sync sau
+    if (lastError) {
+      try {
+        const pendingResults = JSON.parse(localStorage.getItem("pending_vocabulary_results") || "[]");
+        pendingResults.push({ setId, type, answers, timeSpent, savedAt: Date.now() });
+        localStorage.setItem("pending_vocabulary_results", JSON.stringify(pendingResults));
+      } catch {
+        // localStorage cũng lỗi → bỏ qua, không ảnh hưởng UX
+      }
+    }
   };
 
   const submitExam = async () => {
@@ -169,17 +231,14 @@ export default function ExamGame({ words, onBack, examType: initialExamType = nu
     setSubmitted(true);
     setPhase("results");
 
-    // Gửi kết quả lên backend để lưu lịch sử
+    // Gọi API lưu kết quả không đồng bộ (sau khi đã hiển thị kết quả)
+    // Dùng fire-and-forget: không block UI, không hiển thị loading cho người dùng
     if (setId && onSubmit) {
       const answers = questions.map((q) => ({
         wordId: q.wordId,
         answer: q.userAnswer ?? "",
       }));
-      try {
-        await onSubmit({ setId, type: examType, answers, timeSpent: elapsed });
-      } catch {
-        // Lỗi không ảnh hưởng đến việc hiển thị kết quả
-      }
+      savePracticeResult({ setId, type: examType, answers, timeSpent: elapsed });
     }
   };
 
@@ -395,6 +454,7 @@ export default function ExamGame({ words, onBack, examType: initialExamType = nu
           <p className="text-muted-foreground font-medium">
             {score}/{questions.length} câu đúng
           </p>
+
           <div className="flex justify-center gap-6 mt-4">
             <div className="text-center">
               <div className="text-2xl font-black text-green-500">
