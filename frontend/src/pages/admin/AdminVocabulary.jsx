@@ -37,19 +37,6 @@ export default function AdminVocabulary() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingSet, setEditingSet] = useState(null);
 
-  // Load allTotal ngay khi mount (chỉ chạy 1 lần)
-  useEffect(() => {
-    const loadAllTotal = async () => {
-      try {
-        const res = await adminApi.getAllVocabularySets({ page: 1, limit: 1000, keyword: "" });
-        setAllTotal(res.data?.items?.length || 0);
-      } catch {
-        // ignore
-      }
-    };
-    loadAllTotal();
-  }, []);
-
   useEffect(() => {
     loadData();
   }, [tab, pendingPage, allPage, search]);
@@ -64,21 +51,18 @@ export default function AdminVocabulary() {
           limit: 15,
           keyword: search,
         });
+        // Backend trả về { items, total, page, limit } trong res.data
         setPendingSets(res.data?.items || []);
         setPendingTotal(res.data?.total || 0);
       } else {
-        // Gọi song song: lấy danh sách để hiển thị (phân trang) và lấy total (limit lớn)
-        const [listRes, totalRes] = await Promise.all([
-          adminApi.getAllVocabularySets({ page: allPage, limit: 15, keyword: search }),
-          adminApi.getAllVocabularySets({ page: 1, limit: 1000, keyword: "" }),
-        ]);
-        setAllSets(listRes.data?.items || []);
-        const totalItems = totalRes.data?.items || [];
-        // Lọc lại theo keyword nếu có
-        const filteredTotal = search
-          ? totalItems.filter((s) => s.title?.toLowerCase().includes(search.toLowerCase()))
-          : totalItems;
-        setAllTotal(filteredTotal.length);
+        // Gọi 1 lần - backend đã trả total đúng trong response
+        const res = await adminApi.getAllVocabularySets({
+          page: allPage,
+          limit: 15,
+          keyword: search,
+        });
+        setAllSets(res.data?.items || []);
+        setAllTotal(res.data?.total || 0);
       }
     } catch (err) {
       setError(err.message || "Không thể tải dữ liệu");
@@ -434,6 +418,7 @@ function SetDetailModal({ set, onClose }) {
     try {
       setIsLoading(true);
       const res = await adminApi.getVocabSetById(set.id);
+      // Backend trả về words là pagination object: { items, total, page, limit }
       const wordsData = res.data?.words?.items || [];
       setWords(wordsData);
     } catch {
