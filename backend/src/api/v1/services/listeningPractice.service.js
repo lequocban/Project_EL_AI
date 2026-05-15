@@ -39,12 +39,12 @@ const gradeAnswer = (userAnswer, correctAnswer) => {
  * 5. Lưu kết quả vào bảng listening_practice
  */
 const submitListeningPractice = async (userId, lessonId, answers) => {
-  const lesson = await listeningLessonModel.findById(lessonId);
+  const lesson = await listeningLessonRepository.findById(lessonId);
   if (!lesson) {
     throw new AppError("Không tìm thấy bài luyện nghe", 404);
   }
 
-  const questions = await listeningQuestionModel.findByLessonId(lessonId);
+  const questions = await listeningQuestionRepository.findByLessonId(lessonId);
   if (questions.length === 0) {
     throw new AppError("Bài luyện nghe không có câu hỏi nào", 400);
   }
