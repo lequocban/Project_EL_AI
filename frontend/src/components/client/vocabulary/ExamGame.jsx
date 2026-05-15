@@ -121,6 +121,9 @@ export default function ExamGame({ words, onBack, examType: initialExamType = nu
   );
   const [submitted, setSubmitted] = useState(false);
   const [score, setScore] = useState(0);
+  const [apiResult, setApiResult] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   // Chỉ hiển thị 1 câu tại một thời điểm
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -139,38 +142,6 @@ export default function ExamGame({ words, onBack, examType: initialExamType = nu
     }
   }, [phase, submitted]);
 
-  // Khi component được mount, sync các kết quả đang chờ trong localStorage lên backend
-  useEffect(() => {
-    const syncPendingResults = async () => {
-      let pending;
-      try {
-        pending = JSON.parse(localStorage.getItem("pending_vocabulary_results") || "[]");
-      } catch {
-        return;
-      }
-      if (!pending.length || !onSubmit) return;
-
-      const remaining = [];
-      for (const item of pending) {
-        try {
-          await onSubmit({
-            setId: item.setId,
-            type: item.type,
-            answers: item.answers,
-            timeSpent: item.timeSpent,
-          });
-        } catch {
-          // Giữ lại item để retry lần sau
-          remaining.push(item);
-        }
-      }
-      localStorage.setItem("pending_vocabulary_results", JSON.stringify(remaining));
-    };
-
-    syncPendingResults();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const startExam = (type) => {
     setExamType(type);
     setQuestions(buildQuestions(words, type));
@@ -180,65 +151,59 @@ export default function ExamGame({ words, onBack, examType: initialExamType = nu
     setCurrentIndex(0);
   };
 
-  // Gửi kết quả bài kiểm tra lên backend (có retry để đảm bảo luôn thành công)
-  const savePracticeResult = async ({ setId, type, answers, timeSpent }) => {
-    const MAX_RETRIES = 3;
-    let lastError = null;
-
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        await onSubmit({ setId, type, answers, timeSpent });
-        return; // Thành công, thoát hàm
-      } catch (err) {
-        lastError = err;
-        if (attempt < MAX_RETRIES) {
-          // Chờ trước khi retry (exponential backoff): 500ms, 1s, 2s
-          const delay = Math.min(500 * Math.pow(2, attempt - 1), 2000);
-          await new Promise((resolve) => setTimeout(resolve, delay));
-        }
-      }
-    }
-    // Nếu thử MAX_RETRIES lần vẫn thất bại, lưu vào localStorage để sync sau
-    if (lastError) {
-      try {
-        const pendingResults = JSON.parse(localStorage.getItem("pending_vocabulary_results") || "[]");
-        pendingResults.push({ setId, type, answers, timeSpent, savedAt: Date.now() });
-        localStorage.setItem("pending_vocabulary_results", JSON.stringify(pendingResults));
-      } catch {
-        // localStorage cũng lỗi → bỏ qua, không ảnh hưởng UX
-      }
-    }
-  };
-
   const submitExam = async () => {
-    let correctCount = 0;
-    const updated = questions.map((q) => {
-      let isCorrect = false;
-      if (
-        examType === "quiz" ||
-        examType === "listening_quiz"
-      ) {
-        isCorrect = q.userAnswer === q.correct;
-      } else {
-        isCorrect =
-          q.userAnswer.trim().toLowerCase() === q.correct.toLowerCase();
-      }
-      if (isCorrect) correctCount++;
-      return { ...q, isCorrect };
-    });
-    setQuestions(updated);
-    setScore(correctCount);
-    setSubmitted(true);
-    setPhase("results");
+    if (!setId || !onSubmit) return;
 
-    // Gọi API lưu kết quả không đồng bộ (sau khi đã hiển thị kết quả)
-    // Dùng fire-and-forget: không block UI, không hiển thị loading cho người dùng
-    if (setId && onSubmit) {
-      const answers = questions.map((q) => ({
-        wordId: q.wordId,
-        answer: q.userAnswer ?? "",
-      }));
-      savePracticeResult({ setId, type: examType, answers, timeSpent: elapsed });
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      // Gọi API submit trước, chờ kết quả từ backend
+      const result = await onSubmit({
+        setId,
+        type: examType,
+        answers: questions.map((q) => ({
+          wordId: q.wordId,
+          answer: q.userAnswer ?? "",
+        })),
+        timeSpent: elapsed,
+      });
+
+      // Lưu kết quả từ API để hiển thị
+      setApiResult(result);
+
+      // Hỗ trợ cả camelCase và snake_case từ backend
+      const wrongWordsList = result.wrongWords ?? result.wrong_words ?? [];
+      const totalFromApi = result.totalQuestions ?? result.total_questions ?? questions.length;
+      const correctFromApi = result.correctAnswers ?? result.correct_answers ?? result.score ?? 0;
+
+      // Tạo map từ wrongWords để tra nhanh
+      const wrongWordMap = {};
+      if (Array.isArray(wrongWordsList)) {
+        wrongWordsList.forEach((w) => {
+          wrongWordMap[w.word ?? w.word_text ?? ""] = w;
+        });
+      }
+
+      // Map kết quả API vào questions để hiển thị đúng/sai
+      // Các từ nằm trong wrongWords là các từ bị sai
+      const updated = questions.map((q) => {
+        const wrongInfo = wrongWordMap[q.word];
+        return {
+          ...q,
+          wrongInfo: wrongInfo || null,
+          isCorrect: !wrongInfo,
+        };
+      });
+
+      setQuestions(updated);
+      setScore(correctFromApi);
+      setSubmitted(true);
+      setPhase("results");
+    } catch (err) {
+      setSubmitError("Không thể nộp bài. Vui lòng thử lại.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -415,18 +380,32 @@ export default function ExamGame({ words, onBack, examType: initialExamType = nu
         <div className="max-w-lg mx-auto mt-6">
           <button
             onClick={submitExam}
-            disabled={!allAnswered}
-            className="w-full gradient-primary text-white py-3 rounded-xl font-bold shadow-md hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            disabled={!allAnswered || isSubmitting}
+            className="w-full gradient-primary text-white py-3 rounded-xl font-bold shadow-md hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
           >
-            {allAnswered ? "✓ Nộp bài ngay" : `Nộp bài (${questions.filter((q) => {
-              if (q.userAnswer === null || q.userAnswer === "") return false;
-              if (typeof q.userAnswer === "string" && !q.userAnswer.trim()) return false;
-              return true;
-            }).length}/${questions.length})`}
+            {isSubmitting ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Đang nộp bài...
+              </>
+            ) : allAnswered ? (
+              "✓ Nộp bài ngay"
+            ) : (
+              `Nộp bài (${questions.filter((q) => {
+                if (q.userAnswer === null || q.userAnswer === "") return false;
+                if (typeof q.userAnswer === "string" && !q.userAnswer.trim()) return false;
+                return true;
+              }).length}/${questions.length})`
+            )}
           </button>
-          {!allAnswered && (
+          {!allAnswered && !isSubmitting && (
             <p className="text-xs text-muted-foreground text-center mt-2">
               Vui lòng trả lời tất cả câu hỏi trước khi nộp bài
+            </p>
+          )}
+          {submitError && (
+            <p className="text-xs text-red-500 text-center mt-2 font-medium">
+              {submitError}
             </p>
           )}
         </div>
@@ -438,7 +417,11 @@ export default function ExamGame({ words, onBack, examType: initialExamType = nu
   // Giao diện kết quả
   // =============================================
   if (phase === "results") {
-    const pct = Math.round((score / questions.length) * 100);
+    // Hỗ trợ cả camelCase và snake_case từ backend
+    const totalFromApi = apiResult?.totalQuestions ?? apiResult?.total_questions ?? questions.length;
+    const correctFromApi = apiResult?.correctAnswers ?? apiResult?.correct_answers ?? questions.filter((q) => q.isCorrect).length;
+    const wrongFromApi = apiResult?.wrongAnswers ?? apiResult?.wrong_answers ?? questions.filter((q) => !q.isCorrect).length;
+    const pct = totalFromApi > 0 ? Math.round((correctFromApi / totalFromApi) * 100) : 0;
     return (
       <div className="min-h-screen bg-background p-6 lg:p-8">
         <button
@@ -452,23 +435,19 @@ export default function ExamGame({ words, onBack, examType: initialExamType = nu
           <h2 className="text-lg font-black mb-1">Kết quả kiểm tra</h2>
           <div className="text-5xl font-black text-primary my-3">{pct}%</div>
           <p className="text-muted-foreground font-medium">
-            {score}/{questions.length} câu đúng
+            {correctFromApi}/{totalFromApi} câu đúng
           </p>
 
           <div className="flex justify-center gap-6 mt-4">
             <div className="text-center">
               <div className="text-2xl font-black text-green-500">
-                {
-                  questions.filter((q) => q.isCorrect).length
-                }
+                {correctFromApi}
               </div>
               <div className="text-xs text-muted-foreground">Đúng</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-black text-red-500">
-                {
-                  questions.filter((q) => !q.isCorrect).length
-                }
+                {wrongFromApi}
               </div>
               <div className="text-xs text-muted-foreground">Sai</div>
             </div>
@@ -743,21 +722,28 @@ function ResultCard({ q, index, examType }) {
               Nghĩa: <span className="font-medium text-foreground">{q.meaning}</span>
             </p>
           )}
-          <p className="text-xs text-muted-foreground">
-            Bạn nhập:{" "}
-            <span
-              className={`font-bold ${
-                q.isCorrect ? "text-green-700" : "text-red-700"
-              }`}
-            >
-              {q.userAnswer || "(trống)"}
-            </span>
-          </p>
+          {q.wrongInfo ? (
+            <>
+              <p className="text-xs text-muted-foreground">
+                Bạn nhập:{" "}
+                <span className="font-bold text-red-700">
+                  {q.wrongInfo.yourAnswer ?? q.wrongInfo.user_answer ?? q.wrongInfo.userAnswer ?? "(trống)"}
+                </span>
+              </p>
+            </>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Bạn nhập:{" "}
+              <span className="font-bold text-green-700">
+                {q.userAnswer || "(trống)"}
+              </span>
+            </p>
+          )}
         </div>
       </div>
       {!q.isCorrect && (
         <p className="text-xs text-green-700 font-medium">
-          Đáp án đúng: <span className="font-black">{q.correct}</span>
+          Đáp án đúng: <span className="font-black">{q.wrongInfo?.correctAnswer ?? q.correct}</span>
         </p>
       )}
     </div>
