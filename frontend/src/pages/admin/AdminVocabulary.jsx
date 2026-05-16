@@ -16,7 +16,7 @@ import {
   Globe,
   FileText,
 } from "lucide-react";
-import { adminApi } from "@/api/admin/adminApi";
+import { adminApi } from "@/api/admin";
 import { vocabularyApi } from "@/api/client/vocabularyApi";
 
 export default function AdminVocabulary() {

@@ -23,7 +23,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { adminApi } from "@/api/admin/adminApi";
+import { adminApi } from "@/api/admin";
 
 const ROLE_LABELS = {
   admin: "Quản trị viên",

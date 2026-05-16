@@ -16,7 +16,7 @@ import {
   Globe,
   Lock,
 } from "lucide-react";
-import { adminApi } from "@/api/admin/adminApi";
+import { adminApi } from "@/api/admin";
 import { readingApi } from "@/api/client/readingApi";
 
 export default function AdminReading() {

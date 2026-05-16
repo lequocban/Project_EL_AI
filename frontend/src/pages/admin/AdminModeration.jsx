@@ -6,7 +6,7 @@ import {
   Check, X, Filter, Plus, Trash2, Save,
   ArrowUpDown, User, Calendar, Volume2, Play, Pause, Upload,
 } from "lucide-react";
-import { adminApi } from "@/api/admin/adminApi";
+import { adminApi } from "@/api/admin";
 import { listeningApi } from "@/api/client/listeningApi";
 
 const STATUS_CONFIG = {

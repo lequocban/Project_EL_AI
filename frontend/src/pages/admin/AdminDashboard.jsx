@@ -19,7 +19,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import { adminApi } from "@/api/admin/adminApi";
+import { adminApi } from "@/api/admin";
 import {
   Dialog,
   DialogContent,

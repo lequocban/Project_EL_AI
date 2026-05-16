@@ -21,7 +21,7 @@ import {
   Upload,
   FileUp,
 } from "lucide-react";
-import { adminApi } from "@/api/admin/adminApi";
+import { adminApi } from "@/api/admin";
 import { listeningApi } from "@/api/client/listeningApi";
 
 export default function AdminListening() {
