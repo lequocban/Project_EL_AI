@@ -253,4 +253,20 @@ export const listeningApi = {
     const url = await uploadAudioToCloudinary(file, title, onProgress);
     return url;
   },
+
+  // Yêu cầu công khai bài luyện nghe (tạo yêu cầu kiểm duyệt)
+  requestPublic: async (lessonId) => {
+    return fetchWithAuth(`${LISTENING_LESSON_URL}/${lessonId}/request-public`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+  },
+
+  // Chuyển bài luyện nghe về chế độ riêng tư
+  makePrivate: async (lessonId) => {
+    return fetchWithAuth(`${LISTENING_LESSON_URL}/${lessonId}/make-private`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+  },
 };

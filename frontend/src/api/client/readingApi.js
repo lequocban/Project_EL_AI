@@ -238,4 +238,20 @@ export const readingApi = {
     });
     return response.data?.explanation || "";
   },
+
+  // Yêu cầu công khai bài luyện đọc (tạo yêu cầu kiểm duyệt)
+  requestPublic: async (lessonId) => {
+    return fetchWithAuth(`${READING_LESSON_URL}/${lessonId}/request-public`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+  },
+
+  // Chuyển bài luyện đọc về chế độ riêng tư
+  makePrivate: async (lessonId) => {
+    return fetchWithAuth(`${READING_LESSON_URL}/${lessonId}/make-private`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+  },
 };

@@ -7,6 +7,7 @@ import {
   Users,
   LogOut,
   Shield,
+  ShieldCheck,
   Menu,
   X,
 } from "lucide-react";
@@ -37,6 +38,12 @@ const adminNavItems = [
     label: "Luyện nghe",
     icon: Headphones,
     gradient: "from-green-500 to-teal-500",
+  },
+  {
+    path: "/admin/moderation",
+    label: "Kiểm duyệt",
+    icon: ShieldCheck,
+    gradient: "from-violet-500 to-purple-500",
   },
   {
     path: "/admin/users",

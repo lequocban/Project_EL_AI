@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
   Plus,
@@ -15,6 +16,11 @@ import {
   ChevronDown,
   SortAsc,
   Search,
+  ShieldCheck,
+  Globe,
+  Loader2,
+  Eye,
+  Clock,
 } from "lucide-react";
 import FlashcardGame from "./FlashcardGame";
 import MatchGame from "./MatchGame";
@@ -88,6 +94,12 @@ export default function SetDetail({ set, onBack }) {
   const [isLoadingWords, setIsLoadingWords] = useState(false);
   // Track nếu đang trong chế độ search (load nhiều dữ liệu để filter phía client)
   const [isSearchMode, setIsSearchMode] = useState(false);
+  const navigate = useNavigate();
+
+  // State cho việc gửi yêu cầu công khai / chuyển riêng tư
+  const [isRequestingPublic, setIsRequestingPublic] = useState(false);
+  const [isMakingPrivate, setIsMakingPrivate] = useState(false);
+  const [actionMessage, setActionMessage] = useState("");
 
   const SORT_OPTIONS = [
     { value: "newest", label: "Mới nhất", sortField: "created_at", sortOrder: "desc" },
@@ -352,6 +364,68 @@ export default function SetDetail({ set, onBack }) {
     }
   };
 
+  // Gửi yêu cầu công khai bộ từ vựng (chỉ gửi yêu cầu, không chuyển trang)
+  const handleRequestPublic = async () => {
+    if (!window.confirm("Bạn có muốn gửi yêu cầu công khai bộ từ vựng này không?\nNội dung sẽ được kiểm duyệt trước khi hiển thị công khai.")) {
+      return false;
+    }
+    try {
+      setIsRequestingPublic(true);
+      setActionMessage("");
+      await vocabularyApi.requestPublic(set.id);
+      setActionMessage("Đã gửi yêu cầu công khai! Nội dung của bạn sẽ được kiểm duyệt trước khi hiển thị công khai.");
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+      return true;
+    } catch (err) {
+      setActionMessage(`Lỗi: ${err.message || "Không thể gửi yêu cầu công khai"}`);
+      return false;
+    } finally {
+      setIsRequestingPublic(false);
+    }
+  };
+
+  // Gửi yêu cầu kiểm duyệt và chuyển đến trang Kiểm duyệt của admin
+  const handleModeration = async () => {
+    if (!window.confirm("Bạn có muốn gửi yêu cầu kiểm duyệt cho bộ từ vựng này không?\nYêu cầu sẽ được hiển thị trên trang Kiểm duyệt của admin.")) {
+      return;
+    }
+    try {
+      setIsRequestingPublic(true);
+      setActionMessage("");
+      await vocabularyApi.requestPublic(set.id);
+      setActionMessage("Đã gửi yêu cầu kiểm duyệt! Admin sẽ xem xét và phản hồi.");
+      setTimeout(() => {
+        navigate("/admin/moderation");
+      }, 1500);
+    } catch (err) {
+      setActionMessage(`Lỗi: ${err.message || "Không thể gửi yêu cầu kiểm duyệt"}`);
+      setIsRequestingPublic(false);
+    }
+  };
+
+  // Chuyển bộ từ vựng về chế độ riêng tư
+  const handleMakePrivate = async () => {
+    if (!window.confirm("Bạn có muốn chuyển bộ từ vựng này về chế độ riêng tư không?")) {
+      return;
+    }
+    try {
+      setIsMakingPrivate(true);
+      setActionMessage("");
+      await vocabularyApi.makePrivate(set.id);
+      setActionMessage("Đã chuyển bộ từ vựng về chế độ riêng tư.");
+      // Reload lại trang để cập nhật trạng thái
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (err) {
+      setActionMessage(`Lỗi: ${err.message || "Không thể chuyển về chế độ riêng tư"}`);
+    } finally {
+      setIsMakingPrivate(false);
+    }
+  };
+
   // Gửi kết quả bài kiểm tra lên backend để lưu lịch sử
   const handlePracticeSubmit = async ({ setId, type, answers, timeSpent }) => {
     return vocabularyApi.submitPractice({ setId, type, answers, timeSpent });
@@ -478,13 +552,76 @@ export default function SetDetail({ set, onBack }) {
       </button>
 
       <div className="mb-6">
-        <div>
-          <h1 className="text-2xl font-black text-foreground">{set.title}</h1>
-          {set.description && (
-            <p className="text-muted-foreground text-sm mt-1">{set.description}</p>
-          )}
-          <p className="text-sm font-semibold text-primary mt-1">{(wordsPagination.total || words.length)} từ vựng</p>
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl font-black text-foreground">{set.title}</h1>
+            {set.description && (
+              <p className="text-muted-foreground text-sm mt-1">{set.description}</p>
+            )}
+            <p className="text-sm font-semibold text-primary mt-1">{(wordsPagination.total || words.length)} từ vựng</p>
+          </div>
+          {/* Các nút Kiểm duyệt và Công khai */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {set.is_public ? (
+              <button
+                onClick={handleMakePrivate}
+                disabled={isMakingPrivate || isRequestingPublic}
+                className="flex items-center gap-1.5 bg-orange-50 text-orange-600 px-3 py-2 rounded-xl text-sm font-bold hover:bg-orange-100 transition-all border border-orange-200 disabled:opacity-50"
+                title="Chuyển về chế độ riêng tư"
+              >
+                {isMakingPrivate ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <ShieldCheck className="w-4 h-4" />
+                )}
+                Riêng tư
+              </button>
+            ) : set.is_pending ? (
+              <span className="flex items-center gap-1.5 bg-amber-50 text-amber-600 px-3 py-2 rounded-xl text-sm font-bold border border-amber-200">
+                <Clock className="w-4 h-4" />
+                Chờ duyệt
+              </span>
+            ) : (
+              <>
+                <button
+                  onClick={handleModeration}
+                  disabled={isMakingPrivate || isRequestingPublic}
+                  className="flex items-center gap-1.5 bg-violet-50 text-violet-600 px-3 py-2 rounded-xl text-sm font-bold hover:bg-violet-100 transition-all border border-violet-200 disabled:opacity-50"
+                  title="Gửi yêu cầu kiểm duyệt"
+                >
+                  {isRequestingPublic ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                  Kiểm duyệt
+                </button>
+                <button
+                  onClick={handleRequestPublic}
+                  disabled={isMakingPrivate || isRequestingPublic}
+                  className="flex items-center gap-1.5 bg-green-50 text-green-600 px-3 py-2 rounded-xl text-sm font-bold hover:bg-green-100 transition-all border border-green-200 disabled:opacity-50"
+                  title="Gửi yêu cầu công khai"
+                >
+                  {isRequestingPublic ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Globe className="w-4 h-4" />
+                  )}
+                  Công khai
+                </button>
+              </>
+            )}
+          </div>
         </div>
+        {actionMessage && (
+          <div className={`mt-3 rounded-xl p-3 text-sm font-medium ${
+            actionMessage.includes("Lỗi")
+              ? "bg-red-50 text-red-600 border border-red-200"
+              : "bg-green-50 text-green-600 border border-green-200"
+          }`}>
+            {actionMessage}
+          </div>
+        )}
       </div>
 
       {error && (

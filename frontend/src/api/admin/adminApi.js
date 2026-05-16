@@ -122,13 +122,14 @@ const fetchAdminWithAuth = async (url, options = {}) => {
       });
     }
 
-    // Retry request với token mới
+    // Retry request với token mới - return ngay kết quả retry
     const newToken = localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY);
-    res = await fetch(url, {
+    const retryRes = await fetch(url, {
       ...options,
       credentials: "include",
       headers: buildHeaders(newToken),
     });
+    return handleResponse(retryRes);
   }
 
   return handleResponse(res);
@@ -255,7 +256,20 @@ export const adminApi = {
     return fetchAdminWithAuth(ADMIN_URL + `/listening-lessons/${id}/reject`, { method: "POST" });
   },
 
-  // ============ MODERATION - CHỈNH SỬA KHI ĐANG PENDING ============
+  // ============ MODERATION - KIỂM DUYỆT NỘI DUNG ============
+
+  // Lấy chi tiết yêu cầu kiểm duyệt
+  getModerationRequest: async (requestId) => {
+    return fetchAdminWithAuth(ADMIN_URL + `/moderation/requests/${requestId}`, { method: "GET" });
+  },
+
+  // Phê duyệt hoặc từ chối yêu cầu kiểm duyệt
+  reviewModerationRequest: async (requestId, action, reason, notes) => {
+    return fetchAdminWithAuth(ADMIN_URL + `/moderation/requests/${requestId}/review`, {
+      method: "POST",
+      body: JSON.stringify({ action, reason, notes }),
+    });
+  },
 
   // Chỉnh sửa bộ từ vựng khi đang pending
   updateVocabSet: async (id, data) => {
@@ -273,7 +287,7 @@ export const adminApi = {
     });
   },
 
-  // Xóa từ khỏi bộ từ vựng khi pending
+  // Xóa từ khỏi bộ từ vựng khi pending (backend nhận { wordIds: [id1, id2] })
   removeWordsFromVocabSet: async (id, wordIds) => {
     return fetchAdminWithAuth(ADMIN_URL + `/moderation/vocabulary-sets/${id}/words`, {
       method: "DELETE",
@@ -290,10 +304,11 @@ export const adminApi = {
   },
 
   // Chỉnh sửa câu hỏi đọc hiểu khi bài pending
-  updateReadingQuestion: async (questionId, data) => {
+  // Body cần: lessonId (ID bài đọc), question, option_a, option_b, option_c, option_d, correct_answer, explain
+  updateReadingQuestion: async (questionId, lessonId, data) => {
     return fetchAdminWithAuth(ADMIN_URL + `/moderation/reading-questions/${questionId}`, {
       method: "PATCH",
-      body: JSON.stringify(data),
+      body: JSON.stringify({ lessonId, ...data }),
     });
   },
 
@@ -306,24 +321,54 @@ export const adminApi = {
   },
 
   // Chỉnh sửa câu hỏi nghe hiểu khi bài pending
-  updateListeningQuestion: async (questionId, data) => {
+  // Body cần: lessonId (ID bài nghe), question, option_a, option_b, option_c, option_d, correct_answer, explain
+  updateListeningQuestion: async (questionId, lessonId, data) => {
     return fetchAdminWithAuth(ADMIN_URL + `/moderation/listening-questions/${questionId}`, {
       method: "PATCH",
-      body: JSON.stringify(data),
+      body: JSON.stringify({ lessonId, ...data }),
     });
   },
 
-  // Lấy chi tiết yêu cầu kiểm duyệt
-  getModerationRequest: async (requestId) => {
-    return fetchAdminWithAuth(ADMIN_URL + `/moderation/requests/${requestId}`, { method: "GET" });
+  // Lấy danh sách yêu cầu kiểm duyệt bộ từ vựng
+  getModerationVocabularySets: async ({
+    page = 1, limit = 15, sortField = "created_at", sortOrder = "desc", status = ""
+  } = {}) => {
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+      sortField,
+      sortOrder,
+    });
+    if (status) params.append("status", status);
+    return fetchAdminWithAuth(ADMIN_URL + `/moderation/vocabulary-sets?${params}`, { method: "GET" });
   },
 
-  // Phê duyệt hoặc từ chối yêu cầu kiểm duyệt
-  reviewModerationRequest: async (requestId, action, reason, notes) => {
-    return fetchAdminWithAuth(ADMIN_URL + `/moderation/requests/${requestId}/review`, {
-      method: "POST",
-      body: JSON.stringify({ action, reason, notes }),
+  // Lấy danh sách yêu cầu kiểm duyệt bài luyện đọc
+  getModerationReadingLessons: async ({
+    page = 1, limit = 15, sortField = "created_at", sortOrder = "desc", status = ""
+  } = {}) => {
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+      sortField,
+      sortOrder,
     });
+    if (status) params.append("status", status);
+    return fetchAdminWithAuth(ADMIN_URL + `/moderation/reading-lessons?${params}`, { method: "GET" });
+  },
+
+  // Lấy danh sách yêu cầu kiểm duyệt bài luyện nghe
+  getModerationListeningLessons: async ({
+    page = 1, limit = 15, sortField = "created_at", sortOrder = "desc", status = ""
+  } = {}) => {
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+      sortField,
+      sortOrder,
+    });
+    if (status) params.append("status", status);
+    return fetchAdminWithAuth(ADMIN_URL + `/moderation/listening-lessons?${params}`, { method: "GET" });
   },
 
   // ============ DỮ LIỆU CỘNG (cho CRUD) ============

@@ -14,7 +14,6 @@ import {
   AlertTriangle,
   Clock,
   Globe,
-  Lock,
   FileText,
 } from "lucide-react";
 import { adminApi } from "@/api/admin/adminApi";

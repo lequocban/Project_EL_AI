@@ -225,4 +225,20 @@ export const vocabularyApi = {
     // Chỉ cần trả về data để caller có thể dùng
     return response.data || {};
   },
+
+  // Yêu cầu công khai bộ từ vựng (tạo yêu cầu kiểm duyệt)
+  requestPublic: async (setId) => {
+    return fetchWithAuth(`${VOCABULARY_SET_URL}/${setId}/request-public`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+  },
+
+  // Chuyển bộ từ vựng về chế độ riêng tư
+  makePrivate: async (setId) => {
+    return fetchWithAuth(`${VOCABULARY_SET_URL}/${setId}/make-private`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+  },
 };
