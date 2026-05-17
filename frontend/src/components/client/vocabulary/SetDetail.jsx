@@ -386,7 +386,7 @@ export default function SetDetail({ set, onBack }) {
     }
   };
 
-  // Gửi yêu cầu kiểm duyệt và chuyển đến trang Kiểm duyệt của admin
+  // Gửi yêu cầu kiểm duyệt (dùng endpoint moderation-requests chung)
   const handleModeration = async () => {
     if (!window.confirm("Bạn có muốn gửi yêu cầu kiểm duyệt cho bộ từ vựng này không?\nYêu cầu sẽ được hiển thị trên trang Kiểm duyệt của admin.")) {
       return;
@@ -394,11 +394,8 @@ export default function SetDetail({ set, onBack }) {
     try {
       setIsRequestingPublic(true);
       setActionMessage("");
-      await vocabularyApi.requestPublic(set.id);
+      await vocabularyApi.requestModeration(set.id);
       setActionMessage("Đã gửi yêu cầu kiểm duyệt! Admin sẽ xem xét và phản hồi.");
-      setTimeout(() => {
-        navigate("/admin/moderation");
-      }, 1500);
     } catch (err) {
       setActionMessage(`Lỗi: ${err.message || "Không thể gửi yêu cầu kiểm duyệt"}`);
       setIsRequestingPublic(false);

@@ -637,7 +637,7 @@ function ReadingStarter({ lesson, onBack }) {
     }
   };
 
-  // Gửi yêu cầu kiểm duyệt và chuyển đến trang Kiểm duyệt của admin
+  // Gửi yêu cầu kiểm duyệt (dùng endpoint moderation-requests chung)
   const handleModeration = async () => {
     if (!window.confirm("Bạn có muốn gửi yêu cầu kiểm duyệt cho bài luyện đọc này không?\nYêu cầu sẽ được hiển thị trên trang Kiểm duyệt của admin.")) {
       return;
@@ -645,11 +645,8 @@ function ReadingStarter({ lesson, onBack }) {
     try {
       setIsRequestingPublic(true);
       setActionMessage("");
-      await readingApi.requestPublic(lesson.id);
+      await readingApi.requestModeration(lesson.id);
       setActionMessage("Đã gửi yêu cầu kiểm duyệt! Admin sẽ xem xét và phản hồi.");
-      setTimeout(() => {
-        navigate("/admin/moderation");
-      }, 1500);
     } catch (err) {
       setActionMessage(`Lỗi: ${err.message || "Không thể gửi yêu cầu kiểm duyệt"}`);
       setIsRequestingPublic(false);

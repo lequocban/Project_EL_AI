@@ -234,6 +234,14 @@ export const vocabularyApi = {
     });
   },
 
+  // Gửi yêu cầu kiểm duyệt bộ từ vựng (dùng chung endpoint moderation-requests)
+  requestModeration: async (setId) => {
+    return fetchWithAuth("/api/v1/moderation-requests", {
+      method: "POST",
+      body: JSON.stringify({ contentType: "vocabulary_set", contentId: setId }),
+    });
+  },
+
   // Chuyển bộ từ vựng về chế độ riêng tư
   makePrivate: async (setId) => {
     return fetchWithAuth(`${VOCABULARY_SET_URL}/${setId}/make-private`, {

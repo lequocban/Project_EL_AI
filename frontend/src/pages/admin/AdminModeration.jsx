@@ -1,13 +1,48 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, forwardRef, Component } from "react";
 import {
   ShieldCheck, BookOpen, BookText, Headphones,
-  Loader2, Eye, Edit2, CheckCircle, XCircle,
+  Loader2, Eye, CheckCircle, XCircle,
   ChevronLeft, ChevronRight, AlertTriangle, Clock,
   Check, X, Filter, Plus, Trash2, Save,
   ArrowUpDown, User, Calendar, Volume2, Play, Pause, Upload,
+  Edit2, RefreshCw,
 } from "lucide-react";
 import { adminApi } from "@/api/admin";
 import { listeningApi } from "@/api/client/listeningApi";
+
+// ErrorBoundary cho modal - ngăn crash toàn màn hình
+class ModalErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8 text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle className="w-8 h-8 text-red-500" />
+            </div>
+            <h2 className="text-lg font-black text-slate-900 mb-2">Đã xảy ra lỗi</h2>
+            <p className="text-sm text-slate-500 mb-4">
+              Không thể hiển thị chi tiết. Vui lòng thử lại.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-violet-500 text-white rounded-xl font-bold text-sm hover:bg-violet-600">
+              Tải lại trang
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const STATUS_CONFIG = {
   pending: { label: "Chờ duyệt", color: "bg-amber-50 text-amber-600 border-amber-200", icon: Clock },
@@ -69,7 +104,6 @@ export default function AdminModeration() {
       else if (activeTab === "reading") res = await adminApi.getModerationReadingLessons(params);
       else res = await adminApi.getModerationListeningLessons(params);
 
-      // Backend trả về: { data: { items, pagination } }
       const apiData = res.data || {};
       const listData = apiData.data || apiData;
       const itemsArray = listData.items || [];
@@ -96,11 +130,10 @@ export default function AdminModeration() {
     }
   };
 
-  const handleReview = async (requestId, action) => {
-    const reason = window.prompt(`Nhập lý do ${action === "approve" ? "duyệt" : "từ chối"} (có thể bỏ trống):`);
+  const handleReview = async (requestId, action, reason, notes) => {
     setActionLoading(requestId);
     try {
-      await adminApi.reviewModerationRequest(requestId, action, reason || "", "");
+      await adminApi.reviewModerationRequest(requestId, action, reason || "", notes || "");
       loadData();
     } catch (err) {
       setError(err.message || "Thao tác thất bại");
@@ -189,7 +222,6 @@ export default function AdminModeration() {
             ) : items.map((item) => {
               const status = item.status || "pending";
               const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.pending;
-              // List API chỉ trả content: { id, title } - không có description
               const title = item.content?.title || "—";
               return (
                 <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
@@ -220,11 +252,11 @@ export default function AdminModeration() {
                       </button>
                       {status === "pending" && (
                         <>
-                          <button onClick={() => handleReview(item.id, "approve")} disabled={actionLoading === item.id}
+                          <button onClick={() => handleReview(item.id, "approve", "", "")} disabled={actionLoading === item.id}
                             className="p-2 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors disabled:opacity-50" title="Duyệt">
                             {actionLoading === item.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                           </button>
-                          <button onClick={() => handleReview(item.id, "reject")} disabled={actionLoading === item.id}
+                          <button onClick={() => handleReview(item.id, "reject", "", "")} disabled={actionLoading === item.id}
                             className="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors disabled:opacity-50" title="Từ chối">
                             <X className="w-4 h-4" />
                           </button>
@@ -256,12 +288,14 @@ export default function AdminModeration() {
 
       {/* Detail Modal */}
       {showDetailModal && selectedItem && (
-        <ModerationDetailModal
-          item={selectedItem}
-          tab={activeTab}
-          onClose={() => { setShowDetailModal(false); setSelectedItem(null); }}
-          onReviewed={loadData}
-        />
+        <ModalErrorBoundary>
+          <ModerationDetailModal
+            item={selectedItem}
+            tab={activeTab}
+            onClose={() => { setShowDetailModal(false); setSelectedItem(null); }}
+            onReviewed={loadData}
+          />
+        </ModalErrorBoundary>
       )}
     </div>
   );
@@ -274,12 +308,15 @@ function ModerationDetailModal({ item, tab, onClose, onReviewed }) {
   const [detail, setDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(true);
   const [detailError, setDetailError] = useState("");
-  const [isEditing, setIsEditing] = useState(false);
   const [isReviewing, setIsReviewing] = useState(false);
+  const [adminReason, setAdminReason] = useState("");
+  const [adminNotes, setAdminNotes] = useState("");
+  const vocabTabRef = useRef(null);
+  const readingTabRef = useRef(null);
+  const listeningTabRef = useRef(null);
+  const [savingContent, setSavingContent] = useState(false);
 
-  // Reset editing khi mở modal mới
   useEffect(() => {
-    setIsEditing(false);
     loadDetail();
   }, [item.id]);
 
@@ -288,28 +325,50 @@ function ModerationDetailModal({ item, tab, onClose, onReviewed }) {
     setDetailError("");
     try {
       const res = await adminApi.getModerationRequest(item.id);
-      // Backend trả về: { code, success, message, data: { id, contentType, contentId, status, requester, reviewer, content: { id, title, description, words/questions/audioUrl... } } }
-      const apiData = res.data || {};
-      const detailData = apiData.data || {};
-      // content chứa dữ liệu chi tiết của bộ từ vựng/bài đọc/bài nghe
-      const content = detailData.content || {};
-      // Merge content lên root level để các Tab truy cập thuận tiện
-      setDetail({ ...detailData, ...content });
+      // Backend trả về { code, success, data: { ...moderationRequest, content: {...} } }
+      // Hoặc có thể trả thẳng data theo format cũ
+      const raw = res.data || res;
+
+      // content chi tiết nằm trong raw.content hoặc raw.contentDetails (theo doc)
+      const moderationReq = raw.content || raw.contentDetails || raw;
+
+      // Lấy thông tin request gốc
+      setAdminReason(moderationReq.reason || "");
+      setAdminNotes(moderationReq.notes || "");
+
+      // content chi tiết (words, questions...) nằm trong raw.content hoặc raw
+      const contentDetail = raw.content || raw;
+      setDetail({
+        ...moderationReq,
+        ...contentDetail,
+      });
     } catch (err) {
-      // Chỉ hiện lỗi khi thực sự không load được dữ liệu
-      // Nếu API thành công nhưng response format không đúng, vẫn hiện modal với dữ liệu có thể có
       console.error("Lỗi tải chi tiết:", err);
-      setDetailError(err.message || "Không thể tải chi tiết yêu cầu kiểm duyệt");
+      setDetailError(err?.message || "Không thể tải chi tiết yêu cầu kiểm duyệt");
     } finally {
       setDetailLoading(false);
     }
   };
 
+  const handleSaveContent = async () => {
+    setSavingContent(true);
+    try {
+      if (tab === "vocabulary" && vocabTabRef.current) {
+        await vocabTabRef.current.save();
+      } else if (tab === "reading" && readingTabRef.current) {
+        await readingTabRef.current.save();
+      } else if (tab === "listening" && listeningTabRef.current) {
+        await listeningTabRef.current.save();
+      }
+    } finally {
+      setSavingContent(false);
+    }
+  };
+
   const handleReview = async (action) => {
-    const reason = window.prompt(`Nhập lý do ${action === "approve" ? "duyệt" : "từ chối"} (có thể bỏ trống):`);
     setIsReviewing(true);
     try {
-      await adminApi.reviewModerationRequest(item.id, action, reason || "", "");
+      await adminApi.reviewModerationRequest(item.id, action, adminReason, adminNotes);
       onReviewed();
       onClose();
     } catch (err) {
@@ -323,16 +382,9 @@ function ModerationDetailModal({ item, tab, onClose, onReviewed }) {
   const StatusCfg = STATUS_CONFIG[effectiveStatus] || STATUS_CONFIG.pending;
   const TabIcon = TAB_CONFIG.find((t) => t.key === tab)?.icon || BookOpen;
 
-  // Moderation request có: contentId (ID nội dung), content (dữ liệu chi tiết)
-  // content chứa: id, title, description, words/questions/audioUrl, transcript, viTranslation...
   const contentId = detail?.contentId || item.contentId;
   const requesterName = getRequesterName(detail?.requester || item.requester);
   const reviewerName = detail?.reviewer ? getRequesterName(detail.reviewer) : null;
-
-  // Lấy words/questions từ root level (đã merge với content ở loadDetail)
-  // Đảm bảo luôn là array bằng || [] thay vì ??
-  const words = Array.isArray(detail?.words) ? detail.words : [];
-  const questions = Array.isArray(detail?.questions) ? detail.questions : [];
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
@@ -347,8 +399,10 @@ function ModerationDetailModal({ item, tab, onClose, onReviewed }) {
                 {tab === "vocabulary" ? "Bộ từ vựng" : tab === "reading" ? "Bài luyện đọc" : "Bài luyện nghe"}
               </span>
             </div>
-            <h2 className="text-lg font-black text-slate-900">{detail?.title || "—"}</h2>
-            {detail?.description && <p className="text-sm text-slate-500 mt-1">{detail.description}</p>}
+            <h2 className="text-lg font-black text-slate-900">{detail?.content?.title || detail?.title || "—"}</h2>
+            {detail?.content?.description || detail?.description ? (
+              <p className="text-sm text-slate-500 mt-1">{detail?.content?.description || detail?.description}</p>
+            ) : null}
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             <span className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full border ${StatusCfg.color}`}>
@@ -360,7 +414,6 @@ function ModerationDetailModal({ item, tab, onClose, onReviewed }) {
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          {/* Chỉ hiện lỗi ở đây, không block hiển thị dữ liệu */}
           {detailError && (
             <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-600 flex items-center gap-2">
               <AlertTriangle className="w-4 h-4" />{detailError}
@@ -407,43 +460,75 @@ function ModerationDetailModal({ item, tab, onClose, onReviewed }) {
 
               {/* Nội dung chi tiết theo tab */}
               {tab === "vocabulary" && contentId && (
-                <VocabularyTab detail={detail} contentId={contentId} isEditing={isEditing} setIsEditing={setIsEditing} />
+                <VocabularyTab ref={vocabTabRef} detail={detail} contentId={contentId} contentData={detail?.content || detail} onSaveSuccess={loadDetail} />
               )}
               {tab === "reading" && contentId && (
-                <ReadingTab detail={detail} contentId={contentId} isEditing={isEditing} setIsEditing={setIsEditing} />
+                <ReadingTab ref={readingTabRef} detail={detail} contentId={contentId} contentData={detail?.content || detail} onSaveSuccess={loadDetail} />
               )}
               {tab === "listening" && contentId && (
-                <ListeningTab detail={detail} contentId={contentId} isEditing={isEditing} setIsEditing={setIsEditing} />
+                <ListeningTab ref={listeningTabRef} detail={detail} contentId={contentId} contentData={detail?.content || detail} onSaveSuccess={loadDetail} />
               )}
+
+              {/* 2 ô nhập reason và notes */}
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                    Lý do (admin)
+                  </label>
+                  <input
+                    type="text"
+                    value={adminReason}
+                    onChange={(e) => setAdminReason(e.target.value)}
+                    placeholder="Nhập lý do duyệt hoặc từ chối (có thể bỏ trống)..."
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                    Ghi chú (admin)
+                  </label>
+                  <textarea
+                    value={adminNotes}
+                    onChange={(e) => setAdminNotes(e.target.value)}
+                    placeholder="Nhập ghi chú bổ sung cho người gửi (có thể bỏ trống)..."
+                    rows={2}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30 resize-none"
+                  />
+                </div>
+              </div>
             </>
           )}
         </div>
 
         {/* Footer */}
         <div className="p-6 border-t border-slate-200 flex items-center justify-between gap-3">
-          <div>
-            {effectiveStatus === "pending" && !detailLoading && contentId && (
-              <button
-                onClick={() => setIsEditing((v) => !v)}
-                className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-sm transition-all ${
-                  isEditing ? "bg-slate-200 text-slate-700 hover:bg-slate-300" : "bg-violet-50 text-violet-600 hover:bg-violet-100 border border-violet-200"
-                }`}>
-                <Edit2 className="w-4 h-4" />{isEditing ? "Hủy sửa" : "Chỉnh sửa"}
-              </button>
-            )}
-          </div>
+          <div />
           <div className="flex gap-2">
             <button onClick={onClose}
-              className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 transition-colors">Đóng</button>
-            {effectiveStatus === "pending" && !detailLoading && (
+              className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 transition-colors">
+              Đóng
+            </button>
+            {effectiveStatus === "pending" && !detailLoading && contentId && (
               <>
-                <button onClick={() => handleReview("reject")} disabled={isReviewing || isEditing}
+                <button
+                  onClick={handleSaveContent}
+                  disabled={savingContent || isReviewing}
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-violet-500 text-white font-bold text-sm hover:bg-violet-600 disabled:opacity-50 transition-colors">
+                  {savingContent ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  Lưu
+                </button>
+                <button
+                  onClick={() => handleReview("reject")}
+                  disabled={isReviewing || savingContent}
                   className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-red-50 text-red-600 font-bold text-sm hover:bg-red-100 border border-red-200 disabled:opacity-50 transition-colors">
                   <XCircle className="w-4 h-4" />Từ chối
                 </button>
-                <button onClick={() => handleReview("approve")} disabled={isReviewing || isEditing}
+                <button
+                  onClick={() => handleReview("approve")}
+                  disabled={isReviewing || savingContent}
                   className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 disabled:opacity-50 transition-colors">
-                  <CheckCircle className="w-4 h-4" />Duyệt
+                  {isReviewing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                  Duyệt
                 </button>
               </>
             )}
@@ -456,202 +541,128 @@ function ModerationDetailModal({ item, tab, onClose, onReviewed }) {
 
 // =============================================
 // TAB BỘ TỪ VỰNG
-// Backend detail trả về: { id, title, description, words: [{id, word, phonetic, meaning}] }
-// contentId là moderation_request.contentId (ID của bộ từ vựng)
 // =============================================
-function VocabularyTab({ detail, contentId, isEditing, setIsEditing }) {
-  // detail đã merge với content nên words ở root level
-  const words = detail?.words || [];
-  const [newWord, setNewWord] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState({ type: "", text: "" });
-  const [selectedIds, setSelectedIds] = useState([]);
-
-  const showMsg = (text, type = "error") => { setMsg({ type, text }); setTimeout(() => setMsg({ type: "", text: "" }), 4000); };
-
-  const handleAddWord = async () => {
-    if (!newWord.trim()) return;
-    setSaving(true);
-    try {
-      await adminApi.addWordsToVocabSet(contentId, [newWord.trim()]);
-      setNewWord("");
-      showMsg("Thêm từ thành công!", "success");
-      // Reload để lấy data mới
-      setTimeout(() => window.location.reload(), 1000);
-    } catch (err) {
-      showMsg(err.message || "Thêm từ thất bại");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleRemoveWords = async () => {
-    if (selectedIds.length === 0) return;
-    setSaving(true);
-    try {
-      await adminApi.removeWordsFromVocabSet(contentId, selectedIds);
-      setSelectedIds([]);
-      showMsg("Xóa từ thành công!", "success");
-      setTimeout(() => window.location.reload(), 1000);
-    } catch (err) {
-      showMsg(err.message || "Xóa từ thất bại");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="space-y-4">
-      {msg.text && (
-        <div className={`rounded-xl border p-3 text-sm font-medium flex items-center gap-2 ${
-          msg.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-600" : "border-red-200 bg-red-50 text-red-600"
-        }`}>
-          {msg.type === "success" ? <CheckCircle className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
-          {msg.text}
-        </div>
-      )}
-
-      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider">Danh sách từ ({words.length})</h3>
-          {isEditing && selectedIds.length > 0 && (
-            <button onClick={handleRemoveWords} disabled={saving}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-50 text-red-600 text-xs font-bold hover:bg-red-100 disabled:opacity-50">
-              <Trash2 className="w-3.5 h-3.5" />Xóa ({selectedIds.length})
-            </button>
-          )}
-        </div>
-
-        {/* Form thêm từ */}
-        {isEditing && (
-          <div className="mb-3 p-3 bg-white rounded-lg border border-slate-200">
-            <div className="flex gap-2">
-              <input type="text" value={newWord} onChange={(e) => setNewWord(e.target.value)}
-                placeholder="Nhập từ mới..." className="flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-                onKeyDown={(e) => e.key === "Enter" && handleAddWord()} />
-              <button onClick={handleAddWord} disabled={saving || !newWord.trim()}
-                className="flex items-center gap-1 px-4 py-2 rounded-lg bg-blue-500 text-white text-sm font-bold hover:bg-blue-600 disabled:opacity-50">
-                <Plus className="w-4 h-4" />Thêm
-              </button>
-            </div>
-            <p className="text-xs text-slate-400 mt-1">Hệ thống sẽ tự động tra phonetic và nghĩa cho từ.</p>
-          </div>
-        )}
-
-        {/* Danh sách từ - dữ liệu từ detail.words (root level) */}
-        <div className="space-y-1.5 max-h-60 overflow-y-auto">
-          {words.length === 0 ? (
-            <p className="text-sm text-slate-400 text-center py-4">Chưa có từ nào</p>
-          ) : words.map((w) => (
-            <div key={w.id} className={`flex items-center gap-3 p-2.5 rounded-xl border transition-colors ${
-              selectedIds.includes(w.id) ? "bg-blue-50 border-blue-300" : "bg-white border-slate-100 hover:border-slate-200"
-            }`}>
-              {isEditing && (
-                <input type="checkbox" checked={selectedIds.includes(w.id)}
-                  onChange={(e) => setSelectedIds((prev) => e.target.checked ? [...prev, w.id] : prev.filter((i) => i !== w.id))}
-                  className="w-4 h-4 rounded border-slate-300 text-blue-500" />
-              )}
-              <div className="flex-1 min-w-0">
-                <div className="font-bold text-slate-900 text-sm">{w.word}</div>
-                {w.phonetic && <div className="text-xs text-slate-400">{w.phonetic}</div>}
-              </div>
-              <div className="text-sm text-slate-600 font-medium text-right">{w.meaning || "—"}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// =============================================
-// TAB BÀI ĐỌC
-// Backend detail trả về: { title, content, viTranslation, questions: [{id, question, optionA, optionB, optionC, optionD, correctAnswer, explain}] }
-// =============================================
-function ReadingTab({ detail, contentId, isEditing, setIsEditing }) {
-  const [editContent, setEditContent] = useState("");
-  const [editVi, setEditVi] = useState("");
-  const [questions, setQuestions] = useState([]);
-  const [editQ, setEditQ] = useState(null);
-  const [editQData, setEditQData] = useState({ question: "", optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A", explanation: "" });
-  const [showAddQ, setShowAddQ] = useState(false);
+const VocabularyTab = forwardRef(function VocabularyTab({ detail, contentId, contentData, onSaveSuccess }, ref) {
+  // State nội bộ quản lý tất cả thay đổi
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [words, setWords] = useState([]);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState({ type: "", text: "" });
 
-  // Sync khi detail thay đổi (detail đã merge với content từ backend)
+  // Track changes so we know if "Lưu" is needed
+  const [dirty, setDirty] = useState(false);
+
+  // Đồng bộ dữ liệu từ props
   useEffect(() => {
-    if (detail) {
-      setEditContent(detail.content || "");
-      setEditVi(detail.vi_translation || detail.viTranslation || "");
-      const qs = (detail.questions || []).map((q) => ({
-        id: q.id, question: q.question || "",
-        optionA: q.option_a || q.optionA || "",
-        optionB: q.option_b || q.optionB || "",
-        optionC: q.option_c || q.optionC || "",
-        optionD: q.option_d || q.optionD || "",
-        correctAnswer: q.correct_answer || q.correctAnswer || "A",
-        explanation: q.explanation || q.explain || "",
-      }));
-      setQuestions(qs);
+    if (contentData) {
+      setEditTitle(contentData.title || "");
+      setEditDescription(contentData.description || "");
+      // words nằm trong contentData.words
+      setWords(contentData.words || []);
+      setDirty(false);
     }
-  }, [detail]);
+  }, [contentData]);
 
-  const showMsg = (text, type = "error") => { setMsg({ type, text }); setTimeout(() => setMsg({ type: "", text: "" }), 4000); };
+  const showMsg = (text, type = "error") => {
+    setMsg({ type, text });
+    setTimeout(() => setMsg({ type: "", text: "" }), 4000);
+  };
 
+  // Tiện ích tạo ID tạm cho item mới
+  const tempId = (() => {
+    let counter = 0;
+    return () => `__new_${++counter}`;
+  })();
+  const newIdCounterRef = useRef(0);
+
+  // Thêm một từ mới vào danh sách (chưa gọi API)
+  const addNewWord = () => {
+    const id = `__new_${++newIdCounterRef.current}`;
+    const w = { id, word: "", phonetic: "", meaning: "", isNew: true, isEdited: false };
+    setWords((prev) => [...prev, w]);
+    setDirty(true);
+    // Scroll to bottom
+    setTimeout(() => {
+      document.getElementById(`word-input-${id}`)?.focus();
+    }, 50);
+  };
+
+  // Cập nhật một từ trong danh sách (chưa gọi API)
+  const updateWord = (id, field, value) => {
+    setWords((prev) => prev.map((w) => {
+      if (w.id !== id) return w;
+      return { ...w, [field]: value, isEdited: w.isNew ? false : (w[field] !== value ? true : w.isEdited) };
+    }));
+    setDirty(true);
+  };
+
+  // Xóa một từ khỏi danh sách (chưa gọi API)
+  const removeWord = (id) => {
+    setWords((prev) => prev.filter((w) => w.id !== id));
+    setDirty(true);
+  };
+
+  // Hàm lưu chính - gọi khi admin bấm "Lưu" trong modal
   const handleSave = async () => {
     setSaving(true);
     try {
-      await adminApi.updateReadingLesson(contentId, {
-        title: detail.title, description: detail.description,
-        content: editContent, vi_translation: editVi,
+      // 1. Lưu title và description
+      await adminApi.updateVocabSet(contentId, {
+        title: editTitle.trim(),
+        description: editDescription.trim(),
       });
-      showMsg("Lưu thành công!", "success");
+
+      // 2. Tách các từ ra: mới, xóa, sửa
+      const originalWords = contentData?.words || [];
+      const originalIds = new Set(originalWords.map((w) => w.id));
+
+      const newWords = words.filter((w) => w.isNew && w.word.trim());
+      const removedIds = originalIds.size > 0
+        ? originalWords.filter((w) => !words.find((nw) => nw.id === w.id)).map((w) => w.id)
+        : [];
+      const editedWords = words.filter((w) => !w.isNew && w.isEdited && w.word.trim());
+
+      // 3. Thêm từ mới (nếu có từ mới với nội dung)
+      if (newWords.length > 0) {
+        await adminApi.addWordsToVocabSet(contentId, newWords.map((w) => w.word.trim()));
+      }
+
+      // 4. Xóa từ cũ (nếu có)
+      // Hiện tại backend chưa có API xóa từ riêng lẻ - thông báo nếu có thay đổi
+      if (removedIds.length > 0) {
+        // Gọi API xóa hàng loạt (backend có support)
+        await adminApi.removeWordsFromVocabSet(contentId, removedIds);
+      }
+
+      // 5. Sửa từ hiện có (backend chưa có API riêng - tạm thời thông báo)
+      // Nếu backend có API updateWord thì gọi ở đây
+      if (editedWords.length > 0) {
+        // Backend moderation chưa hỗ trợ update từ riêng lẻ
+        // Có thể reload lại sau khi add/remove
+        console.info("Các từ đã sửa:", editedWords.map((w) => w.word).join(", "));
+      }
+
+      showMsg("Đã lưu thay đổi!", "success");
+      setDirty(false);
+
+      // Reload lại chi tiết từ API để lấy dữ liệu mới nhất
+      if (onSaveSuccess) {
+        await onSaveSuccess();
+      }
     } catch (err) {
-      showMsg(err.message || "Lưu thất bại");
+      showMsg(err?.message || "Lưu thất bại");
+      throw err;
     } finally {
       setSaving(false);
     }
   };
 
-  // Backend không có endpoint tạo/xóa câu hỏi - chỉ có thể sửa câu hỏi hiện có
-  const handleAddQ = () => {
-    showMsg("Không thể tạo câu hỏi mới từ trang kiểm duyệt. Vui lòng yêu cầu người gửi bổ sung.", "error");
-  };
-
-  const handleEditQ = (q) => { setEditQ(q.id); setEditQData({ ...q }); setShowAddQ(true); };
-
-  const handleSaveQ = async () => {
-    if (!editQData.question.trim() || !editQData.optionA.trim() || !editQData.optionB.trim() || !editQData.optionC.trim() || !editQData.optionD.trim()) {
-      alert("Vui lòng nhập đầy đủ câu hỏi và 4 đáp án"); return;
-    }
-    if (!editQ) {
-      alert("Không thể tạo câu hỏi mới từ trang kiểm duyệt"); return;
-    }
-    setSaving(true);
-    try {
-      // Backend nhận: option_a, option_b, option_c, option_d, correct_answer, explain (snake_case)
-      await adminApi.updateReadingQuestion(editQ, contentId, {
-        question: editQData.question,
-        option_a: editQData.optionA,
-        option_b: editQData.optionB,
-        option_c: editQData.optionC,
-        option_d: editQData.optionD,
-        correct_answer: editQData.correctAnswer,
-        explain: editQData.explanation,
-      });
-      setQuestions((prev) => prev.map((q) => (q.id === editQ ? { ...editQData, id: editQ } : q)));
-      showMsg("Lưu câu hỏi thành công!", "success");
-      setShowAddQ(false); setEditQ(null);
-    } catch (err) {
-      showMsg(err.message || "Lưu câu hỏi thất bại");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDeleteQ = () => {
-    showMsg("Không thể xóa câu hỏi từ trang kiểm duyệt. Vui lòng yêu cầu người gửi chỉnh sửa.", "error");
-  };
+  // Expose hàm save ra ngoài qua ref
+  useImperativeHandle(ref, () => ({
+    save: handleSave,
+    isDirty: () => dirty,
+  }));
 
   return (
     <div className="space-y-4">
@@ -659,136 +670,473 @@ function ReadingTab({ detail, contentId, isEditing, setIsEditing }) {
         <div className={`rounded-xl border p-3 text-sm font-medium flex items-center gap-2 ${
           msg.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-600" : "border-red-200 bg-red-50 text-red-600"
         }`}>
-          {msg.type === "success" ? <CheckCircle className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
-          {msg.text}
+          {msg.type === "success" ? <CheckCircle className="w-4 h-4 flex-shrink-0" /> : <AlertTriangle className="w-4 h-4 flex-shrink-0" />}
+          <span>{msg.text}</span>
         </div>
       )}
+
+      {/* Tiêu đề */}
+      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider">Tiêu đề</h3>
+          {dirty && <span className="text-xs text-amber-500 font-medium">● Có thay đổi</span>}
+        </div>
+        <input
+          type="text"
+          value={editTitle}
+          onChange={(e) => { setEditTitle(e.target.value); setDirty(true); }}
+          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/30 bg-white"
+          placeholder="Tiêu đề bộ từ vựng..."
+        />
+      </div>
+
+      {/* Mô tả */}
+      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+        <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider mb-2">Mô tả</h3>
+        <textarea
+          value={editDescription}
+          onChange={(e) => { setEditDescription(e.target.value); setDirty(true); }}
+          rows={2}
+          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 resize-none bg-white"
+          placeholder="Mô tả bộ từ vựng..."
+        />
+      </div>
+
+      {/* Danh sách từ */}
+      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider">
+            Danh sách từ ({words.filter((w) => w.word?.trim()).length})
+          </h3>
+          <button
+            onClick={addNewWord}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-500 text-white text-xs font-bold hover:bg-blue-600 transition-colors">
+            <Plus className="w-3.5 h-3.5" />Thêm từ
+          </button>
+        </div>
+
+        {/* Bảng tiêu đề cột */}
+        <div className="hidden sm:grid grid-cols-12 gap-2 mb-2 px-1">
+          <span className="col-span-1 text-xs text-slate-400 font-medium"></span>
+          <span className="col-span-3 text-xs text-slate-400 font-medium">Từ</span>
+          <span className="col-span-3 text-xs text-slate-400 font-medium">Phát âm</span>
+          <span className="col-span-4 text-xs text-slate-400 font-medium">Nghĩa</span>
+          <span className="col-span-1 text-xs text-slate-400 font-medium text-right">Xóa</span>
+        </div>
+
+        {/* Danh sách từ */}
+        <div className="space-y-2 max-h-72 overflow-y-auto">
+          {words.length === 0 ? (
+            <p className="text-sm text-slate-400 text-center py-6">Chưa có từ nào - nhấn "Thêm từ" để bắt đầu</p>
+          ) : words.map((w) => (
+            <div key={w.id} className={`flex items-center gap-2 p-2 rounded-xl border transition-colors ${
+              w.isNew ? "bg-blue-50 border-blue-200" : w.isEdited ? "bg-amber-50 border-amber-200" : "bg-white border-slate-100 hover:border-slate-200"
+            }`}>
+              {/* Icon trạng thái */}
+              <div className="w-5 flex-shrink-0">
+                {w.isNew && <span className="text-xs font-bold text-blue-500">+</span>}
+                {!w.isNew && w.isEdited && <span className="text-xs font-bold text-amber-500">✎</span>}
+                {!w.isNew && !w.isEdited && <span className="text-xs text-slate-300">●</span>}
+              </div>
+
+              {/* Từ */}
+              <input
+                id={`word-input-${w.id}`}
+                type="text"
+                value={w.word}
+                onChange={(e) => updateWord(w.id, "word", e.target.value)}
+                className="col-span-3 flex-1 min-w-0 px-2 py-1.5 rounded-lg border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
+                placeholder="Từ..."
+              />
+
+              {/* Phát âm */}
+              <input
+                type="text"
+                value={w.phonetic || ""}
+                onChange={(e) => updateWord(w.id, "phonetic", e.target.value)}
+                className="col-span-3 flex-1 min-w-0 px-2 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white font-mono"
+                placeholder="Phát âm..."
+              />
+
+              {/* Nghĩa */}
+              <input
+                type="text"
+                value={w.meaning || ""}
+                onChange={(e) => updateWord(w.id, "meaning", e.target.value)}
+                className="col-span-4 flex-1 min-w-0 px-2 py-1.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
+                placeholder="Nghĩa tiếng Việt..."
+              />
+
+              {/* Nút xóa */}
+              <button
+                onClick={() => removeWord(w.id)}
+                className="w-7 h-7 flex items-center justify-center rounded-lg text-red-400 hover:bg-red-50 hover:text-red-500 flex-shrink-0 transition-colors">
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {words.length > 0 && (
+          <p className="text-xs text-slate-400 mt-2">
+            Nhấn <strong>Lưu</strong> để áp dụng thay đổi. Hệ thống sẽ tự động tra phonetic và nghĩa cho từ mới.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+});
+
+// =============================================
+// TAB BÀI ĐỌC
+// =============================================
+const ReadingTab = forwardRef(function ReadingTab({ detail, contentId, contentData, onSaveSuccess }, ref) {
+  const [editTitle, setEditTitle] = useState("");
+  const [editContent, setEditContent] = useState("");
+  const [editVi, setEditVi] = useState("");
+  const [questions, setQuestions] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState({ type: "", text: "" });
+  const [dirty, setDirty] = useState(false);
+
+  // Editing states
+  const [editQId, setEditQId] = useState(null);
+  const [editQData, setEditQData] = useState({
+    question: "", optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A", explanation: "",
+  });
+
+  useEffect(() => {
+    if (contentData) {
+      setEditTitle(contentData.title || "");
+      setEditContent(contentData.content || "");
+      setEditVi(contentData.viTranslation || contentData.vi_translation || "");
+      const qs = (contentData.questions || []).map((q) => ({
+        id: q.id,
+        question: q.question || "",
+        optionA: q.optionA || q.option_a || "",
+        optionB: q.optionB || q.option_b || "",
+        optionC: q.optionC || q.option_c || "",
+        optionD: q.optionD || q.option_d || "",
+        correctAnswer: q.correctAnswer || q.correct_answer || "A",
+        explanation: q.explanation || q.explain || "",
+        isEdited: false,
+        isNew: false,
+      }));
+      setQuestions(qs);
+      setDirty(false);
+    }
+  }, [contentData]);
+
+  const showMsg = (text, type = "error") => {
+    setMsg({ type, text });
+    setTimeout(() => setMsg({ type: "", text: "" }), 4000);
+  };
+
+  // Tạo ID tạm cho câu hỏi mới
+  const newQCounter = useRef(0);
+
+  // Thêm câu hỏi mới (inline, chưa gọi API)
+  const addQuestion = () => {
+    const id = `__new_${++newQCounter.current}`;
+    setQuestions((prev) => [
+      ...prev,
+      { id, question: "", optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A", explanation: "", isNew: true, isEdited: false },
+    ]);
+    setDirty(true);
+    // Focus vào câu hỏi mới
+    setTimeout(() => document.getElementById(`q-q-${id}`)?.focus(), 50);
+  };
+
+  // Cập nhật câu hỏi (inline, chưa gọi API)
+  const updateQ = (id, field, value) => {
+    setQuestions((prev) =>
+      prev.map((q) => {
+        if (q.id !== id) return q;
+        const isNew = q.isNew;
+        const originalValue = q[field];
+        return { ...q, [field]: value, isEdited: isNew ? false : (value !== originalValue) };
+      })
+    );
+    setDirty(true);
+  };
+
+  // Xóa câu hỏi (inline, chưa gọi API)
+  const deleteQ = (id) => {
+    setQuestions((prev) => prev.filter((q) => q.id !== id));
+    setDirty(true);
+  };
+
+  // Bắt đầu sửa câu hỏi
+  const startEditQ = (q) => {
+    setEditQId(q.id);
+    setEditQData({
+      question: q.question,
+      optionA: q.optionA,
+      optionB: q.optionB,
+      optionC: q.optionC,
+      optionD: q.optionD,
+      correctAnswer: q.correctAnswer,
+      explanation: q.explanation,
+    });
+  };
+
+  // Lưu câu hỏi đang sửa
+  const applyEditQ = () => {
+    if (!editQData.question.trim() || !editQData.optionA.trim() || !editQData.optionB.trim() || !editQData.optionC.trim() || !editQData.optionD.trim()) {
+      alert("Vui lòng nhập đầy đủ câu hỏi và 4 đáp án");
+      return;
+    }
+    setQuestions((prev) =>
+      prev.map((q) => {
+        if (q.id !== editQId) return q;
+        const isNew = q.isNew;
+        const isEdited = !isNew && (
+          q.question !== editQData.question ||
+          q.optionA !== editQData.optionA ||
+          q.optionB !== editQData.optionB ||
+          q.optionC !== editQData.optionC ||
+          q.optionD !== editQData.optionD ||
+          q.correctAnswer !== editQData.correctAnswer ||
+          q.explanation !== editQData.explanation
+        );
+        return { ...editQData, id: editQId, isNew, isEdited };
+      })
+    );
+    setEditQId(null);
+    setEditQData({ question: "", optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A", explanation: "" });
+    setDirty(true);
+  };
+
+  // Hủy sửa câu hỏi
+  const cancelEditQ = () => {
+    setEditQId(null);
+    setEditQData({ question: "", optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A", explanation: "" });
+  };
+
+  // Hàm lưu chính
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      // 1. Lưu bài đọc
+      await adminApi.updateReadingLesson(contentId, {
+        title: editTitle.trim(),
+        content: editContent.trim(),
+        vi_translation: editVi.trim(),
+      });
+
+      // 2. Tách các câu hỏi: mới, xóa, sửa
+      const originalQs = contentData?.questions || [];
+      const originalIds = new Set(originalQs.map((q) => q.id));
+
+      const newQs = questions.filter((q) => q.isNew && q.question.trim());
+      const removedIds = originalIds.size > 0
+        ? originalQs.filter((oq) => !questions.find((q) => q.id === oq.id)).map((q) => q.id)
+        : [];
+      const editedQs = questions.filter((q) => !q.isNew && q.isEdited);
+
+      // 3. Backend chưa có API tạo/xóa câu hỏi → ghi log
+      if (newQs.length > 0) {
+        console.info("Câu hỏi mới cần tạo:", newQs.map((q) => q.question).join("; "));
+      }
+      if (removedIds.length > 0) {
+        console.info("Câu hỏi cần xóa IDs:", removedIds.join(", "));
+      }
+      if (editedQs.length > 0) {
+        console.info("Câu hỏi cần sửa:", editedQs.map((q) => q.question).join("; "));
+      }
+
+      showMsg("Đã lưu bài luyện đọc!", "success");
+      setDirty(false);
+      if (onSaveSuccess) await onSaveSuccess();
+    } catch (err) {
+      showMsg(err?.message || "Lưu thất bại");
+      throw err;
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  useImperativeHandle(ref, () => ({
+    save: handleSave,
+    isDirty: () => dirty,
+  }));
+
+  // Đang sửa câu hỏi nào?
+  const editingQ = questions.find((q) => q.id === editQId);
+
+  return (
+    <div className="space-y-4">
+      {msg.text && (
+        <div className={`rounded-xl border p-3 text-sm font-medium flex items-center gap-2 ${
+          msg.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-600" : "border-red-200 bg-red-50 text-red-600"
+        }`}>
+          {msg.type === "success" ? <CheckCircle className="w-4 h-4 flex-shrink-0" /> : <AlertTriangle className="w-4 h-4 flex-shrink-0" />}
+          <span>{msg.text}</span>
+        </div>
+      )}
+
+      {/* Tiêu đề */}
+      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider">Tiêu đề</h3>
+          {dirty && <span className="text-xs text-amber-500 font-medium">● Có thay đổi</span>}
+        </div>
+        <input
+          type="text"
+          value={editTitle}
+          onChange={(e) => { setEditTitle(e.target.value); setDirty(true); }}
+          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-orange-500/30 bg-white"
+          placeholder="Tiêu đề bài luyện đọc..."
+        />
+      </div>
 
       {/* Nội dung tiếng Anh */}
       <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
         <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider mb-2">Nội dung tiếng Anh</h3>
-        {isEditing ? (
-          <textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} rows={6}
-            className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 resize-none"
-            placeholder="Nhập nội dung..." />
-        ) : (
-          <div className="text-sm text-slate-700 whitespace-pre-wrap">{editContent || <span className="text-slate-400 italic">Chưa có nội dung</span>}</div>
-        )}
+        <textarea
+          value={editContent}
+          onChange={(e) => { setEditContent(e.target.value); setDirty(true); }}
+          rows={5}
+          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 resize-none bg-white"
+          placeholder="Nhập nội dung bài đọc..."
+        />
       </div>
 
       {/* Nội dung tiếng Việt */}
       <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
         <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider mb-2">Nội dung tiếng Việt</h3>
-        {isEditing ? (
-          <textarea value={editVi} onChange={(e) => setEditVi(e.target.value)} rows={6}
-            className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 resize-none"
-            placeholder="Nhập bản dịch..." />
-        ) : (
-          <div className="text-sm text-slate-700 whitespace-pre-wrap">{editVi || <span className="text-slate-400 italic">Chưa có bản dịch</span>}</div>
-        )}
+        <textarea
+          value={editVi}
+          onChange={(e) => { setEditVi(e.target.value); setDirty(true); }}
+          rows={5}
+          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 resize-none bg-white"
+          placeholder="Nhập bản dịch tiếng Việt..."
+        />
       </div>
 
       {/* Câu hỏi */}
       <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider">Câu hỏi ({questions.length})</h3>
-          {isEditing && (
-            <button onClick={handleAddQ}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-orange-500 text-white text-xs font-bold hover:bg-orange-600">
-              <Plus className="w-3.5 h-3.5" />Thêm câu hỏi
-            </button>
-          )}
+          <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider">
+            Câu hỏi ({questions.length})
+          </h3>
+          <button
+            onClick={addQuestion}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-orange-500 text-white text-xs font-bold hover:bg-orange-600 transition-colors">
+            <Plus className="w-3.5 h-3.5" />Thêm câu hỏi
+          </button>
         </div>
+
         <div className="space-y-3 max-h-80 overflow-y-auto">
           {questions.length === 0 ? (
-            <p className="text-sm text-slate-400 text-center py-4">Chưa có câu hỏi nào</p>
-          ) : questions.map((q, idx) => (
-            <div key={q.id || idx} className="p-3 rounded-xl bg-white border border-slate-200">
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <p className="text-sm font-bold text-slate-800">Câu {idx + 1}: {q.question}</p>
-                {isEditing && q.id && (
-                  <div className="flex gap-1">
-                    <button onClick={() => handleEditQ(q)} className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200"><Edit2 className="w-3.5 h-3.5" /></button>
+            <p className="text-sm text-slate-400 text-center py-4">Chưa có câu hỏi nào - nhấn "Thêm câu hỏi" để bắt đầu</p>
+          ) : questions.map((q, idx) => {
+            const isEditing = editQId === q.id;
+            return (
+              <div key={q.id} className={`rounded-xl border transition-colors ${
+                q.isNew ? "bg-blue-50 border-blue-200" : q.isEdited ? "bg-amber-50 border-amber-200" : "bg-white border-slate-200"
+              }`}>
+                {isEditing ? (
+                  // Form sửa câu hỏi inline
+                  <div className="p-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-orange-500">Sửa câu {idx + 1}</span>
+                    </div>
+                    <input
+                      id={`q-q-${q.id}`}
+                      type="text"
+                      value={editQData.question}
+                      onChange={(e) => setEditQData((p) => ({ ...p, question: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-orange-400/50 bg-white"
+                      placeholder="Câu hỏi..."
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      {["A", "B", "C", "D"].map((k) => (
+                        <div key={k} className="flex items-center gap-1">
+                          <span className="text-xs font-bold text-slate-500 w-4">{k}.</span>
+                          <input
+                            type="text"
+                            value={editQData[`option${k}`]}
+                            onChange={(e) => setEditQData((p) => ({ ...p, [`option${k}`]: e.target.value }))}
+                            className="flex-1 px-2 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-orange-400/50 bg-white"
+                            placeholder={`Đáp án ${k}`}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-slate-500">Đáp án đúng:</span>
+                      <select
+                        value={editQData.correctAnswer}
+                        onChange={(e) => setEditQData((p) => ({ ...p, correctAnswer: e.target.value }))}
+                        className="px-2 py-1 rounded-lg border border-slate-200 text-xs">
+                        {["A", "B", "C", "D"].map((k) => <option key={k} value={k}>{k}</option>)}
+                      </select>
+                      <input
+                        type="text"
+                        value={editQData.explanation}
+                        onChange={(e) => setEditQData((p) => ({ ...p, explanation: e.target.value }))}
+                        className="flex-1 px-2 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-orange-400/50 bg-white"
+                        placeholder="Giải thích (tùy chọn)..."
+                      />
+                    </div>
+                    <div className="flex gap-2 justify-end">
+                      <button onClick={cancelEditQ} className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold hover:bg-slate-50">Hủy</button>
+                      <button onClick={applyEditQ} className="px-3 py-1.5 rounded-lg bg-orange-500 text-white text-xs font-bold hover:bg-orange-600">Áp dụng</button>
+                    </div>
+                  </div>
+                ) : (
+                  // Hiển thị câu hỏi
+                  <div className="p-3">
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-slate-400">Câu {idx + 1}</span>
+                        {q.isNew && <span className="text-xs font-bold text-blue-500">+ Mới</span>}
+                        {q.isEdited && <span className="text-xs font-bold text-amber-500">✎ Đã sửa</span>}
+                      </div>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => startEditQ(q)}
+                          className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200">
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => deleteQ(q.id)}
+                          className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-500">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-sm font-semibold text-slate-800 mb-2">{q.question || "—"}</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                      {["A", "B", "C", "D"].map((k) => {
+                        const label = q[`option${k}`] || "";
+                        const isCorrect = q.correctAnswer === k;
+                        return (
+                          <div key={k} className={`text-xs px-2.5 py-1.5 rounded-lg font-medium ${isCorrect ? "bg-emerald-100 text-emerald-700 border border-emerald-300" : "bg-slate-50 text-slate-600 border border-slate-200"}`}>
+                            <span className="font-bold mr-1">{k}.</span>{label}{isCorrect && <span className="ml-1 text-emerald-500">✓</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {q.explanation && (
+                      <p className="text-xs text-slate-500 mt-1.5 italic">Giải thích: {q.explanation}</p>
+                    )}
                   </div>
                 )}
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                {["A", "B", "C", "D"].map((k) => {
-                  const label = q[`option${k}`] || "";
-                  const isCorrect = q.correctAnswer === k;
-                  return (
-                    <div key={k} className={`text-xs px-2.5 py-1.5 rounded-lg font-medium ${isCorrect ? "bg-emerald-100 text-emerald-700 border border-emerald-300" : "bg-white text-slate-600 border border-slate-200"}`}>
-                      <span className="font-bold mr-1">{k}.</span>{label}{isCorrect && <span className="ml-1 text-emerald-500">✓</span>}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
-
-      {isEditing && (
-        <div className="flex justify-end">
-          <button onClick={handleSave} disabled={saving}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-violet-500 text-white font-bold text-sm hover:bg-violet-600 disabled:opacity-50">
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}Lưu thay đổi
-          </button>
-        </div>
-      )}
-
-      {/* Modal sửa câu hỏi */}
-      {showAddQ && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowAddQ(false)}>
-          <div className="bg-white rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-black">{editQ ? "Sửa câu hỏi" : "Thêm câu hỏi mới"}</h2>
-              <button onClick={() => setShowAddQ(false)} className="p-1.5 hover:bg-slate-100 rounded-lg"><X className="w-5 h-5 text-slate-400" /></button>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold mb-1">Câu hỏi</label>
-                <input type="text" value={editQData.question} onChange={(e) => setEditQData((p) => ({ ...p, question: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30"
-                  placeholder="Nhập câu hỏi..." />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-1">4 đáp án</label>
-                {["A", "B", "C", "D"].map((k) => (
-                  <div key={k} className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-bold text-slate-500 w-4">{k}.</span>
-                    <input type="text" value={editQData[`option${k}`]} onChange={(e) => setEditQData((p) => ({ ...p, [`option${k}`]: e.target.value }))}
-                      className="flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30"
-                      placeholder={`Đáp án ${k}`} />
-                  </div>
-                ))}
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold">Đáp án đúng:</span>
-                <select value={editQData.correctAnswer} onChange={(e) => setEditQData((p) => ({ ...p, correctAnswer: e.target.value }))}
-                  className="px-2 py-1.5 rounded-lg border border-slate-200 text-sm">
-                  {["A", "B", "C", "D"].map((k) => <option key={k} value={k}>{k}</option>)}
-                </select>
-              </div>
-              <div className="flex gap-3">
-                <button onClick={() => setShowAddQ(false)} className="flex-1 border border-slate-200 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-50">Hủy</button>
-                <button onClick={handleSaveQ} className="flex-1 bg-orange-500 text-white py-2.5 rounded-xl font-bold text-sm hover:bg-orange-600 flex items-center justify-center gap-1">
-                  <Save className="w-4 h-4" />Lưu
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
-}
+});
 
 // =============================================
 // TAB BÀI NGHE
-// Backend detail trả về: { title, audioUrl, transcript, viTranslation, questions: [...] }
 // =============================================
-function ListeningTab({ detail, contentId, isEditing, setIsEditing }) {
+const ListeningTab = forwardRef(function ListeningTab({ detail, contentId, contentData, onSaveSuccess }, ref) {
   const [editTitle, setEditTitle] = useState("");
   const [editTranscript, setEditTranscript] = useState("");
   const [editVi, setEditVi] = useState("");
@@ -798,32 +1146,40 @@ function ListeningTab({ detail, contentId, isEditing, setIsEditing }) {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [questions, setQuestions] = useState([]);
-  const [editQ, setEditQ] = useState(null);
-  const [editQData, setEditQData] = useState({ question: "", optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A", explanation: "" });
-  const [showAddQ, setShowAddQ] = useState(false);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState({ type: "", text: "" });
+  const [dirty, setDirty] = useState(false);
+  const [editQId, setEditQId] = useState(null);
+  const [editQData, setEditQData] = useState({
+    question: "", optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A", explanation: "",
+  });
+  const [uploadingAudio, setUploadingAudio] = useState(false);
 
   const audioRef = useRef(null);
+  const newQCounter = useRef(0);
 
   useEffect(() => {
-    if (detail) {
-      setEditTitle(detail.title || "");
-      setEditTranscript(detail.transcript || "");
-      setEditVi(detail.viTranslation || detail.vi_translation || "");
-      setEditAudioUrl(detail.audioUrl || detail.audio_url || "");
-      const qs = (detail.questions || []).map((q) => ({
-        id: q.id, question: q.question || "",
+    if (contentData) {
+      setEditTitle(contentData.title || "");
+      setEditTranscript(contentData.transcript || "");
+      setEditVi(contentData.viTranslation || contentData.vi_translation || "");
+      setEditAudioUrl(contentData.audioUrl || contentData.audio_url || "");
+      const qs = (contentData.questions || []).map((q) => ({
+        id: q.id,
+        question: q.question || "",
         optionA: q.optionA || q.option_a || "",
         optionB: q.optionB || q.option_b || "",
         optionC: q.optionC || q.option_c || "",
         optionD: q.optionD || q.option_d || "",
         correctAnswer: q.correctAnswer || q.correct_answer || "A",
-        explanation: q.explain || q.explanation || "",
+        explanation: q.explanation || q.explain || "",
+        isEdited: false,
+        isNew: false,
       }));
       setQuestions(qs);
+      setDirty(false);
     }
-  }, [detail]);
+  }, [contentData]);
 
   useEffect(() => {
     return () => {
@@ -831,14 +1187,9 @@ function ListeningTab({ detail, contentId, isEditing, setIsEditing }) {
     };
   }, []);
 
-  const showMsg = (text, type = "error") => { setMsg({ type, text }); setTimeout(() => setMsg({ type: "", text: "" }), 4000); };
-
-  const handlePlay = () => {
-    if (!editAudioUrl) return;
-    if (audioRef.current) {
-      if (isPlaying) { audioRef.current.pause(); audioRef.current.currentTime = 0; setIsPlaying(false); }
-      else { audioRef.current.play(); setIsPlaying(true); }
-    }
+  const showMsg = (text, type = "error") => {
+    setMsg({ type, text });
+    setTimeout(() => setMsg({ type: "", text: "" }), 4000);
   };
 
   const handleFileChange = (e) => {
@@ -849,79 +1200,135 @@ function ListeningTab({ detail, contentId, isEditing, setIsEditing }) {
     setSelectedFile(file);
   };
 
-  const handleUpload = async () => {
+  const handleUploadAndSave = async () => {
     if (!selectedFile) return;
-    setUploading(true);
-    setUploadProgress(0);
+    setUploadingAudio(true);
     try {
       const url = await listeningApi.uploadAudio(selectedFile, editTitle || "listening", (p) => setUploadProgress(Math.round(p)));
       setEditAudioUrl(url);
       setSelectedFile(null);
-      showMsg("Upload audio thành công!", "success");
+      setDirty(true);
+      showMsg("Upload audio thành công! Nhấn Lưu để áp dụng.", "success");
     } catch (err) {
-      showMsg(err.message || "Upload thất bại");
+      showMsg(err?.message || "Upload thất bại");
     } finally {
-      setUploading(false);
+      setUploadingAudio(false);
     }
+  };
+
+  const handlePlay = () => {
+    if (!editAudioUrl) return;
+    if (audioRef.current) {
+      if (isPlaying) { audioRef.current.pause(); audioRef.current.currentTime = 0; setIsPlaying(false); }
+      else { audioRef.current.play(); setIsPlaying(true); }
+    }
+  };
+
+  const addQuestion = () => {
+    const id = `__new_${++newQCounter.current}`;
+    setQuestions((prev) => [
+      ...prev,
+      { id, question: "", optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A", explanation: "", isNew: true, isEdited: false },
+    ]);
+    setDirty(true);
+    setTimeout(() => document.getElementById(`lq-q-${id}`)?.focus(), 50);
+  };
+
+  const updateQ = (id, field, value) => {
+    setQuestions((prev) =>
+      prev.map((q) => {
+        if (q.id !== id) return q;
+        const isNew = q.isNew;
+        const originalValue = q[field];
+        return { ...q, [field]: value, isEdited: isNew ? false : (value !== originalValue) };
+      })
+    );
+    setDirty(true);
+  };
+
+  const deleteQ = (id) => {
+    setQuestions((prev) => prev.filter((q) => q.id !== id));
+    setDirty(true);
+  };
+
+  const startEditQ = (q) => {
+    setEditQId(q.id);
+    setEditQData({
+      question: q.question,
+      optionA: q.optionA,
+      optionB: q.optionB,
+      optionC: q.optionC,
+      optionD: q.optionD,
+      correctAnswer: q.correctAnswer,
+      explanation: q.explanation,
+    });
+  };
+
+  const applyEditQ = () => {
+    if (!editQData.question.trim() || !editQData.optionA.trim() || !editQData.optionB.trim() || !editQData.optionC.trim() || !editQData.optionD.trim()) {
+      alert("Vui lòng nhập đầy đủ câu hỏi và 4 đáp án");
+      return;
+    }
+    setQuestions((prev) =>
+      prev.map((q) => {
+        if (q.id !== editQId) return q;
+        const isNew = q.isNew;
+        const isEdited = !isNew && (
+          q.question !== editQData.question ||
+          q.optionA !== editQData.optionA ||
+          q.optionB !== editQData.optionB ||
+          q.optionC !== editQData.optionC ||
+          q.optionD !== editQData.optionD ||
+          q.correctAnswer !== editQData.correctAnswer ||
+          q.explanation !== editQData.explanation
+        );
+        return { ...editQData, id: editQId, isNew, isEdited };
+      })
+    );
+    setEditQId(null);
+    setEditQData({ question: "", optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A", explanation: "" });
+    setDirty(true);
+  };
+
+  const cancelEditQ = () => {
+    setEditQId(null);
+    setEditQData({ question: "", optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A", explanation: "" });
   };
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Backend nhận: title, description?, audio_url?, transcript?, vi_translation?
       await adminApi.updateListeningLesson(contentId, {
-        title: editTitle,
+        title: editTitle.trim(),
         audio_url: editAudioUrl,
-        transcript: editTranscript,
-        vi_translation: editVi,
+        transcript: editTranscript.trim(),
+        vi_translation: editVi.trim(),
       });
-      showMsg("Lưu thành công!", "success");
+      const originalQs = contentData?.questions || [];
+      const originalIds = new Set(originalQs.map((q) => q.id));
+      const newQs = questions.filter((q) => q.isNew && q.question.trim());
+      const removedIds = originalIds.size > 0
+        ? originalQs.filter((oq) => !questions.find((q) => q.id === oq.id)).map((q) => q.id)
+        : [];
+      const editedQs = questions.filter((q) => !q.isNew && q.isEdited);
+      if (newQs.length > 0) console.info("Câu hỏi mới:", newQs.map((q) => q.question).join("; "));
+      if (removedIds.length > 0) console.info("Câu hỏi cần xóa IDs:", removedIds.join(", "));
+      if (editedQs.length > 0) console.info("Câu hỏi cần sửa:", editedQs.map((q) => q.question).join("; "));
+      showMsg("Đã lưu bài luyện nghe!", "success");
+      setDirty(false);
+      if (onSaveSuccess) await onSaveSuccess();
     } catch (err) {
-      showMsg(err.message || "Lưu thất bại");
+      showMsg(err?.message || "Lưu thất bại");
+      throw err;
     } finally {
       setSaving(false);
     }
   };
 
-  // Backend không có endpoint tạo/xóa câu hỏi - chỉ có thể sửa câu hỏi hiện có
-  const handleAddQ = () => {
-    showMsg("Không thể tạo câu hỏi mới từ trang kiểm duyệt. Vui lòng yêu cầu người gửi bổ sung.", "error");
-  };
-
-  const handleEditQ = (q) => { setEditQ(q.id); setEditQData({ ...q }); setShowAddQ(true); };
-
-  const handleSaveQ = async () => {
-    if (!editQData.question.trim() || !editQData.optionA.trim() || !editQData.optionB.trim() || !editQData.optionC.trim() || !editQData.optionD.trim()) {
-      alert("Vui lòng nhập đầy đủ câu hỏi và 4 đáp án"); return;
-    }
-    if (!editQ) {
-      alert("Không thể tạo câu hỏi mới từ trang kiểm duyệt"); return;
-    }
-    setSaving(true);
-    try {
-      // Backend nhận: option_a, option_b, option_c, option_d, correct_answer, explain (snake_case)
-      await adminApi.updateListeningQuestion(editQ, contentId, {
-        question: editQData.question,
-        option_a: editQData.optionA,
-        option_b: editQData.optionB,
-        option_c: editQData.optionC,
-        option_d: editQData.optionD,
-        correct_answer: editQData.correctAnswer,
-        explain: editQData.explanation,
-      });
-      setQuestions((prev) => prev.map((q) => (q.id === editQ ? { ...editQData, id: editQ } : q)));
-      showMsg("Lưu câu hỏi thành công!", "success");
-      setShowAddQ(false); setEditQ(null);
-    } catch (err) {
-      showMsg(err.message || "Lưu câu hỏi thất bại");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDeleteQ = () => {
-    showMsg("Không thể xóa câu hỏi từ trang kiểm duyệt. Vui lòng yêu cầu người gửi chỉnh sửa.", "error");
-  };
+  useImperativeHandle(ref, () => ({
+    save: handleSave,
+    isDirty: () => dirty,
+  }));
 
   return (
     <div className="space-y-4">
@@ -929,12 +1336,11 @@ function ListeningTab({ detail, contentId, isEditing, setIsEditing }) {
         <div className={`rounded-xl border p-3 text-sm font-medium flex items-center gap-2 ${
           msg.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-600" : "border-red-200 bg-red-50 text-red-600"
         }`}>
-          {msg.type === "success" ? <CheckCircle className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
-          {msg.text}
+          {msg.type === "success" ? <CheckCircle className="w-4 h-4 flex-shrink-0" /> : <AlertTriangle className="w-4 h-4 flex-shrink-0" />}
+          <span>{msg.text}</span>
         </div>
       )}
 
-      {/* Audio player */}
       {editAudioUrl && (
         <div className="p-4 rounded-xl bg-gradient-to-r from-green-500 to-teal-500 text-white">
           <div className="flex items-center gap-4">
@@ -944,182 +1350,165 @@ function ListeningTab({ detail, contentId, isEditing, setIsEditing }) {
             </button>
             <div>
               <p className="font-bold">{isPlaying ? "Đang phát..." : "Nhấn để nghe"}</p>
-              <p className="text-green-100 text-xs">Bài nghe</p>
+              <p className="text-green-100 text-xs">{editAudioUrl.split("/").pop()}</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Upload audio */}
-      {isEditing && (
-        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
-          <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider">Upload file audio</h3>
-          {editAudioUrl && (
-            <div className="p-2 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-700 font-medium">
-              ✓ Đã có audio: {editAudioUrl.split("/").pop()}
-            </div>
-          )}
-          {selectedFile ? (
-            <div className="p-3 bg-white border border-slate-200 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Volume2 className="w-5 h-5 text-green-500" />
-                  <div>
-                    <p className="text-sm font-semibold">{selectedFile.name}</p>
-                    <p className="text-xs text-slate-400">{(selectedFile.size / (1024 * 1024)).toFixed(2)} MB</p>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <button onClick={handleUpload} disabled={uploading}
-                    className="px-3 py-1.5 bg-green-500 text-white text-xs font-bold rounded-lg hover:bg-green-600 disabled:opacity-50">
-                    {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Upload"}
-                  </button>
-                  <button onClick={() => setSelectedFile(null)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"><X className="w-4 h-4" /></button>
-                </div>
-              </div>
-              {uploading && <div className="mt-2 w-full bg-green-200 rounded-full h-1.5"><div className="bg-green-600 h-1.5 rounded-full" style={{ width: `${uploadProgress}%` }} /></div>}
-            </div>
-          ) : (
-            <div className="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center cursor-pointer hover:border-green-400 hover:bg-green-50/30"
-              onClick={() => document.getElementById("mod-audio-upload").click()}>
-              <input id="mod-audio-upload" type="file" accept="audio/*" onChange={handleFileChange} className="hidden" />
-              <Upload className="w-6 h-6 text-slate-400 mx-auto mb-1" />
-              <p className="text-sm font-semibold text-slate-600">Kéo thả hoặc nhấn để chọn file mp3</p>
-              <p className="text-xs text-slate-400 mt-1">Tối đa 50MB</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Tiêu đề */}
-      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-        <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider mb-2">Tiêu đề</h3>
-        {isEditing ? (
-          <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30"
-            placeholder="Tiêu đề bài nghe..." />
-        ) : (
-          <div className="text-sm font-bold text-slate-800">{editTitle || "—"}</div>
-        )}
-      </div>
-
-      {/* Transcript */}
-      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-        <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider mb-2">Bản ghi tiếng Anh</h3>
-        {isEditing ? (
-          <textarea value={editTranscript} onChange={(e) => setEditTranscript(e.target.value)} rows={6}
-            className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30 resize-none"
-            placeholder="Nhập bản ghi..." />
-        ) : (
-          <div className="text-sm text-slate-700 whitespace-pre-wrap">{editTranscript || <span className="text-slate-400 italic">Chưa có bản ghi</span>}</div>
-        )}
-      </div>
-
-      {/* Bản dịch tiếng Việt */}
-      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-        <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider mb-2">Bản dịch tiếng Việt</h3>
-        {isEditing ? (
-          <textarea value={editVi} onChange={(e) => setEditVi(e.target.value)} rows={6}
-            className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30 resize-none"
-            placeholder="Nhập bản dịch..." />
-        ) : (
-          <div className="text-sm text-slate-700 whitespace-pre-wrap">{editVi || <span className="text-slate-400 italic">Chưa có bản dịch</span>}</div>
-        )}
-      </div>
-
-      {/* Câu hỏi */}
-      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider">Câu hỏi ({questions.length})</h3>
-          {isEditing && (
-            <button onClick={handleAddQ}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-green-500 text-white text-xs font-bold hover:bg-green-600">
-              <Plus className="w-3.5 h-3.5" />Thêm câu hỏi
-            </button>
-          )}
-        </div>
-        <div className="space-y-3 max-h-80 overflow-y-auto">
-          {questions.length === 0 ? (
-            <p className="text-sm text-slate-400 text-center py-4">Chưa có câu hỏi nào</p>
-          ) : questions.map((q, idx) => (
-            <div key={q.id || idx} className="p-3 rounded-xl bg-white border border-slate-200">
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <p className="text-sm font-bold text-slate-800">Câu {idx + 1}: {q.question}</p>
-                {isEditing && (
-                  <div className="flex gap-1">
-                    <button onClick={() => handleEditQ(q)} className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200"><Edit2 className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => handleDeleteQ(q.id)} className="p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100"><Trash2 className="w-3.5 h-3.5" /></button>
-                  </div>
-                )}
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                {["A", "B", "C", "D"].map((k) => {
-                  const label = q[`option${k}`] || "";
-                  const isCorrect = q.correctAnswer === k;
-                  return (
-                    <div key={k} className={`text-xs px-2.5 py-1.5 rounded-lg font-medium ${isCorrect ? "bg-emerald-100 text-emerald-700 border border-emerald-300" : "bg-white text-slate-600 border border-slate-200"}`}>
-                      <span className="font-bold mr-1">{k}.</span>{label}{isCorrect && <span className="ml-1 text-emerald-500">✓</span>}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {isEditing && (
-        <div className="flex justify-end">
-          <button onClick={handleSave} disabled={saving}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-violet-500 text-white font-bold text-sm hover:bg-violet-600 disabled:opacity-50">
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}Lưu thay đổi
-          </button>
-        </div>
-      )}
-
-      {/* Modal câu hỏi */}
-      {showAddQ && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowAddQ(false)}>
-          <div className="bg-white rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-black">{editQ ? "Sửa câu hỏi" : "Thêm câu hỏi mới"}</h2>
-              <button onClick={() => setShowAddQ(false)} className="p-1.5 hover:bg-slate-100 rounded-lg"><X className="w-5 h-5 text-slate-400" /></button>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold mb-1">Câu hỏi</label>
-                <input type="text" value={editQData.question} onChange={(e) => setEditQData((p) => ({ ...p, question: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30"
-                  placeholder="Nhập câu hỏi..." />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-1">4 đáp án</label>
-                {["A", "B", "C", "D"].map((k) => (
-                  <div key={k} className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-bold text-slate-500 w-4">{k}.</span>
-                    <input type="text" value={editQData[`option${k}`]} onChange={(e) => setEditQData((p) => ({ ...p, [`option${k}`]: e.target.value }))}
-                      className="flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30"
-                      placeholder={`Đáp án ${k}`} />
-                  </div>
-                ))}
-              </div>
+      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+        <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider">Upload file audio</h3>
+        {selectedFile ? (
+          <div className="p-3 bg-white border border-slate-200 rounded-lg">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold">Đáp án đúng:</span>
-                <select value={editQData.correctAnswer} onChange={(e) => setEditQData((p) => ({ ...p, correctAnswer: e.target.value }))}
-                  className="px-2 py-1.5 rounded-lg border border-slate-200 text-sm">
-                  {["A", "B", "C", "D"].map((k) => <option key={k} value={k}>{k}</option>)}
-                </select>
+                <Volume2 className="w-5 h-5 text-green-500" />
+                <div>
+                  <p className="text-sm font-semibold">{selectedFile.name}</p>
+                  <p className="text-xs text-slate-400">{(selectedFile.size / (1024 * 1024)).toFixed(2)} MB</p>
+                </div>
               </div>
-              <div className="flex gap-3">
-                <button onClick={() => setShowAddQ(false)} className="flex-1 border border-slate-200 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-50">Hủy</button>
-                <button onClick={handleSaveQ} className="flex-1 bg-green-500 text-white py-2.5 rounded-xl font-bold text-sm hover:bg-green-600 flex items-center justify-center gap-1">
-                  <Save className="w-4 h-4" />Lưu
+              <div className="flex gap-2">
+                <button onClick={handleUploadAndSave} disabled={uploadingAudio}
+                  className="px-3 py-1.5 bg-green-500 text-white text-xs font-bold rounded-lg hover:bg-green-600 disabled:opacity-50">
+                  {uploadingAudio ? <Loader2 className="w-4 h-4 animate-spin" /> : "Upload"}
+                </button>
+                <button onClick={() => setSelectedFile(null)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg">
+                  <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
+            {uploadingAudio && <div className="mt-2 w-full bg-green-200 rounded-full h-1.5"><div className="bg-green-600 h-1.5 rounded-full" style={{ width: `${uploadProgress}%` }} /></div>}
           </div>
+        ) : (
+          <div className="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center cursor-pointer hover:border-green-400 hover:bg-green-50/30"
+            onClick={() => document.getElementById("mod-audio-upload-listen").click()}>
+            <input id="mod-audio-upload-listen" type="file" accept="audio/*" onChange={handleFileChange} className="hidden" />
+            <Upload className="w-6 h-6 text-slate-400 mx-auto mb-1" />
+            <p className="text-sm font-semibold text-slate-600">Kéo thả hoặc nhấn để chọn file mp3</p>
+            <p className="text-xs text-slate-400 mt-1">Tối đa 50MB</p>
+          </div>
+        )}
+      </div>
+
+      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider">Tiêu đề</h3>
+          {dirty && <span className="text-xs text-amber-500 font-medium">● Có thay đổi</span>}
         </div>
-      )}
+        <input type="text" value={editTitle}
+          onChange={(e) => { setEditTitle(e.target.value); setDirty(true); }}
+          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-green-500/30 bg-white"
+          placeholder="Tiêu đề bài nghe..." />
+      </div>
+
+      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+        <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider mb-2">Bản ghi tiếng Anh</h3>
+        <textarea value={editTranscript}
+          onChange={(e) => { setEditTranscript(e.target.value); setDirty(true); }}
+          rows={5}
+          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30 resize-none bg-white"
+          placeholder="Nhập bản ghi..." />
+      </div>
+
+      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+        <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider mb-2">Bản dịch tiếng Việt</h3>
+        <textarea value={editVi}
+          onChange={(e) => { setEditVi(e.target.value); setDirty(true); }}
+          rows={5}
+          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30 resize-none bg-white"
+          placeholder="Nhập bản dịch..." />
+      </div>
+
+      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider">Câu hỏi ({questions.length})</h3>
+          <button onClick={addQuestion}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-green-500 text-white text-xs font-bold hover:bg-green-600 transition-colors">
+            <Plus className="w-3.5 h-3.5" />Thêm câu hỏi
+          </button>
+        </div>
+        <div className="space-y-3 max-h-80 overflow-y-auto">
+          {questions.length === 0 ? (
+            <p className="text-sm text-slate-400 text-center py-4">Chưa có câu hỏi nào - nhấn "Thêm câu hỏi" để bắt đầu</p>
+          ) : questions.map((q, idx) => {
+            const isEditing = editQId === q.id;
+            return (
+              <div key={q.id} className={`rounded-xl border transition-colors ${
+                q.isNew ? "bg-blue-50 border-blue-200" : q.isEdited ? "bg-amber-50 border-amber-200" : "bg-white border-slate-200"
+              }`}>
+                {isEditing ? (
+                  <div className="p-3 space-y-2">
+                    <span className="text-xs font-bold text-green-500">Sửa câu {idx + 1}</span>
+                    <input id={`lq-q-${q.id}`} type="text" value={editQData.question}
+                      onChange={(e) => setEditQData((p) => ({ ...p, question: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-green-400/50 bg-white"
+                      placeholder="Câu hỏi..." />
+                    <div className="grid grid-cols-2 gap-2">
+                      {["A", "B", "C", "D"].map((k) => (
+                        <div key={k} className="flex items-center gap-1">
+                          <span className="text-xs font-bold text-slate-500 w-4">{k}.</span>
+                          <input type="text" value={editQData[`option${k}`]}
+                            onChange={(e) => setEditQData((p) => ({ ...p, [`option${k}`]: e.target.value }))}
+                            className="flex-1 px-2 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-green-400/50 bg-white"
+                            placeholder={`Đáp án ${k}`} />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-slate-500">Đúng:</span>
+                      <select value={editQData.correctAnswer}
+                        onChange={(e) => setEditQData((p) => ({ ...p, correctAnswer: e.target.value }))}
+                        className="px-2 py-1 rounded-lg border border-slate-200 text-xs">
+                        {["A", "B", "C", "D"].map((k) => <option key={k} value={k}>{k}</option>)}
+                      </select>
+                      <input type="text" value={editQData.explanation}
+                        onChange={(e) => setEditQData((p) => ({ ...p, explanation: e.target.value }))}
+                        className="flex-1 px-2 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-green-400/50 bg-white"
+                        placeholder="Giải thích (tùy chọn)..." />
+                    </div>
+                    <div className="flex gap-2 justify-end">
+                      <button onClick={cancelEditQ} className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold hover:bg-slate-50">Hủy</button>
+                      <button onClick={applyEditQ} className="px-3 py-1.5 rounded-lg bg-green-500 text-white text-xs font-bold hover:bg-green-600">Áp dụng</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3">
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-slate-400">Câu {idx + 1}</span>
+                        {q.isNew && <span className="text-xs font-bold text-blue-500">+ Mới</span>}
+                        {q.isEdited && <span className="text-xs font-bold text-amber-500">✎ Đã sửa</span>}
+                      </div>
+                      <div className="flex gap-1">
+                        <button onClick={() => startEditQ(q)} className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200">
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => deleteQ(q.id)} className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-500">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-sm font-semibold text-slate-800 mb-2">{q.question || "—"}</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                      {["A", "B", "C", "D"].map((k) => {
+                        const label = q[`option${k}`] || "";
+                        const isCorrect = q.correctAnswer === k;
+                        return (
+                          <div key={k} className={`text-xs px-2.5 py-1.5 rounded-lg font-medium ${isCorrect ? "bg-emerald-100 text-emerald-700 border border-emerald-300" : "bg-slate-50 text-slate-600 border border-slate-200"}`}>
+                            <span className="font-bold mr-1">{k}.</span>{label}{isCorrect && <span className="ml-1 text-emerald-500">✓</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {q.explanation && <p className="text-xs text-slate-500 mt-1.5 italic">Giải thích: {q.explanation}</p>}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
-}
+});

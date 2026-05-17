@@ -262,6 +262,14 @@ export const listeningApi = {
     });
   },
 
+  // Gửi yêu cầu kiểm duyệt bài luyện nghe (dùng chung endpoint moderation-requests)
+  requestModeration: async (lessonId) => {
+    return fetchWithAuth("/api/v1/moderation-requests", {
+      method: "POST",
+      body: JSON.stringify({ contentType: "listening_lesson", contentId: lessonId }),
+    });
+  },
+
   // Chuyển bài luyện nghe về chế độ riêng tư
   makePrivate: async (lessonId) => {
     return fetchWithAuth(`${LISTENING_LESSON_URL}/${lessonId}/make-private`, {
