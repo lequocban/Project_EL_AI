@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback, useRef, forwardRef, Component } from "react";
+import { useState, useEffect, useCallback, useRef, useImperativeHandle, forwardRef, Component } from "react";
 import {
   ShieldCheck, BookOpen, BookText, Headphones,
   Loader2, Eye, CheckCircle, XCircle,
   ChevronLeft, ChevronRight, AlertTriangle, Clock,
   Check, X, Filter, Plus, Trash2, Save,
   ArrowUpDown, User, Calendar, Volume2, Play, Pause, Upload,
-  Edit2, RefreshCw,
+  Edit2,
 } from "lucide-react";
 import { adminApi } from "@/api/admin";
 import { listeningApi } from "@/api/client/listeningApi";
@@ -67,11 +67,12 @@ const formatDate = (dateStr) => {
   });
 };
 
-const getRequesterName = (requester) => {
+  const getRequesterName = (requester) => {
   if (!requester) return "—";
   if (typeof requester === "string") return requester;
   if (typeof requester === "object") {
     if (requester.userName) return requester.userName;
+    if (requester.username) return requester.username;
     if (requester.email) return requester.email;
     if (requester.name) return requester.name;
     if (requester.id) return `#${requester.id}`;
@@ -315,39 +316,72 @@ function ModerationDetailModal({ item, tab, onClose, onReviewed }) {
   const readingTabRef = useRef(null);
   const listeningTabRef = useRef(null);
   const [savingContent, setSavingContent] = useState(false);
+  const [dirty, setDirty] = useState(false);
 
-  useEffect(() => {
-    loadDetail();
-  }, [item.id]);
-
-  const loadDetail = async () => {
+  // Dùng useCallback để tránh stale closure và luôn có hàm mới nhất
+  const loadDetail = useCallback(async () => {
     setDetailLoading(true);
     setDetailError("");
     try {
       const res = await adminApi.getModerationRequest(item.id);
-      // Backend trả về { code, success, data: { ...moderationRequest, content: {...} } }
-      // Hoặc có thể trả thẳng data theo format cũ
-      const raw = res.data || res;
+      const moderationReq = res.data || res || {};
+      const content = moderationReq.content || {};
+      const contentDetails = content.contentDetails || {};
 
-      // content chi tiết nằm trong raw.content hoặc raw.contentDetails (theo doc)
-      const moderationReq = raw.content || raw.contentDetails || raw;
+      // Backend trả về content.words là object dạng { words: [...] }
+      // nên cần đọc content.words.words thay vì content.words trực tiếp
+      let wordsData = [];
+      if (content.words) {
+        wordsData = Array.isArray(content.words.words)
+          ? content.words.words
+          : [];
+      }
+      if (wordsData.length === 0 && Array.isArray(contentDetails.words)) {
+        wordsData = contentDetails.words;
+      }
 
-      // Lấy thông tin request gốc
-      setAdminReason(moderationReq.reason || "");
-      setAdminNotes(moderationReq.notes || "");
+      const mergedContent = {
+        ...content,
+        ...contentDetails,
+        words: wordsData,
+      };
 
-      // content chi tiết (words, questions...) nằm trong raw.content hoặc raw
-      const contentDetail = raw.content || raw;
       setDetail({
-        ...moderationReq,
-        ...contentDetail,
+        id: moderationReq.id,
+        contentType: moderationReq.contentType,
+        contentId: moderationReq.contentId,
+        status: moderationReq.status,
+        createdAt: moderationReq.createdAt || moderationReq.created_at,
+        submitter: moderationReq.submitter || moderationReq.requester || moderationReq.requestedBy,
+        moderator: moderationReq.moderator || moderationReq.reviewer,
+        reason: moderationReq.reason || moderationReq.reviewNote || "",
+        notes: moderationReq.notes || "",
+        ...mergedContent,
+        contentData: mergedContent,
       });
+
+      setAdminReason(moderationReq.reason || moderationReq.reviewNote || "");
+      setAdminNotes(moderationReq.notes || "");
     } catch (err) {
       console.error("Lỗi tải chi tiết:", err);
       setDetailError(err?.message || "Không thể tải chi tiết yêu cầu kiểm duyệt");
     } finally {
       setDetailLoading(false);
     }
+  }, [item.id]);
+
+  // Gọi loadDetail khi item.id thay đổi
+  useEffect(() => {
+    loadDetail();
+  }, [loadDetail]);
+
+  // Reload key để buộc useEffect của Tab re-run khi content thay đổi
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const handleSaveSuccess = () => {
+    setReloadKey((k) => k + 1);
+    loadDetail();
+    setDirty(false);
   };
 
   const handleSaveContent = async () => {
@@ -360,6 +394,8 @@ function ModerationDetailModal({ item, tab, onClose, onReviewed }) {
       } else if (tab === "listening" && listeningTabRef.current) {
         await listeningTabRef.current.save();
       }
+      // Reload chi tiết sau khi lưu thành công
+      await handleSaveSuccess();
     } finally {
       setSavingContent(false);
     }
@@ -375,6 +411,16 @@ function ModerationDetailModal({ item, tab, onClose, onReviewed }) {
       setDetailError(err.message || "Thao tác thất bại");
     } finally {
       setIsReviewing(false);
+    }
+  };
+
+  const handleClose = () => {
+    if (dirty) {
+      if (window.confirm("Bạn có thay đổi chưa lưu. Bạn có chắc muốn đóng không?")) {
+        onClose();
+      }
+    } else {
+      onClose();
     }
   };
 
@@ -408,7 +454,7 @@ function ModerationDetailModal({ item, tab, onClose, onReviewed }) {
             <span className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full border ${StatusCfg.color}`}>
               <StatusCfg.icon className="w-3 h-3" />{StatusCfg.label}
             </span>
-            <button onClick={onClose} className="p-2 rounded-lg hover:bg-slate-100"><X className="w-5 h-5 text-slate-400" /></button>
+            <button onClick={handleClose} className="p-2 rounded-lg hover:bg-slate-100"><X className="w-5 h-5 text-slate-400" /></button>
           </div>
         </div>
 
@@ -460,13 +506,13 @@ function ModerationDetailModal({ item, tab, onClose, onReviewed }) {
 
               {/* Nội dung chi tiết theo tab */}
               {tab === "vocabulary" && contentId && (
-                <VocabularyTab ref={vocabTabRef} detail={detail} contentId={contentId} contentData={detail?.content || detail} onSaveSuccess={loadDetail} />
+                <VocabularyTab ref={vocabTabRef} detail={detail} contentId={contentId} contentData={detail?.contentData || detail} key={reloadKey} onSaveSuccess={handleSaveSuccess} onDirtyChange={setDirty} />
               )}
               {tab === "reading" && contentId && (
-                <ReadingTab ref={readingTabRef} detail={detail} contentId={contentId} contentData={detail?.content || detail} onSaveSuccess={loadDetail} />
+                <ReadingTab ref={readingTabRef} detail={detail} contentId={contentId} contentData={detail?.contentData || detail} key={`reading-${reloadKey}`} onSaveSuccess={handleSaveSuccess} onDirtyChange={setDirty} />
               )}
               {tab === "listening" && contentId && (
-                <ListeningTab ref={listeningTabRef} detail={detail} contentId={contentId} contentData={detail?.content || detail} onSaveSuccess={loadDetail} />
+                <ListeningTab ref={listeningTabRef} detail={detail} contentId={contentId} contentData={detail?.contentData || detail} key={`listening-${reloadKey}`} onSaveSuccess={handleSaveSuccess} onDirtyChange={setDirty} />
               )}
 
               {/* 2 ô nhập reason và notes */}
@@ -502,11 +548,17 @@ function ModerationDetailModal({ item, tab, onClose, onReviewed }) {
 
         {/* Footer */}
         <div className="p-6 border-t border-slate-200 flex items-center justify-between gap-3">
-          <div />
+          {dirty && (
+            <span className="text-xs text-amber-500 font-medium flex items-center gap-1">
+              <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
+              Có thay đổi chưa lưu
+            </span>
+          )}
+          {!dirty && <div />}
           <div className="flex gap-2">
-            <button onClick={onClose}
+            <button onClick={handleClose}
               className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 transition-colors">
-              Đóng
+              Hủy
             </button>
             {effectiveStatus === "pending" && !detailLoading && contentId && (
               <>
@@ -542,26 +594,36 @@ function ModerationDetailModal({ item, tab, onClose, onReviewed }) {
 // =============================================
 // TAB BỘ TỪ VỰNG
 // =============================================
-const VocabularyTab = forwardRef(function VocabularyTab({ detail, contentId, contentData, onSaveSuccess }, ref) {
-  // State nội bộ quản lý tất cả thay đổi
+const VocabularyTab = forwardRef(function VocabularyTab({ detail, contentId, contentData, onSaveSuccess, onDirtyChange }, ref) {
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [words, setWords] = useState([]);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState({ type: "", text: "" });
-
-  // Track changes so we know if "Lưu" is needed
   const [dirty, setDirty] = useState(false);
+  const newWordCounter = useRef(0);
 
-  // Đồng bộ dữ liệu từ props
+  // Dùng useEffect để đồng bộ dữ liệu từ props vào state
   useEffect(() => {
-    if (contentData) {
-      setEditTitle(contentData.title || "");
-      setEditDescription(contentData.description || "");
-      // words nằm trong contentData.words
-      setWords(contentData.words || []);
-      setDirty(false);
+    if (!contentData) {
+      setEditTitle("");
+      setEditDescription("");
+      setWords([]);
+      return;
     }
+    setEditTitle(contentData.title || "");
+    setEditDescription(contentData.description || "");
+    const rawWords = Array.isArray(contentData.words) ? contentData.words : [];
+    const normalizedWords = rawWords.map((w) => ({
+      ...w,
+      phonetic: w.pronunciation || w.phonetic || "",
+      meaning: w.definition || w.meaning || "",
+      example: w.example || w.exampleSentence || "",
+      isEdited: false,
+      isNew: false,
+    }));
+    setWords(normalizedWords);
+    setDirty(false);
   }, [contentData]);
 
   const showMsg = (text, type = "error") => {
@@ -569,41 +631,42 @@ const VocabularyTab = forwardRef(function VocabularyTab({ detail, contentId, con
     setTimeout(() => setMsg({ type: "", text: "" }), 4000);
   };
 
-  // Tiện ích tạo ID tạm cho item mới
-  const tempId = (() => {
-    let counter = 0;
-    return () => `__new_${++counter}`;
-  })();
-  const newIdCounterRef = useRef(0);
-
   // Thêm một từ mới vào danh sách (chưa gọi API)
   const addNewWord = () => {
-    const id = `__new_${++newIdCounterRef.current}`;
-    const w = { id, word: "", phonetic: "", meaning: "", isNew: true, isEdited: false };
+    const id = `__new_${++newWordCounter.current}`;
+    const w = { id, word: "", phonetic: "", meaning: "", example: "", isNew: true, isEdited: false };
     setWords((prev) => [...prev, w]);
     setDirty(true);
-    // Scroll to bottom
-    setTimeout(() => {
-      document.getElementById(`word-input-${id}`)?.focus();
-    }, 50);
+    if (onDirtyChange) onDirtyChange(true);
+    setTimeout(() => document.getElementById(`vw-input-${id}`)?.focus(), 80);
   };
 
-  // Cập nhật một từ trong danh sách (chưa gọi API)
+  // Cập nhật một từ trong danh sách
   const updateWord = (id, field, value) => {
-    setWords((prev) => prev.map((w) => {
-      if (w.id !== id) return w;
-      return { ...w, [field]: value, isEdited: w.isNew ? false : (w[field] !== value ? true : w.isEdited) };
-    }));
+    setWords((prev) =>
+      prev.map((w) => {
+        if (w.id !== id) return w;
+        const isNew = w.isNew;
+        const originalValue = w[field];
+        return {
+          ...w,
+          [field]: value,
+          isEdited: isNew ? false : (value !== originalValue),
+        };
+      })
+    );
     setDirty(true);
+    if (onDirtyChange) onDirtyChange(true);
   };
 
-  // Xóa một từ khỏi danh sách (chưa gọi API)
+  // Xóa một từ khỏi danh sách
   const removeWord = (id) => {
     setWords((prev) => prev.filter((w) => w.id !== id));
     setDirty(true);
+    if (onDirtyChange) onDirtyChange(true);
   };
 
-  // Hàm lưu chính - gọi khi admin bấm "Lưu" trong modal
+  // Hàm lưu chính
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -614,42 +677,37 @@ const VocabularyTab = forwardRef(function VocabularyTab({ detail, contentId, con
       });
 
       // 2. Tách các từ ra: mới, xóa, sửa
-      const originalWords = contentData?.words || [];
+      const originalWords = Array.isArray(contentData?.words) ? contentData.words : [];
       const originalIds = new Set(originalWords.map((w) => w.id));
 
       const newWords = words.filter((w) => w.isNew && w.word.trim());
       const removedIds = originalIds.size > 0
         ? originalWords.filter((w) => !words.find((nw) => nw.id === w.id)).map((w) => w.id)
         : [];
-      const editedWords = words.filter((w) => !w.isNew && w.isEdited && w.word.trim());
 
-      // 3. Thêm từ mới (nếu có từ mới với nội dung)
-      if (newWords.length > 0) {
-        await adminApi.addWordsToVocabSet(contentId, newWords.map((w) => w.word.trim()));
+      // 3. Thêm từ mới
+      for (const w of newWords) {
+        await adminApi.addWordsToVocabSet(contentId, {
+          word: w.word.trim(),
+          pronunciation: w.phonetic || "",
+          definition: w.meaning || "",
+          example: w.example || "",
+        });
       }
 
-      // 4. Xóa từ cũ (nếu có)
-      // Hiện tại backend chưa có API xóa từ riêng lẻ - thông báo nếu có thay đổi
-      if (removedIds.length > 0) {
-        // Gọi API xóa hàng loạt (backend có support)
-        await adminApi.removeWordsFromVocabSet(contentId, removedIds);
-      }
-
-      // 5. Sửa từ hiện có (backend chưa có API riêng - tạm thời thông báo)
-      // Nếu backend có API updateWord thì gọi ở đây
-      if (editedWords.length > 0) {
-        // Backend moderation chưa hỗ trợ update từ riêng lẻ
-        // Có thể reload lại sau khi add/remove
-        console.info("Các từ đã sửa:", editedWords.map((w) => w.word).join(", "));
+      // 4. Xóa từ cũ
+      for (const wordId of removedIds) {
+        try {
+          await adminApi.removeWordsFromVocabSet(contentId, wordId);
+        } catch (e) {
+          console.warn("Không xóa được từ:", wordId, e);
+        }
       }
 
       showMsg("Đã lưu thay đổi!", "success");
       setDirty(false);
-
-      // Reload lại chi tiết từ API để lấy dữ liệu mới nhất
-      if (onSaveSuccess) {
-        await onSaveSuccess();
-      }
+      if (onDirtyChange) onDirtyChange(false);
+      if (onSaveSuccess) await onSaveSuccess();
     } catch (err) {
       showMsg(err?.message || "Lưu thất bại");
       throw err;
@@ -658,14 +716,17 @@ const VocabularyTab = forwardRef(function VocabularyTab({ detail, contentId, con
     }
   };
 
-  // Expose hàm save ra ngoài qua ref
   useImperativeHandle(ref, () => ({
     save: handleSave,
     isDirty: () => dirty,
   }));
 
+  const wordCount = words.filter((w) => w.word?.trim()).length;
+  const editedCount = words.filter((w) => w.isEdited).length;
+
   return (
     <div className="space-y-4">
+      {/* Thông báo */}
       {msg.text && (
         <div className={`rounded-xl border p-3 text-sm font-medium flex items-center gap-2 ${
           msg.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-600" : "border-red-200 bg-red-50 text-red-600"
@@ -679,12 +740,14 @@ const VocabularyTab = forwardRef(function VocabularyTab({ detail, contentId, con
       <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider">Tiêu đề</h3>
-          {dirty && <span className="text-xs text-amber-500 font-medium">● Có thay đổi</span>}
+          {(dirty || editTitle !== (contentData?.title || "")) && (
+            <span className="text-xs text-amber-500 font-medium">● Có thay đổi</span>
+          )}
         </div>
         <input
           type="text"
           value={editTitle}
-          onChange={(e) => { setEditTitle(e.target.value); setDirty(true); }}
+          onChange={(e) => { setEditTitle(e.target.value); setDirty(true); if (onDirtyChange) onDirtyChange(true); }}
           className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/30 bg-white"
           placeholder="Tiêu đề bộ từ vựng..."
         />
@@ -695,7 +758,7 @@ const VocabularyTab = forwardRef(function VocabularyTab({ detail, contentId, con
         <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider mb-2">Mô tả</h3>
         <textarea
           value={editDescription}
-          onChange={(e) => { setEditDescription(e.target.value); setDirty(true); }}
+          onChange={(e) => { setEditDescription(e.target.value); setDirty(true); if (onDirtyChange) onDirtyChange(true); }}
           rows={2}
           className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 resize-none bg-white"
           placeholder="Mô tả bộ từ vựng..."
@@ -703,49 +766,69 @@ const VocabularyTab = forwardRef(function VocabularyTab({ detail, contentId, con
       </div>
 
       {/* Danh sách từ */}
-      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider">
-            Danh sách từ ({words.filter((w) => w.word?.trim()).length})
-          </h3>
+      <div className="rounded-xl bg-slate-50 border border-slate-200 overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-white">
+          <div className="flex items-center gap-3">
+            <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider">
+              Danh sách từ ({wordCount})
+            </h3>
+            {editedCount > 0 && (
+              <span className="text-xs text-amber-500 font-medium bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                {editedCount} từ đã sửa
+              </span>
+            )}
+          </div>
           <button
             onClick={addNewWord}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-500 text-white text-xs font-bold hover:bg-blue-600 transition-colors">
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500 text-white text-xs font-bold hover:bg-blue-600 transition-colors shadow-sm">
             <Plus className="w-3.5 h-3.5" />Thêm từ
           </button>
         </div>
 
-        {/* Bảng tiêu đề cột */}
-        <div className="hidden sm:grid grid-cols-12 gap-2 mb-2 px-1">
-          <span className="col-span-1 text-xs text-slate-400 font-medium"></span>
-          <span className="col-span-3 text-xs text-slate-400 font-medium">Từ</span>
-          <span className="col-span-3 text-xs text-slate-400 font-medium">Phát âm</span>
-          <span className="col-span-4 text-xs text-slate-400 font-medium">Nghĩa</span>
-          <span className="col-span-1 text-xs text-slate-400 font-medium text-right">Xóa</span>
+        {/* Bảng tiêu đề cột - chỉ hiện trên màn lớn */}
+        <div className="hidden md:grid bg-slate-100 border-b border-slate-200" style={{ gridTemplateColumns: "2rem 1fr 1fr 1fr 1.5rem" }}>
+          <div className="p-2"></div>
+          <div className="p-2 text-xs font-bold text-slate-500 uppercase tracking-wider">Từ</div>
+          <div className="p-2 text-xs font-bold text-slate-500 uppercase tracking-wider">Phát âm</div>
+          <div className="p-2 text-xs font-bold text-slate-500 uppercase tracking-wider">Nghĩa</div>
+          <div className="p-2"></div>
         </div>
 
         {/* Danh sách từ */}
-        <div className="space-y-2 max-h-72 overflow-y-auto">
+        <div className="max-h-80 overflow-y-auto">
           {words.length === 0 ? (
-            <p className="text-sm text-slate-400 text-center py-6">Chưa có từ nào - nhấn "Thêm từ" để bắt đầu</p>
-          ) : words.map((w) => (
-            <div key={w.id} className={`flex items-center gap-2 p-2 rounded-xl border transition-colors ${
-              w.isNew ? "bg-blue-50 border-blue-200" : w.isEdited ? "bg-amber-50 border-amber-200" : "bg-white border-slate-100 hover:border-slate-200"
-            }`}>
-              {/* Icon trạng thái */}
-              <div className="w-5 flex-shrink-0">
+            <div className="text-center py-12">
+              <BookOpen className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+              <p className="text-sm text-slate-400 font-medium">Chưa có từ nào</p>
+              <p className="text-xs text-slate-400 mt-1">Nhấn "Thêm từ" để bắt đầu</p>
+            </div>
+          ) : words.map((w, idx) => (
+            <div
+              key={w.id}
+              className={`flex flex-col sm:grid gap-2 p-3 border-b border-slate-100 transition-colors ${
+                w.isNew
+                  ? "bg-blue-50/50"
+                  : w.isEdited
+                  ? "bg-amber-50/50"
+                  : "bg-white hover:bg-slate-50/50"
+              }`}
+              style={{ gridTemplateColumns: "2rem 1fr 1fr 1fr 1.5rem" }}
+            >
+              {/* Icon + số thứ tự */}
+              <div className="flex items-start gap-1 pt-1">
+                <span className="text-xs font-bold text-slate-400 w-5">{idx + 1}</span>
                 {w.isNew && <span className="text-xs font-bold text-blue-500">+</span>}
-                {!w.isNew && w.isEdited && <span className="text-xs font-bold text-amber-500">✎</span>}
-                {!w.isNew && !w.isEdited && <span className="text-xs text-slate-300">●</span>}
+                {w.isEdited && <span className="text-xs font-bold text-amber-500">✎</span>}
               </div>
 
               {/* Từ */}
               <input
-                id={`word-input-${w.id}`}
+                id={`vw-input-${w.id}`}
                 type="text"
                 value={w.word}
                 onChange={(e) => updateWord(w.id, "word", e.target.value)}
-                className="col-span-3 flex-1 min-w-0 px-2 py-1.5 rounded-lg border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
+                className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-400/50 bg-white"
                 placeholder="Từ..."
               />
 
@@ -754,8 +837,8 @@ const VocabularyTab = forwardRef(function VocabularyTab({ detail, contentId, con
                 type="text"
                 value={w.phonetic || ""}
                 onChange={(e) => updateWord(w.id, "phonetic", e.target.value)}
-                className="col-span-3 flex-1 min-w-0 px-2 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white font-mono"
-                placeholder="Phát âm..."
+                className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-400/50 bg-white font-mono"
+                placeholder="/phonetic/..."
               />
 
               {/* Nghĩa */}
@@ -763,24 +846,40 @@ const VocabularyTab = forwardRef(function VocabularyTab({ detail, contentId, con
                 type="text"
                 value={w.meaning || ""}
                 onChange={(e) => updateWord(w.id, "meaning", e.target.value)}
-                className="col-span-4 flex-1 min-w-0 px-2 py-1.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
+                className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400/50 bg-white"
                 placeholder="Nghĩa tiếng Việt..."
               />
 
               {/* Nút xóa */}
               <button
                 onClick={() => removeWord(w.id)}
-                className="w-7 h-7 flex items-center justify-center rounded-lg text-red-400 hover:bg-red-50 hover:text-red-500 flex-shrink-0 transition-colors">
-                <Trash2 className="w-3.5 h-3.5" />
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-red-400 hover:bg-red-50 hover:text-red-500 transition-colors mt-0.5"
+                title="Xóa từ">
+                <Trash2 className="w-4 h-4" />
               </button>
+
+              {/* Ví dụ - hiện ở dòng dưới trên mobile, ẩn trên desktop */}
+              <div className="md:hidden col-span-4">
+                <input
+                  type="text"
+                  value={w.example || ""}
+                  onChange={(e) => updateWord(w.id, "example", e.target.value)}
+                  className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400/50 bg-white italic"
+                  placeholder="Ví dụ (tùy chọn)..."
+                />
+              </div>
             </div>
           ))}
         </div>
 
+        {/* Footer với thống kê */}
         {words.length > 0 && (
-          <p className="text-xs text-slate-400 mt-2">
-            Nhấn <strong>Lưu</strong> để áp dụng thay đổi. Hệ thống sẽ tự động tra phonetic và nghĩa cho từ mới.
-          </p>
+          <div className="p-3 bg-white border-t border-slate-200">
+            <p className="text-xs text-slate-400">
+              Nhấn <strong>Lưu</strong> để áp dụng thay đổi.
+              {words.some((w) => w.isNew) && " Từ mới sẽ được thêm vào bộ."}
+            </p>
+          </div>
         )}
       </div>
     </div>
@@ -790,7 +889,7 @@ const VocabularyTab = forwardRef(function VocabularyTab({ detail, contentId, con
 // =============================================
 // TAB BÀI ĐỌC
 // =============================================
-const ReadingTab = forwardRef(function ReadingTab({ detail, contentId, contentData, onSaveSuccess }, ref) {
+const ReadingTab = forwardRef(function ReadingTab({ detail, contentId, contentData, onSaveSuccess, onDirtyChange }, ref) {
   const [editTitle, setEditTitle] = useState("");
   const [editContent, setEditContent] = useState("");
   const [editVi, setEditVi] = useState("");
@@ -806,25 +905,38 @@ const ReadingTab = forwardRef(function ReadingTab({ detail, contentId, contentDa
   });
 
   useEffect(() => {
-    if (contentData) {
-      setEditTitle(contentData.title || "");
-      setEditContent(contentData.content || "");
-      setEditVi(contentData.viTranslation || contentData.vi_translation || "");
-      const qs = (contentData.questions || []).map((q) => ({
+    if (!contentData) {
+      setEditTitle("");
+      setEditContent("");
+      setEditVi("");
+      setQuestions([]);
+      return;
+    }
+    setEditTitle(contentData.title || "");
+    setEditContent(contentData.content || "");
+    setEditVi(contentData.viTranslation || contentData.vi_translation || "");
+    const rawQs = Array.isArray(contentData.questions) ? contentData.questions : [];
+    const qs = rawQs.map((q) => {
+      // Backend trả allAnswers: { a, b, c, d } hoặc optionA/option_a...
+      const optA = q.allAnswers ? q.allAnswers.a : (q.optionA || q.option_a || "");
+      const optB = q.allAnswers ? q.allAnswers.b : (q.optionB || q.option_b || "");
+      const optC = q.allAnswers ? q.allAnswers.c : (q.optionC || q.option_c || "");
+      const optD = q.allAnswers ? q.allAnswers.d : (q.optionD || q.option_d || "");
+      return {
         id: q.id,
         question: q.question || "",
-        optionA: q.optionA || q.option_a || "",
-        optionB: q.optionB || q.option_b || "",
-        optionC: q.optionC || q.option_c || "",
-        optionD: q.optionD || q.option_d || "",
+        optionA: optA,
+        optionB: optB,
+        optionC: optC,
+        optionD: optD,
         correctAnswer: q.correctAnswer || q.correct_answer || "A",
         explanation: q.explanation || q.explain || "",
         isEdited: false,
         isNew: false,
-      }));
-      setQuestions(qs);
-      setDirty(false);
-    }
+      };
+    });
+    setQuestions(qs);
+    setDirty(false);
   }, [contentData]);
 
   const showMsg = (text, type = "error") => {
@@ -843,6 +955,7 @@ const ReadingTab = forwardRef(function ReadingTab({ detail, contentId, contentDa
       { id, question: "", optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A", explanation: "", isNew: true, isEdited: false },
     ]);
     setDirty(true);
+    if (onDirtyChange) onDirtyChange(true);
     // Focus vào câu hỏi mới
     setTimeout(() => document.getElementById(`q-q-${id}`)?.focus(), 50);
   };
@@ -858,12 +971,14 @@ const ReadingTab = forwardRef(function ReadingTab({ detail, contentId, contentDa
       })
     );
     setDirty(true);
+    if (onDirtyChange) onDirtyChange(true);
   };
 
   // Xóa câu hỏi (inline, chưa gọi API)
   const deleteQ = (id) => {
     setQuestions((prev) => prev.filter((q) => q.id !== id));
     setDirty(true);
+    if (onDirtyChange) onDirtyChange(true);
   };
 
   // Bắt đầu sửa câu hỏi
@@ -905,6 +1020,7 @@ const ReadingTab = forwardRef(function ReadingTab({ detail, contentId, contentDa
     setEditQId(null);
     setEditQData({ question: "", optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A", explanation: "" });
     setDirty(true);
+    if (onDirtyChange) onDirtyChange(true);
   };
 
   // Hủy sửa câu hỏi
@@ -925,7 +1041,7 @@ const ReadingTab = forwardRef(function ReadingTab({ detail, contentId, contentDa
       });
 
       // 2. Tách các câu hỏi: mới, xóa, sửa
-      const originalQs = contentData?.questions || [];
+      const originalQs = Array.isArray(contentData?.questions) ? contentData.questions : [];
       const originalIds = new Set(originalQs.map((q) => q.id));
 
       const newQs = questions.filter((q) => q.isNew && q.question.trim());
@@ -947,6 +1063,7 @@ const ReadingTab = forwardRef(function ReadingTab({ detail, contentId, contentDa
 
       showMsg("Đã lưu bài luyện đọc!", "success");
       setDirty(false);
+      if (onDirtyChange) onDirtyChange(false);
       if (onSaveSuccess) await onSaveSuccess();
     } catch (err) {
       showMsg(err?.message || "Lưu thất bại");
@@ -984,7 +1101,7 @@ const ReadingTab = forwardRef(function ReadingTab({ detail, contentId, contentDa
         <input
           type="text"
           value={editTitle}
-          onChange={(e) => { setEditTitle(e.target.value); setDirty(true); }}
+          onChange={(e) => { setEditTitle(e.target.value); setDirty(true); if (onDirtyChange) onDirtyChange(true); }}
           className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-orange-500/30 bg-white"
           placeholder="Tiêu đề bài luyện đọc..."
         />
@@ -995,7 +1112,7 @@ const ReadingTab = forwardRef(function ReadingTab({ detail, contentId, contentDa
         <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider mb-2">Nội dung tiếng Anh</h3>
         <textarea
           value={editContent}
-          onChange={(e) => { setEditContent(e.target.value); setDirty(true); }}
+          onChange={(e) => { setEditContent(e.target.value); setDirty(true); if (onDirtyChange) onDirtyChange(true); }}
           rows={5}
           className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 resize-none bg-white"
           placeholder="Nhập nội dung bài đọc..."
@@ -1007,7 +1124,7 @@ const ReadingTab = forwardRef(function ReadingTab({ detail, contentId, contentDa
         <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider mb-2">Nội dung tiếng Việt</h3>
         <textarea
           value={editVi}
-          onChange={(e) => { setEditVi(e.target.value); setDirty(true); }}
+          onChange={(e) => { setEditVi(e.target.value); setDirty(true); if (onDirtyChange) onDirtyChange(true); }}
           rows={5}
           className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 resize-none bg-white"
           placeholder="Nhập bản dịch tiếng Việt..."
@@ -1136,7 +1253,7 @@ const ReadingTab = forwardRef(function ReadingTab({ detail, contentId, contentDa
 // =============================================
 // TAB BÀI NGHE
 // =============================================
-const ListeningTab = forwardRef(function ListeningTab({ detail, contentId, contentData, onSaveSuccess }, ref) {
+const ListeningTab = forwardRef(function ListeningTab({ detail, contentId, contentData, onSaveSuccess, onDirtyChange }, ref) {
   const [editTitle, setEditTitle] = useState("");
   const [editTranscript, setEditTranscript] = useState("");
   const [editVi, setEditVi] = useState("");
@@ -1159,26 +1276,40 @@ const ListeningTab = forwardRef(function ListeningTab({ detail, contentId, conte
   const newQCounter = useRef(0);
 
   useEffect(() => {
-    if (contentData) {
-      setEditTitle(contentData.title || "");
-      setEditTranscript(contentData.transcript || "");
-      setEditVi(contentData.viTranslation || contentData.vi_translation || "");
-      setEditAudioUrl(contentData.audioUrl || contentData.audio_url || "");
-      const qs = (contentData.questions || []).map((q) => ({
+    if (!contentData) {
+      setEditTitle("");
+      setEditTranscript("");
+      setEditVi("");
+      setEditAudioUrl("");
+      setQuestions([]);
+      return;
+    }
+    setEditTitle(contentData.title || "");
+    setEditTranscript(contentData.transcript || "");
+    setEditVi(contentData.viTranslation || contentData.vi_translation || "");
+    setEditAudioUrl(contentData.audioUrl || contentData.audio_url || "");
+    const rawQs = Array.isArray(contentData.questions) ? contentData.questions : [];
+    const qs = rawQs.map((q) => {
+      // Backend trả allAnswers: { a, b, c, d } hoặc optionA/option_a...
+      const optA = q.allAnswers ? q.allAnswers.a : (q.optionA || q.option_a || "");
+      const optB = q.allAnswers ? q.allAnswers.b : (q.optionB || q.option_b || "");
+      const optC = q.allAnswers ? q.allAnswers.c : (q.optionC || q.option_c || "");
+      const optD = q.allAnswers ? q.allAnswers.d : (q.optionD || q.option_d || "");
+      return {
         id: q.id,
         question: q.question || "",
-        optionA: q.optionA || q.option_a || "",
-        optionB: q.optionB || q.option_b || "",
-        optionC: q.optionC || q.option_c || "",
-        optionD: q.optionD || q.option_d || "",
+        optionA: optA,
+        optionB: optB,
+        optionC: optC,
+        optionD: optD,
         correctAnswer: q.correctAnswer || q.correct_answer || "A",
         explanation: q.explanation || q.explain || "",
         isEdited: false,
         isNew: false,
-      }));
-      setQuestions(qs);
-      setDirty(false);
-    }
+      };
+    });
+    setQuestions(qs);
+    setDirty(false);
   }, [contentData]);
 
   useEffect(() => {
@@ -1208,6 +1339,7 @@ const ListeningTab = forwardRef(function ListeningTab({ detail, contentId, conte
       setEditAudioUrl(url);
       setSelectedFile(null);
       setDirty(true);
+      if (onDirtyChange) onDirtyChange(true);
       showMsg("Upload audio thành công! Nhấn Lưu để áp dụng.", "success");
     } catch (err) {
       showMsg(err?.message || "Upload thất bại");
@@ -1231,6 +1363,7 @@ const ListeningTab = forwardRef(function ListeningTab({ detail, contentId, conte
       { id, question: "", optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A", explanation: "", isNew: true, isEdited: false },
     ]);
     setDirty(true);
+    if (onDirtyChange) onDirtyChange(true);
     setTimeout(() => document.getElementById(`lq-q-${id}`)?.focus(), 50);
   };
 
@@ -1244,11 +1377,13 @@ const ListeningTab = forwardRef(function ListeningTab({ detail, contentId, conte
       })
     );
     setDirty(true);
+    if (onDirtyChange) onDirtyChange(true);
   };
 
   const deleteQ = (id) => {
     setQuestions((prev) => prev.filter((q) => q.id !== id));
     setDirty(true);
+    if (onDirtyChange) onDirtyChange(true);
   };
 
   const startEditQ = (q) => {
@@ -1288,6 +1423,7 @@ const ListeningTab = forwardRef(function ListeningTab({ detail, contentId, conte
     setEditQId(null);
     setEditQData({ question: "", optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A", explanation: "" });
     setDirty(true);
+    if (onDirtyChange) onDirtyChange(true);
   };
 
   const cancelEditQ = () => {
@@ -1304,7 +1440,7 @@ const ListeningTab = forwardRef(function ListeningTab({ detail, contentId, conte
         transcript: editTranscript.trim(),
         vi_translation: editVi.trim(),
       });
-      const originalQs = contentData?.questions || [];
+      const originalQs = Array.isArray(contentData?.questions) ? contentData.questions : [];
       const originalIds = new Set(originalQs.map((q) => q.id));
       const newQs = questions.filter((q) => q.isNew && q.question.trim());
       const removedIds = originalIds.size > 0
@@ -1397,7 +1533,7 @@ const ListeningTab = forwardRef(function ListeningTab({ detail, contentId, conte
           {dirty && <span className="text-xs text-amber-500 font-medium">● Có thay đổi</span>}
         </div>
         <input type="text" value={editTitle}
-          onChange={(e) => { setEditTitle(e.target.value); setDirty(true); }}
+          onChange={(e) => { setEditTitle(e.target.value); setDirty(true); if (onDirtyChange) onDirtyChange(true); }}
           className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-green-500/30 bg-white"
           placeholder="Tiêu đề bài nghe..." />
       </div>
@@ -1405,7 +1541,7 @@ const ListeningTab = forwardRef(function ListeningTab({ detail, contentId, conte
       <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
         <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider mb-2">Bản ghi tiếng Anh</h3>
         <textarea value={editTranscript}
-          onChange={(e) => { setEditTranscript(e.target.value); setDirty(true); }}
+          onChange={(e) => { setEditTranscript(e.target.value); setDirty(true); if (onDirtyChange) onDirtyChange(true); }}
           rows={5}
           className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30 resize-none bg-white"
           placeholder="Nhập bản ghi..." />
@@ -1414,7 +1550,7 @@ const ListeningTab = forwardRef(function ListeningTab({ detail, contentId, conte
       <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
         <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider mb-2">Bản dịch tiếng Việt</h3>
         <textarea value={editVi}
-          onChange={(e) => { setEditVi(e.target.value); setDirty(true); }}
+          onChange={(e) => { setEditVi(e.target.value); setDirty(true); if (onDirtyChange) onDirtyChange(true); }}
           rows={5}
           className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30 resize-none bg-white"
           placeholder="Nhập bản dịch..." />

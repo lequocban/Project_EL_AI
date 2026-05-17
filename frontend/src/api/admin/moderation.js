@@ -24,18 +24,28 @@ export const updateVocabSet = async (id, data) => {
 };
 
 // Thêm từ vào bộ từ vựng khi pending
-export const addWordsToVocabSet = async (id, words) => {
+// Hỗ trợ cả array (format cũ) và object (format doc: { word, pronunciation, definition, example })
+export const addWordsToVocabSet = async (id, wordData) => {
+  let body;
+  if (Array.isArray(wordData)) {
+    // Format cũ: truyền array words
+    body = { words: wordData };
+  } else {
+    // Format doc: truyền object { word, pronunciation, definition, example }
+    body = { word: wordData.word, pronunciation: wordData.pronunciation, definition: wordData.definition, example: wordData.example };
+  }
   return fetchAdminWithAuth(ADMIN_URL + `/moderation/vocabulary-sets/${id}/words`, {
     method: "POST",
-    body: JSON.stringify({ words }),
+    body: JSON.stringify(body),
   });
 };
 
-// Xóa từ khỏi bộ từ vựng khi pending
-export const removeWordsFromVocabSet = async (id, wordIds) => {
-  return fetchAdminWithAuth(ADMIN_URL + `/moderation/vocabulary-sets/${id}/words`, {
+// Xóa từ khỏi bộ từ vựng khi đang pending
+// Backend dùng query param ?wordId= (theo doc)
+export const removeWordsFromVocabSet = async (id, wordId) => {
+  const params = new URLSearchParams({ wordId });
+  return fetchAdminWithAuth(ADMIN_URL + `/moderation/vocabulary-sets/${id}/words?${params}`, {
     method: "DELETE",
-    body: JSON.stringify({ wordIds }),
   });
 };
 
