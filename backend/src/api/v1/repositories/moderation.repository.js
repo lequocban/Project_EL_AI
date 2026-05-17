@@ -99,9 +99,10 @@ const getRequestsByUser = async (accessToken, userId, { keyword, status, page = 
  * @returns {Promise<Object|null>}
  */
 const findById = async (requestId) => {
-  const { supabase } = require("../../../config/supabase");
+  const { createAdminClient } = require("../../../config/supabase");
+  const client = createAdminClient();
 
-  const { data, error } = await supabase
+  const { data, error } = await client
     .from("moderation_requests")
     .select("id, content_type, content_id, status, requested_by")
     .eq("id", requestId)
@@ -235,7 +236,8 @@ const checkPendingModeration = async (contentId, contentType) => {
  * @returns {Promise<Object>} - Trả về request đã cập nhật
  */
 const updateModerationRequest = async (requestId, reviewerId, { status, reason, notes }) => {
-  const { supabase } = require("../../../config/supabase");
+  const { createAdminClient } = require("../../../config/supabase");
+  const client = createAdminClient();
 
   const updatePayload = {
     status,
@@ -250,7 +252,7 @@ const updateModerationRequest = async (requestId, reviewerId, { status, reason, 
     updatePayload.notes = notes;
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await client
     .from("moderation_requests")
     .update(updatePayload)
     .eq("id", requestId)
