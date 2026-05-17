@@ -484,6 +484,25 @@ PATCH /auth/change-password
 | `currentPassword` | string | **Có** | Mật khẩu hiện tại |
 | `newPassword` | string | **Có** | Mật khẩu mới (tối thiểu 8 ký tự, có chữ hoa và chữ số) |
 
+**Phản hồi (200):**
+```json
+{
+  "code": 200,
+  "success": true,
+  "message": "Đổi mật khẩu thành công",
+  "data": null
+}
+```
+
+**Các trường hợp lỗi:**
+
+| Mã | Thông báo | Điều kiện |
+|----|-----------|-----------|
+| 400 | "Mật khẩu hiện tại không đúng" | currentPassword không khớp |
+| 400 | "Mật khẩu mới không hợp lệ" | newPassword không đủ điều kiện |
+| 400 | "Mật khẩu mới không được trùng với mật khẩu hiện tại" | newPassword giống currentPassword |
+| 401 | "Unauthorized" | Token không hợp lệ |
+
 ---
 
 ### 4.2. Profile - Hồ Sơ Cá Nhân
@@ -536,6 +555,22 @@ PATCH /profile/me
 | `dayOfBirth` | string | Không | Ngày sinh mới (định dạng `DD/MM/YYYY`) |
 
 **Lưu ý:** Phải gửi ít nhất một trường. Email và password không được phép cập nhật qua endpoint này.
+
+**Phản hồi (200):**
+```json
+{
+  "code": 200,
+  "success": true,
+  "message": "Cập nhật hồ sơ thành công",
+  "data": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "userName": "Tên mới",
+    "dayOfBirth": "15/05/2000",
+    "role": "user"
+  }
+}
+```
 
 ---
 
@@ -688,6 +723,29 @@ GET /vocabulary-sets/public
 
 **Query Parameters:** Tương tự `/vocabulary-sets/my`
 
+**Phản hồi (200):**
+```json
+{
+  "code": 200,
+  "success": true,
+  "message": "Lấy danh sách bộ từ vựng công khai thành công",
+  "data": {
+    "items": [
+      {
+        "id": "uuid",
+        "title": "IELTS Vocabulary - Environment",
+        "description": "...",
+        "wordCount": 25
+      }
+    ],
+    "total": 50,
+    "page": 1,
+    "limit": 15,
+    "totalPages": 4
+  }
+}
+```
+
 ---
 
 #### 4.4.4. Lấy chi tiết bộ từ vựng
@@ -767,6 +825,24 @@ PATCH /vocabulary-sets/:id
 }
 ```
 
+**Phản hồi (200):**
+```json
+{
+  "code": 200,
+  "success": true,
+  "message": "Cập nhật bộ từ vựng thành công",
+  "data": {
+    "id": "uuid",
+    "title": "IELTS Vocabulary - Updated",
+    "description": "Mô tả mới",
+    "status": "private",
+    "createdBy": "uuid",
+    "createdAt": "2026-05-10T00:00:00Z",
+    "updatedAt": "2026-05-15T00:00:00Z"
+  }
+}
+```
+
 ---
 
 #### 4.4.6. Xóa bộ từ vựng
@@ -778,6 +854,16 @@ DELETE /vocabulary-sets/:id
 **Xác thực:** `verifyToken` + `requireAuth`
 
 **Lưu ý:** Xóa mềm - dữ liệu vẫn còn trong database nhưng không hiển thị.
+
+**Phản hồi (200):**
+```json
+{
+  "code": 200,
+  "success": true,
+  "message": "Xóa bộ từ vựng thành công",
+  "data": null
+}
+```
 
 ---
 
@@ -806,6 +892,36 @@ POST /vocabulary-sets/generate-words
 | `topic` | string | **Có** | Chủ đề từ vựng (1-500 ký tự) - AI sẽ sinh từ dựa trên chủ đề này |
 | `wordCount` | number | Không | Số từ cần sinh (mặc định: 10, tối thiểu: 1, tối đa: 30) |
 
+**Phản hồi (201):**
+```json
+{
+  "code": 201,
+  "success": true,
+  "message": "Tạo bộ từ vựng bằng AI thành công",
+  "data": {
+    "id": "uuid",
+    "title": "Business English - Meeting",
+    "description": "Từ vựng Tiếng Anh thương mại",
+    "status": "private",
+    "createdBy": "uuid",
+    "createdAt": "2026-05-15T00:00:00Z",
+    "words": {
+      "items": [
+        {
+          "id": "uuid",
+          "word": "agenda",
+          "phonetic": "/əˈdʒendə/",
+          "meaning": "Chương trình nghị sự",
+          "audioUrl": "https://example.com/agenda.mp3",
+          "createdAt": "2026-05-15T00:00:00Z"
+        }
+      ],
+      "total": 15
+    }
+  }
+}
+```
+
 ---
 
 #### 4.4.8. Thêm từ vào bộ từ vựng
@@ -827,6 +943,28 @@ POST /vocabulary-sets/:id/words
 |--------|------|-----------|--------|
 | `words` | array[string] | **Có** | Danh sách từ cần thêm (tối đa 100 từ mỗi lần) |
 
+**Phản hồi (201):**
+```json
+{
+  "code": 201,
+  "success": true,
+  "message": "Thêm từ vào bộ từ vựng thành công",
+  "data": {
+    "addedCount": 3,
+    "words": [
+      {
+        "id": "uuid",
+        "word": "sustainable",
+        "phonetic": "/səˈsteɪnəbl/",
+        "meaning": "Bền vững",
+        "audioUrl": "https://example.com/sustainable.mp3",
+        "createdAt": "2026-05-15T00:00:00Z"
+      }
+    ]
+  }
+}
+```
+
 ---
 
 #### 4.4.9. Yêu cầu công khai bộ từ vựng
@@ -837,6 +975,23 @@ POST /vocabulary-sets/:id/request-public
 
 **Xác thực:** `verifyToken` + `requireAuth`
 
+**Phản hồi (200):**
+```json
+{
+  "code": 200,
+  "success": true,
+  "message": "Gửi yêu cầu công khai bộ từ vựng thành công",
+  "data": {
+    "id": "uuid",
+    "title": "IELTS Vocabulary - Environment",
+    "description": "...",
+    "status": "req_public",
+    "createdBy": "uuid",
+    "createdAt": "2026-05-10T00:00:00Z"
+  }
+}
+```
+
 ---
 
 #### 4.4.10. Chuyển bộ từ vựng sang chế độ riêng tư
@@ -846,6 +1001,23 @@ POST /vocabulary-sets/:id/make-private
 ```
 
 **Xác thực:** `verifyToken` + `requireAuth`
+
+**Phản hồi (200):**
+```json
+{
+  "code": 200,
+  "success": true,
+  "message": "Chuyển bộ từ vựng sang chế độ riêng tư thành công",
+  "data": {
+    "id": "uuid",
+    "title": "IELTS Vocabulary - Environment",
+    "description": "...",
+    "status": "private",
+    "createdBy": "uuid",
+    "createdAt": "2026-05-10T00:00:00Z"
+  }
+}
+```
 
 ---
 
@@ -861,6 +1033,18 @@ DELETE /vocabulary-sets/:id/words/remove
 ```json
 {
   "wordIds": ["uuid-1", "uuid-2", "uuid-3"]
+}
+```
+
+**Phản hồi (200):**
+```json
+{
+  "code": 200,
+  "success": true,
+  "message": "Xóa từ khỏi bộ từ vựng thành công",
+  "data": {
+    "deletedCount": 3
+  }
 }
 ```
 
@@ -1040,6 +1224,23 @@ POST /favorites/vocabulary-sets/:id
 
 **Xác thực:** `verifyToken` + `requireAuth`
 
+**Phản hồi (201):**
+```json
+{
+  "code": 201,
+  "success": true,
+  "message": "Thêm bộ từ vựng vào yêu thích thành công",
+  "data": null
+}
+```
+
+**Các trường hợp lỗi:**
+
+| Mã | Thông báo | Điều kiện |
+|----|-----------|-----------|
+| 409 | "Bộ từ vựng này đã có trong danh sách yêu thích" | Đã thêm rồi |
+| 404 | "Không tìm thấy bộ từ vựng" | ID không tồn tại |
+
 ---
 
 #### 4.6.2. Xóa bộ từ vựng khỏi yêu thích
@@ -1049,6 +1250,16 @@ DELETE /favorites/vocabulary-sets/:id
 ```
 
 **Xác thực:** `verifyToken` + `requireAuth`
+
+**Phản hồi (200):**
+```json
+{
+  "code": 200,
+  "success": true,
+  "message": "Xóa bộ từ vựng khỏi yêu thích thành công",
+  "data": null
+}
+```
 
 ---
 
@@ -1073,6 +1284,30 @@ GET /favorites/vocabulary-sets
 **Ví dụ:**
 ```
 GET /api/v1/favorites/vocabulary-sets?page=1&limit=5&keyword=IELTS&sortField=title&sortOrder=asc
+```
+
+**Phản hồi (200):**
+```json
+{
+  "code": 200,
+  "success": true,
+  "message": "Lấy danh sách bộ từ vựng yêu thích thành công",
+  "data": {
+    "items": [
+      {
+        "id": "uuid",
+        "title": "IELTS Vocabulary - Environment",
+        "description": "...",
+        "wordCount": 25,
+        "favoritedAt": "2026-05-10T00:00:00Z"
+      }
+    ],
+    "total": 10,
+    "page": 1,
+    "limit": 15,
+    "totalPages": 1
+  }
+}
 ```
 
 ---
@@ -1102,6 +1337,35 @@ POST /reading-lessons/generate-with-ai
 | `topic` | string | **Có** | Chủ đề nội dung (1-500 ký tự) |
 | `questionCount` | number | Không | Số câu hỏi (mặc định: 5, tối đa: 5) |
 
+**Phản hồi (201):**
+```json
+{
+  "code": 201,
+  "success": true,
+  "message": "Tạo bài luyện đọc bằng AI thành công",
+  "data": {
+    "id": "uuid",
+    "title": "The Impact of Climate Change",
+    "content": "...",
+    "viTranslation": "...",
+    "status": "private",
+    "createdBy": "uuid",
+    "createdAt": "2026-05-15T00:00:00Z",
+    "questions": [
+      {
+        "id": "uuid",
+        "question": "What is the main topic of the passage?",
+        "option_a": "...",
+        "option_b": "...",
+        "option_c": "...",
+        "option_d": "...",
+        "correct_answer": "B"
+      }
+    ]
+  }
+}
+```
+
 ---
 
 #### 4.7.2. Tạo bài luyện đọc (thủ công)
@@ -1118,6 +1382,24 @@ POST /reading-lessons
   "title": "The Benefits of Reading",
   "content": "Article content here...",
   "vi_translation": "Bản dịch tiếng Việt..."
+}
+```
+
+**Phản hồi (201):**
+```json
+{
+  "code": 201,
+  "success": true,
+  "message": "Tạo bài luyện đọc thành công",
+  "data": {
+    "id": "uuid",
+    "title": "The Benefits of Reading",
+    "content": "Article content here...",
+    "viTranslation": "Bản dịch tiếng Việt...",
+    "status": "private",
+    "createdBy": "uuid",
+    "createdAt": "2026-05-15T00:00:00Z"
+  }
 }
 ```
 
@@ -1141,6 +1423,30 @@ GET /reading-lessons/my
 | `sortField` | string | `"created_at"` | - | Trường sắp xếp: `created_at` (ngày tạo), `title` (tiêu đề) |
 | `sortOrder` | string | `"desc"` | - | Thứ tự: `asc` (tăng dần), `desc` (giảm dần) |
 
+**Phản hồi (200):**
+```json
+{
+  "code": 200,
+  "success": true,
+  "message": "Lấy danh sách bài luyện đọc của tôi thành công",
+  "data": {
+    "items": [
+      {
+        "id": "uuid",
+        "title": "The Impact of Climate Change",
+        "status": "private",
+        "questionCount": 5,
+        "createdAt": "2026-05-10T00:00:00Z"
+      }
+    ],
+    "total": 20,
+    "page": 1,
+    "limit": 15,
+    "totalPages": 2
+  }
+}
+```
+
 ---
 
 #### 4.7.4. Lấy danh sách bài luyện đọc công khai
@@ -1153,6 +1459,30 @@ GET /reading-lessons/public
 
 **Query Parameters:** Tương tự `/reading-lessons/my`
 
+**Phản hồi (200):**
+```json
+{
+  "code": 200,
+  "success": true,
+  "message": "Lấy danh sách bài luyện đọc công khai thành công",
+  "data": {
+    "items": [
+      {
+        "id": "uuid",
+        "title": "The Impact of Climate Change",
+        "status": "public",
+        "questionCount": 5,
+        "createdAt": "2026-05-10T00:00:00Z"
+      }
+    ],
+    "total": 50,
+    "page": 1,
+    "limit": 15,
+    "totalPages": 4
+  }
+}
+```
+
 ---
 
 #### 4.7.5. Lấy chi tiết bài luyện đọc
@@ -1163,6 +1493,35 @@ GET /reading-lessons/:id
 
 **Xác thực:** `verifyToken` + `requireAuth`
 
+**Phản hồi (200):**
+```json
+{
+  "code": 200,
+  "success": true,
+  "message": "Lấy chi tiết bài luyện đọc thành công",
+  "data": {
+    "id": "uuid",
+    "title": "The Impact of Climate Change",
+    "content": "The rapid advancement of technology has transformed...",
+    "viTranslation": "Sự phát triển nhanh chóng của công nghệ đã thay đổi...",
+    "status": "public",
+    "createdBy": "uuid",
+    "createdAt": "2026-05-10T00:00:00Z",
+    "updatedAt": "2026-05-10T00:00:00Z",
+    "questions": [
+      {
+        "id": "uuid",
+        "question": "What is the main topic of the passage?",
+        "option_a": "...",
+        "option_b": "...",
+        "option_c": "...",
+        "option_d": "..."
+      }
+    ]
+  }
+}
+```
+
 ---
 
 #### 4.7.6. Cập nhật bài luyện đọc
@@ -1172,6 +1531,34 @@ PATCH /reading-lessons/:id
 ```
 
 **Xác thực:** `verifyToken` + `requireAuth`
+
+**Request Body:**
+```json
+{
+  "title": "Updated Title",
+  "content": "Updated content...",
+  "vi_translation": "Bản dịch mới..."
+}
+```
+
+**Phản hồi (200):**
+```json
+{
+  "code": 200,
+  "success": true,
+  "message": "Cập nhật bài luyện đọc thành công",
+  "data": {
+    "id": "uuid",
+    "title": "Updated Title",
+    "content": "Updated content...",
+    "viTranslation": "Bản dịch mới...",
+    "status": "private",
+    "createdBy": "uuid",
+    "createdAt": "2026-05-10T00:00:00Z",
+    "updatedAt": "2026-05-15T00:00:00Z"
+  }
+}
+```
 
 ---
 
@@ -1185,6 +1572,16 @@ DELETE /reading-lessons/:id
 
 **Lưu ý:** Xóa mềm.
 
+**Phản hồi (200):**
+```json
+{
+  "code": 200,
+  "success": true,
+  "message": "Xóa bài luyện đọc thành công",
+  "data": null
+}
+```
+
 ---
 
 #### 4.7.8. Yêu cầu công khai bài luyện đọc
@@ -1195,6 +1592,22 @@ POST /reading-lessons/:id/request-public
 
 **Xác thực:** `verifyToken` + `requireAuth`
 
+**Phản hồi (200):**
+```json
+{
+  "code": 200,
+  "success": true,
+  "message": "Gửi yêu cầu công khai bài luyện đọc thành công",
+  "data": {
+    "id": "uuid",
+    "title": "The Impact of Climate Change",
+    "status": "req_public",
+    "createdBy": "uuid",
+    "createdAt": "2026-05-10T00:00:00Z"
+  }
+}
+```
+
 ---
 
 #### 4.7.9. Chuyển bài luyện đọc về chế độ riêng tư
@@ -1204,6 +1617,22 @@ POST /reading-lessons/:id/make-private
 ```
 
 **Xác thực:** `verifyToken` + `requireAuth`
+
+**Phản hồi (200):**
+```json
+{
+  "code": 200,
+  "success": true,
+  "message": "Chuyển bài luyện đọc sang chế độ riêng tư thành công",
+  "data": {
+    "id": "uuid",
+    "title": "The Impact of Climate Change",
+    "status": "private",
+    "createdBy": "uuid",
+    "createdAt": "2026-05-10T00:00:00Z"
+  }
+}
+```
 
 ---
 

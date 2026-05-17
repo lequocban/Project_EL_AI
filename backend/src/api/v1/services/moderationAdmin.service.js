@@ -61,16 +61,25 @@ const getContentBasicInfo = async (contentType, contentId) => {
  */
 const getUserProfile = async (userId) => {
   try {
-    const { supabase } = require("../../../config/supabase");
-    const { data, error } = await supabase
+    const { createAdminClient } = require("../../../config/supabase");
+    const client = createAdminClient();
+    const { data, error } = await client
       .from("profiles")
       .select("id, user_name, email")
       .eq("id", userId)
       .maybeSingle();
 
-    if (error || !data) return null;
+    if (error) {
+      console.error("[getUserProfile] Supabase error:", error.message, "userId:", userId);
+      return null;
+    }
+    if (!data) {
+      console.warn("[getUserProfile] No profile found for userId:", userId);
+      return null;
+    }
     return { id: data.id, userName: data.user_name, email: data.email };
-  } catch {
+  } catch (err) {
+    console.error("[getUserProfile] Unexpected error:", err.message, "userId:", userId);
     return null;
   }
 };
@@ -356,7 +365,10 @@ const updateListeningQuestion = async (accessToken, questionId, lessonId, update
  * @param {string} requestId - ID của yêu cầu kiểm duyệt
  */
 const getModerationRequestDetail = async (requestId) => {
-  const { data: request, error } = await require("../../../config/supabase").supabase
+  const { createAdminClient } = require("../../../config/supabase");
+  const client = createAdminClient();
+
+  const { data: request, error } = await client
     .from("moderation_requests")
     .select("id, content_type, content_id, status, requested_by, reviewed_by, reviewed_at, reason, notes, created_at")
     .eq("id", requestId)
