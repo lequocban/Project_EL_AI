@@ -1722,6 +1722,27 @@ POST /reading-lessons/:lessonId/questions
 | `option_a` - `option_d` | string | Không | Các lựa chọn (tối đa 1000 ký tự) |
 | `explain` | string | Không | Giải thích đáp án (tối đa 2000 ký tự) |
 
+**Phản hồi (201):**
+```json
+{
+  "code": 201,
+  "success": true,
+  "message": "Tạo câu hỏi thành công",
+  "data": {
+    "id": "uuid",
+    "lessonId": "uuid",
+    "question": "What is the main idea of the passage?",
+    "option_a": "Climate change is only caused by natural factors",
+    "option_b": "Human activities are the primary driver of climate change",
+    "option_c": "Climate change has no significant impact",
+    "option_d": "Only governments can solve climate change",
+    "correct_answer": "B",
+    "explain": "The passage clearly states that human activities...",
+    "createdAt": "2026-05-15T00:00:00Z"
+  }
+}
+```
+
 ---
 
 #### 4.8.2. Tạo nhiều câu hỏi cùng lúc
@@ -1752,6 +1773,27 @@ POST /reading-lessons/:lessonId/questions/bulk
 }
 ```
 
+**Phản hồi (201):**
+```json
+{
+  "code": 201,
+  "success": true,
+  "message": "Tạo nhiều câu hỏi thành công",
+  "data": {
+    "createdCount": 2,
+    "questions": [
+      {
+        "id": "uuid-1",
+        "lessonId": "uuid",
+        "question": "Câu hỏi 1?",
+        "correct_answer": "B",
+        "createdAt": "2026-05-15T00:00:00Z"
+      }
+    ]
+  }
+}
+```
+
 ---
 
 #### 4.8.3. Lấy danh sách câu hỏi của bài luyện đọc
@@ -1761,6 +1803,31 @@ GET /reading-lessons/:lessonId/questions
 ```
 
 **Xác thực:** `verifyToken` + `requireAuth`
+
+**Phản hồi (200):**
+```json
+{
+  "code": 200,
+  "success": true,
+  "message": "Lấy danh sách câu hỏi thành công",
+  "data": {
+    "items": [
+      {
+        "id": "uuid",
+        "lessonId": "uuid",
+        "question": "What is the main idea of the passage?",
+        "option_a": "...",
+        "option_b": "...",
+        "option_c": "...",
+        "option_d": "...",
+        "correct_answer": "B",
+        "createdAt": "2026-05-15T00:00:00Z"
+      }
+    ],
+    "total": 5
+  }
+}
+```
 
 ---
 
