@@ -12,7 +12,6 @@ import {
   CheckCircle,
   Eye,
   X,
-  RefreshCw,
   ChevronDown,
   SlidersHorizontal,
 } from "lucide-react";
@@ -482,18 +481,14 @@ export default function AdminUsers() {
                           )}
                         </button>
 
-                        {/* Cấp / thu hồi content_manager */}
+                        {/* Chỉnh sửa quyền */}
                         <button
                           onClick={() => handleGrantRole(user.id, uRoles)}
                           disabled={actionLoading !== null}
                           className="p-2 rounded-lg bg-violet-50 text-violet-600 hover:bg-violet-100 transition-colors disabled:opacity-50"
-                          title={
-                            uPrimaryRole === "content_manager"
-                              ? "Thu hồi quyền quản lý"
-                              : "Cấp quyền quản lý nội dung"
-                          }
+                          title="Chỉnh sửa quyền"
                         >
-                          <UserCog className="w-4 h-4" />
+                          <SlidersHorizontal className="w-4 h-4" />
                         </button>
 
                         {/* Xóa (chỉ inactive) */}
@@ -634,9 +629,9 @@ export default function AdminUsers() {
                   <UserCog className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-black text-slate-900">Cấp / Thu hồi vai trò</h3>
+                  <h3 className="text-lg font-black text-slate-900">Chỉnh sửa quyền</h3>
                   <p className="text-sm text-slate-500">
-                    Chọn vai trò và thao tác phù hợp cho tài khoản này
+                    Cấp hoặc thu hồi quyền cho tài khoản này
                   </p>
                 </div>
               </div>
@@ -666,7 +661,8 @@ export default function AdminUsers() {
 
               {/* Role actions */}
               <div className="space-y-3 mb-6">
-                {primaryRole !== "admin" && (
+                {/* Cấp / Thu hồi quyền quản lý nội dung */}
+                {!selectedUser.roles.includes("content_manager") ? (
                   <button
                     onClick={() => confirmGrantRole("content_manager", "grant")}
                     disabled={actionLoading === "role"}
@@ -676,14 +672,13 @@ export default function AdminUsers() {
                       <UserCog className="w-4 h-4" />
                     </div>
                     <div>
-                      <p className="font-bold text-slate-900 text-sm">Cấp quyền Quản lý nội dung</p>
+                      <p className="font-bold text-slate-900 text-sm">Cấp quyền quản lý nội dung</p>
                       <p className="text-xs text-slate-500">
                         Cho phép thêm, sửa, xóa và duyệt nội dung
                       </p>
                     </div>
                   </button>
-                )}
-                {primaryRole === "content_manager" && (
+                ) : (
                   <button
                     onClick={() => confirmGrantRole("content_manager", "revoke")}
                     disabled={actionLoading === "role"}
@@ -693,23 +688,45 @@ export default function AdminUsers() {
                       <UserCog className="w-4 h-4" />
                     </div>
                     <div>
-                      <p className="font-bold text-slate-900 text-sm">Thu hồi Quản lý nội dung</p>
-                      <p className="text-xs text-slate-500">Thu hồi toàn bộ quyền quản lý nội dung</p>
+                      <p className="font-bold text-slate-900 text-sm">Thu hồi quyền quản lý nội dung</p>
+                      <p className="text-xs text-slate-500">
+                        Thu hồi toàn bộ quyền quản lý nội dung
+                      </p>
                     </div>
                   </button>
                 )}
-                {primaryRole !== "user" && (
+
+                {/* Cấp / Thu hồi quyền admin */}
+                {!selectedUser.roles.includes("admin") ? (
                   <button
-                    onClick={() => confirmGrantRole("user", "revoke")}
+                    onClick={() => confirmGrantRole("admin", "grant")}
                     disabled={actionLoading === "role"}
-                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors disabled:opacity-50 text-left"
+                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-violet-200 bg-violet-50 hover:bg-violet-100 transition-colors disabled:opacity-50 text-left"
                   >
-                    <div className="w-9 h-9 rounded-lg bg-slate-200 text-slate-600 flex items-center justify-center">
-                      <RefreshCw className="w-4 h-4" />
+                    <div className="w-9 h-9 rounded-lg bg-violet-100 text-violet-600 flex items-center justify-center">
+                      <Shield className="w-4 h-4" />
                     </div>
                     <div>
-                      <p className="font-bold text-slate-900 text-sm">Thu hồi tất cả vai trò đặc biệt</p>
-                      <p className="text-xs text-slate-500">Chỉ còn vai trò Người dùng thường</p>
+                      <p className="font-bold text-slate-900 text-sm">Cấp quyền admin</p>
+                      <p className="text-xs text-slate-500">
+                        Toàn quyền quản trị hệ thống
+                      </p>
+                    </div>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => confirmGrantRole("admin", "revoke")}
+                    disabled={actionLoading === "role"}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 transition-colors disabled:opacity-50 text-left"
+                  >
+                    <div className="w-9 h-9 rounded-lg bg-red-100 text-red-600 flex items-center justify-center">
+                      <Shield className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-900 text-sm">Thu hồi quyền admin</p>
+                      <p className="text-xs text-slate-500">
+                        Thu hồi toàn quyền quản trị hệ thống
+                      </p>
                     </div>
                   </button>
                 )}

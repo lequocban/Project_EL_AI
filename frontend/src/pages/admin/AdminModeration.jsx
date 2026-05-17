@@ -560,15 +560,15 @@ function ModerationDetailModal({ item, tab, onClose, onReviewed }) {
               className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 transition-colors">
               Hủy
             </button>
+            <button
+              onClick={handleSaveContent}
+              disabled={savingContent || isReviewing || detailLoading}
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-violet-500 text-white font-bold text-sm hover:bg-violet-600 disabled:opacity-50 transition-colors">
+              {savingContent ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              Lưu
+            </button>
             {effectiveStatus === "pending" && !detailLoading && contentId && (
               <>
-                <button
-                  onClick={handleSaveContent}
-                  disabled={savingContent || isReviewing}
-                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-violet-500 text-white font-bold text-sm hover:bg-violet-600 disabled:opacity-50 transition-colors">
-                  {savingContent ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                  Lưu
-                </button>
                 <button
                   onClick={() => handleReview("reject")}
                   disabled={isReviewing || savingContent}
