@@ -16,7 +16,7 @@ import {
   Globe,
   Lock,
 } from "lucide-react";
-import { adminApi } from "@/api/admin/adminApi";
+import { adminApi } from "@/api/admin";
 import { readingApi } from "@/api/client/readingApi";
 
 export default function AdminReading() {
@@ -36,19 +36,6 @@ export default function AdminReading() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingLesson, setEditingLesson] = useState(null);
 
-  // Load allTotal ngay khi mount (chỉ chạy 1 lần)
-  useEffect(() => {
-    const loadAllTotal = async () => {
-      try {
-        const res = await adminApi.getAllReadingLessons({ page: 1, limit: 1000, keyword: "" });
-        setAllTotal(res.data?.items?.length || 0);
-      } catch {
-        // ignore
-      }
-    };
-    loadAllTotal();
-  }, []);
-
   useEffect(() => {
     loadData();
   }, [tab, pendingPage, allPage, search]);
@@ -63,21 +50,17 @@ export default function AdminReading() {
           limit: 15,
           keyword: search,
         });
+        // Backend trả về { items, pagination: { page, limit, total, totalPages } } trong res.data
         setPendingLessons(res.data?.items || []);
-        setPendingTotal(res.data?.total || 0);
+        setPendingTotal(res.data?.pagination?.total ?? 0);
       } else {
-        // Gọi song song: lấy danh sách để hiển thị (phân trang) và lấy total (limit lớn)
-        const [listRes, totalRes] = await Promise.all([
+        // Backend trả về { items, pagination: { page, limit, total, totalPages } } trong res.data
+        const [listRes] = await Promise.all([
           adminApi.getAllReadingLessons({ page: allPage, limit: 15, keyword: search }),
-          adminApi.getAllReadingLessons({ page: 1, limit: 1000, keyword: "" }),
         ]);
+        // Backend trả về { items, pagination: { page, limit, total, totalPages } } trong res.data
         setAllLessons(listRes.data?.items || []);
-        const totalItems = totalRes.data?.items || [];
-        // Lọc lại theo keyword nếu có
-        const filteredTotal = search
-          ? totalItems.filter((l) => l.title?.toLowerCase().includes(search.toLowerCase()))
-          : totalItems;
-        setAllTotal(filteredTotal.length);
+        setAllTotal(listRes.data?.pagination?.total ?? 0);
       }
     } catch (err) {
       setError(err.message || "Không thể tải dữ liệu");
@@ -175,32 +158,32 @@ export default function AdminReading() {
 
       {/* Tabs */}
       <div className="flex gap-2 mb-6">
-        {[
-          ["pending", "Chờ duyệt", pendingTotal],
-          ["all", "Tất cả", allTotal],
-        ].map(([val, label, count]) => (
-          <button
-            key={val}
-            onClick={() => {
-              setTab(val);
-              setSearch("");
-            }}
-            className={`px-4 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${
-              tab === val
-                ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md"
-                : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
-            }`}
-          >
-            {label}
-            <span
-              className={`text-xs px-2 py-0.5 rounded-full font-bold ${
-                tab === val ? "bg-white/30 text-white" : "bg-slate-100 text-slate-500"
-              }`}
-            >
-              {count}
-            </span>
-          </button>
-        ))}
+        <button
+          onClick={() => {
+            setTab("pending");
+            setSearch("");
+          }}
+          className={`px-4 py-2 rounded-xl font-bold text-sm transition-all ${
+            tab === "pending"
+              ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md"
+              : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+          }`}
+        >
+          Chờ duyệt
+        </button>
+        <button
+          onClick={() => {
+            setTab("all");
+            setSearch("");
+          }}
+          className={`px-4 py-2 rounded-xl font-bold text-sm transition-all ${
+            tab === "all"
+              ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md"
+              : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+          }`}
+        >
+          Tất cả
+        </button>
       </div>
 
       {/* Search */}

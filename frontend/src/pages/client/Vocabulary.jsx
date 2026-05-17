@@ -36,13 +36,26 @@ const SET_COLORS = [
 ];
 
 // Backend trả về status dạng "public" / "private" / "req_public" (chữ thường)
-const normalizeSetForDisplay = (set) => ({
-  ...set,
-  wordCount: set.wordCount ?? set.word_count ?? 0,
-  status: set.status || "private",
-  is_public: set.status === "public",
-  is_pending: set.status === "req_public",
-});
+// setStatuses: map từ setId -> status (dùng khi backend không trả status)
+// defaultStatus: giá trị mặc định cho tab mà backend không trả status (vd: tab "Cộng đồng")
+// Tab "Cộng đồng" dùng defaultStatus làm ưu tiên cao nhất vì tất cả bộ từ đều public
+const normalizeSetForDisplay = (set, setStatuses = {}, defaultStatus) => {
+  let rawStatus;
+  if (defaultStatus !== null) {
+    // Tab "Cộng đồng": tất cả đều public, dùng defaultStatus
+    rawStatus = defaultStatus;
+  } else {
+    // Tab "Của tôi" / "Yêu thích": ưu tiên status đã fetch, rồi đến status từ API
+    rawStatus = setStatuses[set.id] ?? set.status ?? "private";
+  }
+  return {
+    ...set,
+    wordCount: set.wordCount ?? set.word_count ?? 0,
+    status: rawStatus,
+    is_public: rawStatus === "public",
+    is_pending: rawStatus === "req_public",
+  };
+};
 
 // Kiểm tra xem 1 bộ từ có trong danh sách favorites không
 const isFavSet = (setId, favorites) =>
@@ -65,6 +78,11 @@ export default function Vocabulary() {
   const [totalItems, setTotalItems] = useState(0);
   const [reloadTrigger, setReloadTrigger] = useState(0);
   const SETS_PER_PAGE = 6;
+
+  // Lưu chi tiết trạng thái (status) cho các bộ từ trong tab "Của tôi"
+  // vì endpoint getMySets không trả về status
+  const [setStatuses, setSetStatuses] = useState({});
+  const fetchStatusesRef = useRef(0);
 
   // Ref để tránh update state khi component unmount
   const mountedRef = useRef(true);
@@ -104,10 +122,26 @@ export default function Vocabulary() {
             keyword,
           });
           if (cancelled) return;
-          setSets(data.items || []);
+          const items = data.items || [];
+          setSets(items);
           setTotalPages(data.totalPages || 1);
           setTotalItems(data.total || 0);
           setPage(currentPage);
+
+          // Fetch chi tiết từng bộ để lấy status (vì getMySets không trả status)
+          const fetchId = ++fetchStatusesRef.current;
+          const statuses = {};
+          await Promise.all(
+            items.map(async (set) => {
+              try {
+                const detail = await vocabularyApi.getSetById(set.id);
+                if (fetchId === fetchStatusesRef.current) {
+                  statuses[set.id] = detail.status || "private";
+                }
+              } catch (_) {}
+            })
+          );
+          if (!cancelled) setSetStatuses(statuses);
         } else if (currentTab === "public") {
           data = await vocabularyApi.getPublicSets({
             page: currentPage,
@@ -126,10 +160,26 @@ export default function Vocabulary() {
             keyword,
           });
           if (cancelled) return;
-          setFavorites(data.items || []);
+          const items = data.items || [];
+          setFavorites(items);
           setTotalPages(data.totalPages || 1);
           setTotalItems(data.total || 0);
           setPage(currentPage);
+
+          // Fetch chi tiết từng bộ để lấy status (vì getFavorites không trả status)
+          const fetchId = ++fetchStatusesRef.current;
+          const statuses = {};
+          await Promise.all(
+            items.map(async (set) => {
+              try {
+                const detail = await vocabularyApi.getSetById(set.id);
+                if (fetchId === fetchStatusesRef.current) {
+                  statuses[set.id] = detail.status || "private";
+                }
+              } catch (_) {}
+            })
+          );
+          if (!cancelled) setSetStatuses((prev) => ({ ...prev, ...statuses }));
         }
       } catch (err) {
         if (!cancelled) {
@@ -171,12 +221,16 @@ export default function Vocabulary() {
     try {
       if (isFav) {
         await vocabularyApi.removeFavorite(id);
+        // Cập nhật UI ngay lập tức mà không cần reload toàn bộ
+        setFavorites((prev) => prev.filter((f) => String(f.id) !== id));
       } else {
         await vocabularyApi.addFavorite(id);
+        // Cập nhật UI ngay lập tức mà không cần reload toàn bộ
+        setFavorites((prev) => [...prev, { id: setId }]);
       }
-      // Reload để cập nhật
-      setReloadTrigger((n) => n + 1);
     } catch (err) {
+      // Nếu gọi API thất bại thì reload để đồng bộ lại
+      setReloadTrigger((n) => n + 1);
       setError(err.message || "Không thể cập nhật yêu thích");
     }
   };
@@ -194,15 +248,21 @@ export default function Vocabulary() {
 
   const getDisplayed = () => {
     let data = [];
-    if (tab === "mine") data = sets;
-    else if (tab === "public") data = publicSets;
-    else if (tab === "favorites") data = favorites;
+    let statusMap = {};
+    let defaultStatus = null;
 
-    return data.map((s) => {
-      const enriched = { ...s };
-      if (tab === "public") enriched.status = "public";
-      return normalizeSetForDisplay(enriched);
-    });
+    if (tab === "mine") {
+      data = sets;
+      statusMap = setStatuses;
+    } else if (tab === "public") {
+      data = publicSets;
+      defaultStatus = "public";
+    } else if (tab === "favorites") {
+      data = favorites;
+      statusMap = setStatuses;
+    }
+
+    return data.map((s) => normalizeSetForDisplay(s, statusMap, defaultStatus));
   };
 
   const displayed = getDisplayed();
@@ -271,15 +331,6 @@ export default function Vocabulary() {
               <Heart className={`w-3.5 h-3.5 ${tab === val ? "fill-white" : ""}`} />
             )}
             {label}
-            {val === "favorites" && favorites.length > 0 && (
-              <span
-                className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${
-                  tab === val ? "bg-white/30" : "bg-primary/10 text-primary"
-                }`}
-              >
-                {favorites.length}
-              </span>
-            )}
           </button>
         ))}
       </div>

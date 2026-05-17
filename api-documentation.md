@@ -2,7 +2,7 @@
 
 > **Phiên bản:** v1
 > **Base URL:** `http://<domain>/api/v1`
-> **Ngày cập nhật:** 15/05/2026
+> **> **Ngày cập nhật:** 15/05/2026
 
 ---
 
@@ -2313,80 +2313,7 @@ POST /explain-by-ai
 | 400 | "Phải cung cấp đầy đủ 4 đáp án A, B, C, D" | Thiếu đáp án |
 | 500 | "API_KEY chưa được cấu hình" | Biến API_KEY chưa được set trong .env |
 | 502 | "Lỗi từ dịch vụ AI" | OpenRouter API trả lỗi |
-
----
-
-## 5. Admin API
-
-> **Lưu ý:** Tất cả các endpoint Admin đều yêu cầu đăng nhập. Tùy endpoint mà yêu cầu quyền `content_manager` (role_id=2) hoặc `admin` (role_id=3).
-
----
-
-### 5.1. Admin Auth - Đăng Nhập Quản Trị
-
-#### 5.1.1. Đăng nhập trang admin
-
-```
-POST /admin/auth/login
-```
-
-**Xác thực:** Không cần (nhưng chỉ cho phép user có role content_manager hoặc admin)
-
-**Request Body:**
-```json
-{
-  "email": "admin@example.com",
-  "password": "AdminPassword123"
-}
-```
-
----
-
-#### 5.1.2. Lấy thông tin admin hiện tại
-
-```
-GET /admin/auth/me
-```
-
-**Xác thực:** `verifyToken` + `requireAuth` + `requireManagerOrAdmin`
-
----
-
-#### 5.1.3. Đăng xuất khỏi trang admin
-
-```
-POST /admin/auth/logout
-```
-
-**Xác thực:** `verifyToken` + `requireAuth`
-
----
-
-### 5.2. Admin Users - Quản Lý Người Dùng
-
-#### 5.2.1. Lấy danh sách người dùng
-
-```
-GET /admin/users
-```
-
-**Xác thực:** `verifyToken` + `requireAuth` + `requireAdmin`
-
-**Query Parameters:**
-
-| Tham số | Kiểu | Mặc định | Tối đa | Mô tả |
-|---------|------|-----------|---------|--------|
-| `page` | number | `1` | - | Số trang |
-| `limit` | number | `20` | `100` | Số item trên trang |
-| `search` | string | `""` | - | Tìm kiếm theo email (không phân biệt hoa thường, tìm chứa) |
-| `sortField` | string | `"created_at"` | - | Trường sắp xếp: `created_at` (ngày tạo tài khoản), `email` (theo email), `status` (theo trạng thái) |
-| `sortOrder` | string | `"desc"` | - | Thứ tự: `asc` (tăng dần), `desc` (giảm dần) |
-| `status` | string | `""` | - | Lọc theo trạng thái: `active` (đang hoạt động), `inactive` (bị vô hiệu hóa) |
-| `role` | string | `""` | - | Lọc theo vai trò: `user` (người dùng thường), `content_manager` (quản lý nội dung), `admin` (quản trị viên) |
-
-**Ví dụ:**
-```
-GET /api/v1/admin/users?search=@gmail.com&role=user&status=active&sortField=created_at&sortOrder=desc
+tOrder=desc
   → Tìm user thường, email gmail, đang active, mới nhất trước
 
 GET /api/v1/admin/users?role=admin&limit=5

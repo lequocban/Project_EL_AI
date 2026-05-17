@@ -24,6 +24,7 @@ import AdminVocabulary from "@/pages/admin/AdminVocabulary";
 import AdminReading from "@/pages/admin/AdminReading";
 import AdminListening from "@/pages/admin/AdminListening";
 import AdminUsers from "@/pages/admin/AdminUsers";
+import AdminModeration from "@/pages/admin/AdminModeration";
 
 const LoadingScreen = () => (
   <div className="fixed inset-0 flex items-center justify-center">
@@ -107,6 +108,7 @@ const AuthenticatedApp = () => {
         <Route path="/admin/vocabulary" element={<AdminVocabulary />} />
         <Route path="/admin/reading" element={<AdminReading />} />
         <Route path="/admin/listening" element={<AdminListening />} />
+        <Route path="/admin/moderation" element={<AdminModeration />} />
         <Route path="/admin/users" element={<AdminUsers />} />
       </Route>
 

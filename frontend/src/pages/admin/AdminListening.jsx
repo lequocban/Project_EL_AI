@@ -16,8 +16,12 @@ import {
   Globe,
   Lock,
   FileAudio,
+  Play,
+  Pause,
+  Upload,
+  FileUp,
 } from "lucide-react";
-import { adminApi } from "@/api/admin/adminApi";
+import { adminApi } from "@/api/admin";
 import { listeningApi } from "@/api/client/listeningApi";
 
 export default function AdminListening() {
@@ -37,19 +41,6 @@ export default function AdminListening() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingLesson, setEditingLesson] = useState(null);
 
-  // Load allTotal ngay khi mount (chỉ chạy 1 lần)
-  useEffect(() => {
-    const loadAllTotal = async () => {
-      try {
-        const res = await adminApi.getAllListeningLessons({ page: 1, limit: 1000, keyword: "" });
-        setAllTotal(res.data?.items?.length || 0);
-      } catch {
-        // ignore
-      }
-    };
-    loadAllTotal();
-  }, []);
-
   useEffect(() => {
     loadData();
   }, [tab, pendingPage, allPage, search]);
@@ -64,21 +55,17 @@ export default function AdminListening() {
           limit: 15,
           keyword: search,
         });
+        // Backend trả về { items, pagination: { page, limit, total, totalPages } } trong res.data
         setPendingLessons(res.data?.items || []);
-        setPendingTotal(res.data?.total || 0);
+        setPendingTotal(res.data?.pagination?.total ?? 0);
       } else {
-        // Gọi song song: lấy danh sách để hiển thị (phân trang) và lấy total (limit lớn)
-        const [listRes, totalRes] = await Promise.all([
+        // Backend trả về { items, pagination: { page, limit, total, totalPages } } trong res.data
+        const [listRes] = await Promise.all([
           adminApi.getAllListeningLessons({ page: allPage, limit: 15, keyword: search }),
-          adminApi.getAllListeningLessons({ page: 1, limit: 1000, keyword: "" }),
         ]);
+        // Backend trả về { items, pagination: { page, limit, total, totalPages } } trong res.data
         setAllLessons(listRes.data?.items || []);
-        const totalItems = totalRes.data?.items || [];
-        // Lọc lại theo keyword nếu có
-        const filteredTotal = search
-          ? totalItems.filter((l) => l.title?.toLowerCase().includes(search.toLowerCase()))
-          : totalItems;
-        setAllTotal(filteredTotal.length);
+        setAllTotal(listRes.data?.pagination?.total ?? 0);
       }
     } catch (err) {
       setError(err.message || "Không thể tải dữ liệu");
@@ -176,32 +163,32 @@ export default function AdminListening() {
 
       {/* Tabs */}
       <div className="flex gap-2 mb-6">
-        {[
-          ["pending", "Chờ duyệt", pendingTotal],
-          ["all", "Tất cả", allTotal],
-        ].map(([val, label, count]) => (
-          <button
-            key={val}
-            onClick={() => {
-              setTab(val);
-              setSearch("");
-            }}
-            className={`px-4 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${
-              tab === val
-                ? "bg-gradient-to-r from-green-500 to-teal-500 text-white shadow-md"
-                : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
-            }`}
-          >
-            {label}
-            <span
-              className={`text-xs px-2 py-0.5 rounded-full font-bold ${
-                tab === val ? "bg-white/30 text-white" : "bg-slate-100 text-slate-500"
-              }`}
-            >
-              {count}
-            </span>
-          </button>
-        ))}
+        <button
+          onClick={() => {
+            setTab("pending");
+            setSearch("");
+          }}
+          className={`px-4 py-2 rounded-xl font-bold text-sm transition-all ${
+            tab === "pending"
+              ? "bg-gradient-to-r from-green-500 to-teal-500 text-white shadow-md"
+              : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+          }`}
+        >
+          Chờ duyệt
+        </button>
+        <button
+          onClick={() => {
+            setTab("all");
+            setSearch("");
+          }}
+          className={`px-4 py-2 rounded-xl font-bold text-sm transition-all ${
+            tab === "all"
+              ? "bg-gradient-to-r from-green-500 to-teal-500 text-white shadow-md"
+              : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+          }`}
+        >
+          Tất cả
+        </button>
       </div>
 
       {/* Search */}
@@ -596,6 +583,103 @@ function EditListeningModal({ lesson, onClose, onSave }) {
   const [transcript, setTranscript] = useState(lesson.transcript || "");
   const [viTranslation, setViTranslation] = useState(lesson.viTranslation || "");
   const [isLoading, setIsLoading] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [audioRef, setAudioRef] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadError, setUploadError] = useState("");
+
+  const togglePlayAudio = () => {
+    if (!audioUrl) return;
+    if (!audioRef) {
+      const audio = new Audio(audioUrl);
+      audio.onended = () => setIsPlaying(false);
+      setAudioRef(audio);
+      setIsPlaying(true);
+      audio.play();
+    } else {
+      if (isPlaying) {
+        audioRef.pause();
+        setIsPlaying(false);
+      } else {
+        setIsPlaying(true);
+        audioRef.play();
+      }
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.includes("audio")) {
+      setUploadError("Vui lòng chọn file audio (mp3, wav, v.v.)");
+      return;
+    }
+    const maxSize = 50 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setUploadError("File audio quá lớn. Vui lòng chọn file nhỏ hơn 50MB");
+      return;
+    }
+    setSelectedFile(file);
+    setUploadError("");
+    const previewUrl = URL.createObjectURL(file);
+    if (audioRef) {
+      audioRef.pause();
+      setIsPlaying(false);
+    }
+    const audio = new Audio(previewUrl);
+    audio.onended = () => setIsPlaying(false);
+    setAudioRef(audio);
+    setAudioUrl(previewUrl);
+  };
+
+  const handleRemoveFile = () => {
+    if (audioRef) {
+      audioRef.pause();
+      setIsPlaying(false);
+      setAudioRef(null);
+    }
+    setSelectedFile(null);
+    setAudioUrl(lesson.audioUrl || "");
+    setUploadProgress(0);
+  };
+
+  const handleUploadFile = async () => {
+    if (!selectedFile) return;
+    setIsUploading(true);
+    setUploadError("");
+    setUploadProgress(10);
+    try {
+      setUploadProgress(30);
+      const uploadedUrl = await listeningApi.uploadAudio(selectedFile, title, (progress) => {
+        setUploadProgress(Math.round(progress * 0.6 + 30));
+      });
+      setUploadProgress(100);
+      if (audioRef) {
+        audioRef.pause();
+        setIsPlaying(false);
+      }
+      setAudioUrl(uploadedUrl);
+      setSelectedFile(null);
+      setTimeout(() => {
+        const audio = new Audio(uploadedUrl);
+        audio.onended = () => setIsPlaying(false);
+        setAudioRef(audio);
+      }, 300);
+    } catch (err) {
+      setUploadError(err.message || "Không thể upload file audio. Vui lòng thử lại.");
+      setUploadProgress(0);
+      if (audioRef) {
+        audioRef.pause();
+        setIsPlaying(false);
+        setAudioRef(null);
+      }
+      setAudioUrl(lesson.audioUrl || "");
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -613,9 +697,18 @@ function EditListeningModal({ lesson, onClose, onSave }) {
     }
   };
 
+  const hasAudio = !!audioUrl;
+  const isNewAudio = selectedFile !== null;
+  const playBtnClass = hasAudio
+    ? "bg-green-500 text-white hover:bg-green-600"
+    : "bg-slate-200 text-slate-400 cursor-not-allowed";
+  const fileLabelClass = isNewAudio
+    ? "border-green-400 bg-green-50"
+    : "border-slate-300 bg-white";
+
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="p-6 border-b border-slate-200">
           <h2 className="text-lg font-black text-slate-900">Chỉnh sửa bài luyện nghe</h2>
         </div>
@@ -631,15 +724,98 @@ function EditListeningModal({ lesson, onClose, onSave }) {
               className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-green-500/30"
             />
           </div>
+
+          {/* Phần Audio */}
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-1.5">Đường dẫn Audio</label>
-            <input
-              type="url"
-              value={audioUrl}
-              onChange={(e) => setAudioUrl(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-green-500/30"
-            />
+            <label className="block text-sm font-bold text-slate-700 mb-1.5">File Audio</label>
+
+            {/* Audio hiện tại / đã chọn */}
+            <div className="flex items-center gap-2 mb-2">
+              <button
+                type="button"
+                onClick={togglePlayAudio}
+                disabled={!hasAudio}
+                className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-all ${playBtnClass}`}
+              >
+                {isPlaying ? (
+                  <Pause className="w-4 h-4" fill="currentColor" />
+                ) : (
+                  <Play className="w-4 h-4 ml-0.5" fill="currentColor" />
+                )}
+              </button>
+              <div className="flex-1 text-xs text-slate-500 truncate">
+                {hasAudio ? (
+                  isNewAudio ? (
+                    <span className="text-amber-600 font-medium">
+                      Audio mới: {selectedFile?.name}
+                    </span>
+                  ) : (
+                    <span>Audio hiện tại</span>
+                  )
+                ) : (
+                  <span className="italic">Chưa có audio</span>
+                )}
+              </div>
+              {isNewAudio && (
+                <button
+                  type="button"
+                  onClick={handleRemoveFile}
+                  className="flex-shrink-0 text-xs text-red-500 hover:text-red-700 font-medium"
+                >
+                  Hủy
+                </button>
+              )}
+            </div>
+
+            {/* Nút chọn file */}
+            <label className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border-2 border-dashed cursor-pointer transition-all hover:bg-slate-50 ${fileLabelClass}`}>
+              <FileUp className="w-4 h-4 text-slate-500" />
+              <span className="text-sm font-medium text-slate-600">
+                {isNewAudio ? "Đã chọn file" : "Chọn file audio mới (mp3)"}
+              </span>
+              <input
+                type="file"
+                accept="audio/*"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+            </label>
+
+            {/* Progress bar upload */}
+            {isUploading && (
+              <div className="mt-2">
+                <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-green-500 transition-all duration-300"
+                    style={{ width: uploadProgress + "%" }}
+                  />
+                </div>
+                <p className="text-xs text-slate-500 mt-1 text-center">
+                  Đang upload... {uploadProgress}%
+                </p>
+              </div>
+            )}
+
+            {/* Nút upload */}
+            {isNewAudio && !isUploading && (
+              <div className="mt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleUploadFile}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-green-500 text-white text-xs font-bold hover:bg-green-600 transition-all"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  Upload lên server
+                </button>
+              </div>
+            )}
+
+            {/* Lỗi upload */}
+            {uploadError && (
+              <p className="text-xs text-red-500 mt-1">{uploadError}</p>
+            )}
           </div>
+
           <div>
             <label className="block text-sm font-bold text-slate-700 mb-1.5">Bản ghi (Transcript)</label>
             <textarea

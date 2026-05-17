@@ -14,10 +14,9 @@ import {
   AlertTriangle,
   Clock,
   Globe,
-  Lock,
   FileText,
 } from "lucide-react";
-import { adminApi } from "@/api/admin/adminApi";
+import { adminApi } from "@/api/admin";
 import { vocabularyApi } from "@/api/client/vocabularyApi";
 
 export default function AdminVocabulary() {
@@ -37,19 +36,6 @@ export default function AdminVocabulary() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingSet, setEditingSet] = useState(null);
 
-  // Load allTotal ngay khi mount (chỉ chạy 1 lần)
-  useEffect(() => {
-    const loadAllTotal = async () => {
-      try {
-        const res = await adminApi.getAllVocabularySets({ page: 1, limit: 1000, keyword: "" });
-        setAllTotal(res.data?.items?.length || 0);
-      } catch {
-        // ignore
-      }
-    };
-    loadAllTotal();
-  }, []);
-
   useEffect(() => {
     loadData();
   }, [tab, pendingPage, allPage, search]);
@@ -64,21 +50,18 @@ export default function AdminVocabulary() {
           limit: 15,
           keyword: search,
         });
+        // Backend trả về { items, pagination: { page, limit, total, totalPages } } trong res.data
         setPendingSets(res.data?.items || []);
-        setPendingTotal(res.data?.total || 0);
+        setPendingTotal(res.data?.pagination?.total ?? 0);
       } else {
-        // Gọi song song: lấy danh sách để hiển thị (phân trang) và lấy total (limit lớn)
-        const [listRes, totalRes] = await Promise.all([
-          adminApi.getAllVocabularySets({ page: allPage, limit: 15, keyword: search }),
-          adminApi.getAllVocabularySets({ page: 1, limit: 1000, keyword: "" }),
-        ]);
-        setAllSets(listRes.data?.items || []);
-        const totalItems = totalRes.data?.items || [];
-        // Lọc lại theo keyword nếu có
-        const filteredTotal = search
-          ? totalItems.filter((s) => s.title?.toLowerCase().includes(search.toLowerCase()))
-          : totalItems;
-        setAllTotal(filteredTotal.length);
+        // Backend trả về { items, pagination: { page, limit, total, totalPages } } trong res.data
+        const res = await adminApi.getAllVocabularySets({
+          page: allPage,
+          limit: 15,
+          keyword: search,
+        });
+        setAllSets(res.data?.items || []);
+        setAllTotal(res.data?.pagination?.total ?? 0);
       }
     } catch (err) {
       setError(err.message || "Không thể tải dữ liệu");
@@ -176,32 +159,32 @@ export default function AdminVocabulary() {
 
       {/* Tabs */}
       <div className="flex gap-2 mb-6">
-        {[
-          ["pending", "Chờ duyệt", pendingTotal],
-          ["all", "Tất cả", allTotal],
-        ].map(([val, label, count]) => (
-          <button
-            key={val}
-            onClick={() => {
-              setTab(val);
-              setSearch("");
-            }}
-            className={`px-4 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${
-              tab === val
-                ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md"
-                : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
-            }`}
-          >
-            {label}
-            <span
-              className={`text-xs px-2 py-0.5 rounded-full font-bold ${
-                tab === val ? "bg-white/30 text-white" : "bg-slate-100 text-slate-500"
-              }`}
-            >
-              {count}
-            </span>
-          </button>
-        ))}
+        <button
+          onClick={() => {
+            setTab("pending");
+            setSearch("");
+          }}
+          className={`px-4 py-2 rounded-xl font-bold text-sm transition-all ${
+            tab === "pending"
+              ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md"
+              : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+          }`}
+        >
+          Chờ duyệt
+        </button>
+        <button
+          onClick={() => {
+            setTab("all");
+            setSearch("");
+          }}
+          className={`px-4 py-2 rounded-xl font-bold text-sm transition-all ${
+            tab === "all"
+              ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md"
+              : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+          }`}
+        >
+          Tất cả
+        </button>
       </div>
 
       {/* Search */}
@@ -321,15 +304,8 @@ export default function AdminVocabulary() {
                     )}
                   </td>
                   <td className="px-5 py-4">
-                    <span className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full ${
-                      set.status === "public"
-                        ? "bg-blue-50 text-blue-600 border border-blue-200"
-                        : set.status === "req_public"
-                        ? "bg-amber-50 text-amber-600 border border-amber-200"
-                        : "bg-slate-100 text-slate-500"
-                    }`}>
-                      {set.status === "public" ? <Globe className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
-                      {set.status === "public" ? "Công khai" : set.status === "req_public" ? "Chờ duyệt" : "Riêng tư"}
+                    <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-blue-50 text-blue-600 border border-blue-200">
+                      <Globe className="w-3 h-3" /> Công khai
                     </span>
                   </td>
                   <td className="px-5 py-4 text-center text-sm font-medium text-slate-600">
@@ -434,6 +410,7 @@ function SetDetailModal({ set, onClose }) {
     try {
       setIsLoading(true);
       const res = await adminApi.getVocabSetById(set.id);
+      // Backend trả về words là pagination object: { items, total, page, limit }
       const wordsData = res.data?.words?.items || [];
       setWords(wordsData);
     } catch {

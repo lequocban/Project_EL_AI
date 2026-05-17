@@ -20,6 +20,8 @@ import {
   FileText,
   Wand2,
   Clock,
+  ShieldCheck,
+  Eye,
 } from "lucide-react";
 import { readingApi } from "@/api/client/readingApi";
 import PracticeHistoryModal from "@/components/client/practice/PracticeHistoryModal";
@@ -608,6 +610,72 @@ function ReadingStarter({ lesson, onBack }) {
   // Các câu hỏi gốc từ server (dùng để phát hiện thay đổi)
   const originalQuestionsRef = useRef(lesson.questions || []);
 
+  // State cho việc gửi yêu cầu công khai / chuyển riêng tư
+  const [isRequestingPublic, setIsRequestingPublic] = useState(false);
+  const [isMakingPrivate, setIsMakingPrivate] = useState(false);
+  const [actionMessage, setActionMessage] = useState("");
+
+  // Gửi yêu cầu công khai bài luyện đọc (chỉ gửi yêu cầu, không chuyển trang)
+  const handleRequestPublic = async () => {
+    if (!window.confirm("Bạn có muốn gửi yêu cầu công khai bài luyện đọc này không?\nNội dung sẽ được kiểm duyệt trước khi hiển thị công khai.")) {
+      return false;
+    }
+    try {
+      setIsRequestingPublic(true);
+      setActionMessage("");
+      await readingApi.requestPublic(lesson.id);
+      setActionMessage("Đã gửi yêu cầu công khai! Nội dung sẽ được kiểm duyệt trước khi hiển thị công khai.");
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+      return true;
+    } catch (err) {
+      setActionMessage(`Lỗi: ${err.message || "Không thể gửi yêu cầu công khai"}`);
+      return false;
+    } finally {
+      setIsRequestingPublic(false);
+    }
+  };
+
+  // Gửi yêu cầu kiểm duyệt và chuyển đến trang Kiểm duyệt của admin
+  const handleModeration = async () => {
+    if (!window.confirm("Bạn có muốn gửi yêu cầu kiểm duyệt cho bài luyện đọc này không?\nYêu cầu sẽ được hiển thị trên trang Kiểm duyệt của admin.")) {
+      return;
+    }
+    try {
+      setIsRequestingPublic(true);
+      setActionMessage("");
+      await readingApi.requestPublic(lesson.id);
+      setActionMessage("Đã gửi yêu cầu kiểm duyệt! Admin sẽ xem xét và phản hồi.");
+      setTimeout(() => {
+        navigate("/admin/moderation");
+      }, 1500);
+    } catch (err) {
+      setActionMessage(`Lỗi: ${err.message || "Không thể gửi yêu cầu kiểm duyệt"}`);
+      setIsRequestingPublic(false);
+    }
+  };
+
+  // Chuyển bài luyện đọc về chế độ riêng tư
+  const handleMakePrivate = async () => {
+    if (!window.confirm("Bạn có muốn chuyển bài luyện đọc này về chế độ riêng tư không?")) {
+      return;
+    }
+    try {
+      setIsMakingPrivate(true);
+      setActionMessage("");
+      await readingApi.makePrivate(lesson.id);
+      setActionMessage("Đã chuyển bài luyện đọc về chế độ riêng tư.");
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (err) {
+      setActionMessage(`Lỗi: ${err.message || "Không thể chuyển về chế độ riêng tư"}`);
+    } finally {
+      setIsMakingPrivate(false);
+    }
+  };
+
   const handleStart = () => {
     navigate(`/reading/${lesson.id}/practice`, {
       state: { lesson: { ...lesson, questions, content: passageContent, vi_translation: passageVi } }
@@ -788,15 +856,67 @@ function ReadingStarter({ lesson, onBack }) {
             >
               {LEVEL_LABELS[lesson.level] || lesson.level}
             </span>
-            {!isEditing && !lesson.is_public && (
-              <button
-                onClick={() => setIsEditing(true)}
-                className="flex items-center gap-1 bg-gradient-to-r from-orange-500 to-amber-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm hover:opacity-90 transition-all"
-              >
-                <Edit3 className="w-3.5 h-3.5" />
-                Chỉnh sửa
-              </button>
-            )}
+            {/* Các nút Kiểm duyệt và Công khai */}
+            <div className="flex items-center gap-2">
+              {lesson.is_public ? (
+                <button
+                  onClick={handleMakePrivate}
+                  disabled={isMakingPrivate || isRequestingPublic}
+                  className="flex items-center gap-1.5 bg-orange-50 text-orange-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-orange-100 transition-all border border-orange-200 disabled:opacity-50"
+                  title="Chuyển về chế độ riêng tư"
+                >
+                  {isMakingPrivate ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                  )}
+                  Riêng tư
+                </button>
+              ) : lesson.is_pending ? (
+                <span className="flex items-center gap-1.5 bg-amber-50 text-amber-600 px-3 py-1.5 rounded-lg text-xs font-bold border border-amber-200">
+                  <Clock className="w-3.5 h-3.5" />
+                  Chờ duyệt
+                </span>
+              ) : (
+                <>
+                  <button
+                    onClick={handleModeration}
+                    disabled={isMakingPrivate || isRequestingPublic}
+                    className="flex items-center gap-1.5 bg-violet-50 text-violet-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-violet-100 transition-all border border-violet-200 disabled:opacity-50"
+                    title="Gửi yêu cầu kiểm duyệt"
+                  >
+                    {isRequestingPublic ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Eye className="w-3.5 h-3.5" />
+                    )}
+                    Kiểm duyệt
+                  </button>
+                  <button
+                    onClick={handleRequestPublic}
+                    disabled={isMakingPrivate || isRequestingPublic}
+                    className="flex items-center gap-1.5 bg-green-50 text-green-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-green-100 transition-all border border-green-200 disabled:opacity-50"
+                    title="Gửi yêu cầu công khai"
+                  >
+                    {isRequestingPublic ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Globe className="w-3.5 h-3.5" />
+                    )}
+                    Công khai
+                  </button>
+                </>
+              )}
+              {!isEditing && !lesson.is_public && (
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="flex items-center gap-1 bg-gradient-to-r from-orange-500 to-amber-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm hover:opacity-90 transition-all"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  Chỉnh sửa
+                </button>
+              )}
+            </div>
           </div>
 
           <h1 className="text-2xl font-black text-foreground mb-2">
@@ -828,6 +948,15 @@ function ReadingStarter({ lesson, onBack }) {
           {saveError && (
             <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-600">
               {saveError}
+            </div>
+          )}
+          {actionMessage && (
+            <div className={`mb-4 rounded-xl p-3 text-sm font-medium ${
+              actionMessage.includes("Lỗi")
+                ? "bg-red-50 text-red-600 border border-red-200"
+                : "bg-green-50 text-green-600 border border-green-200"
+            }`}>
+              {actionMessage}
             </div>
           )}
 
@@ -1123,10 +1252,13 @@ function ReadingPlayer({ lesson, onBack }) {
   const [submitError, setSubmitError] = useState("");
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [showPassage, setShowPassage] = useState(false);
+  const [showPassage, setShowPassage] = useState(true);
   const [passageVi] = useState(lesson.vi_translation || "");
   const [questions] = useState(lesson.questions || []);
   const [passageContent] = useState(lesson.content || lesson.passage || "");
+  const [aiExplainingIndex, setAiExplainingIndex] = useState(null); // index của câu đang giải thích AI
+  const [aiExplanation, setAiExplanation] = useState(""); // nội dung giải thích AI
+  const [aiModalOpen, setAiModalOpen] = useState(false); // dialog AI đang mở
 
   const handleSubmit = async () => {
     if (Object.keys(answers).length < questions.length) return;
@@ -1144,6 +1276,27 @@ function ReadingPlayer({ lesson, onBack }) {
     } catch (err) {
       setSubmitError(err.message || "Không thể nộp bài");
       setSubmitting(false);
+    }
+  };
+
+  // Gọi AI giải thích đáp án cho một câu hỏi
+  const handleExplainWithAI = async (q, qi) => {
+    setAiModalOpen(true);
+    setAiExplainingIndex(qi);
+    setAiExplanation("");
+    try {
+      const explanation = await readingApi.explainAnswer({
+        content: passageContent,
+        viTranslation: passageVi,
+        question: q.question,
+        allAnswers: { a: q.options[0], b: q.options[1], c: q.options[2], d: q.options[3] },
+        userAnswer: q.userAnswer,
+        correctAnswer: q.correct_answer,
+      });
+      // Xóa ký tự ** trong giải thích
+      setAiExplanation(explanation.replace(/\*\*/g, ""));
+    } catch (err) {
+      setAiExplanation(`Lỗi: ${err.message || "Không thể lấy giải thích từ AI. Vui lòng thử lại."}`);
     }
   };
 
@@ -1219,7 +1372,7 @@ function ReadingPlayer({ lesson, onBack }) {
   // Trang kết quả chi tiết
   if (submitted) {
     return (
-      <div className="min-h-screen bg-background p-6 lg:p-8">
+      <div className="min-h-screen bg-background p-6 lg:p-10">
         <button
           onClick={onBack}
           className="flex items-center gap-2 text-muted-foreground hover:text-foreground font-semibold text-sm mb-6 transition-colors"
@@ -1228,7 +1381,7 @@ function ReadingPlayer({ lesson, onBack }) {
         </button>
 
         {/* Tổng kết quả */}
-        <div className="bg-white rounded-2xl p-6 max-w-lg mx-auto text-center shadow-md mb-6">
+        <div className="bg-white rounded-2xl p-6 max-w-5xl mx-auto text-center shadow-md mb-6">
           <h2 className="text-lg font-black mb-1">Kết quả bài luyện đọc</h2>
           <div className="text-5xl font-black text-primary my-3">{percentage}%</div>
           <p className="text-muted-foreground font-medium">
@@ -1250,7 +1403,7 @@ function ReadingPlayer({ lesson, onBack }) {
 
         {/* Đoạn văn với bản dịch từ database */}
         {passageContent && (
-          <div className="max-w-lg mx-auto mb-6">
+          <div className="max-w-5xl mx-auto mb-6">
             <div className="bg-white rounded-2xl border border-border overflow-hidden shadow-md">
               <button
                 onClick={() => setShowPassage(!showPassage)}
@@ -1291,7 +1444,7 @@ function ReadingPlayer({ lesson, onBack }) {
         )}
 
         {/* Chi tiết từng câu */}
-        <div className="space-y-4 max-w-lg mx-auto">
+        <div className="space-y-4 max-w-5xl mx-auto">
           {results.map((q, qi) => {
             const borderColor = q.isCorrect
               ? "border-green-400 bg-green-50"
@@ -1357,12 +1510,20 @@ function ReadingPlayer({ lesson, onBack }) {
                     <strong>Giải thích:</strong> {q.explain}
                   </div>
                 )}
+                {/* Nút giải thích bằng AI */}
+                <button
+                  onClick={() => handleExplainWithAI(q, qi)}
+                  className="mt-3 flex items-center gap-2 gradient-orange text-white px-3 py-2 rounded-lg text-xs font-bold hover:opacity-90 transition-all"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Giải thích bằng AI
+                </button>
               </div>
             );
           })}
         </div>
 
-        <div className="max-w-lg mx-auto mt-6">
+        <div className="max-w-5xl mx-auto mt-6">
           <button
             onClick={onBack}
             className="w-full gradient-orange text-white py-3 rounded-xl font-bold shadow-md hover:opacity-90 transition-all"
@@ -1370,6 +1531,44 @@ function ReadingPlayer({ lesson, onBack }) {
             Quay lại danh sách bài
           </button>
         </div>
+
+        {/* Dialog giải thích bằng AI */}
+        {aiModalOpen && (
+          <div
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={() => setAiModalOpen(false)}
+          >
+            <div
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-6 border-b border-border">
+                <div className="flex items-center gap-3">
+                  <Sparkles className="w-6 h-6 text-orange-500" />
+                  <h3 className="text-xl font-black text-foreground">Giải thích bằng AI</h3>
+                </div>
+                <button
+                  onClick={() => setAiModalOpen(false)}
+                  className="p-2 hover:bg-muted rounded-lg transition-all"
+                >
+                  <X className="w-6 h-6 text-muted-foreground" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-8">
+                {aiExplanation ? (
+                  <p className="text-base text-foreground whitespace-pre-line leading-relaxed">
+                    {aiExplanation}
+                  </p>
+                ) : (
+                  <div className="flex items-center justify-center py-10 gap-3 text-muted-foreground text-base">
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                    <span>Đang tải giải thích...</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -1402,6 +1601,36 @@ function ReadingPlayer({ lesson, onBack }) {
 
         {questions.length > 0 && (
           <div>
+            {/* Hiển thị đoạn văn tiếng Anh khi đang làm bài */}
+            {passageContent && (
+              <div className="bg-white rounded-2xl border border-border overflow-hidden mb-6 shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => setShowPassage(!showPassage)}
+                  className="w-full p-4 font-bold text-sm cursor-pointer hover:bg-muted flex items-center justify-between transition-all"
+                >
+                  <span className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                    Đoạn văn tiếng Anh
+                  </span>
+                  {showPassage ? (
+                    <ChevronUp className="w-4 h-4" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4" />
+                  )}
+                </button>
+                {showPassage && (
+                  <div className="px-4 pb-4 pt-0">
+                    <p className="text-sm text-foreground whitespace-pre-line font-medium leading-relaxed bg-orange-50 rounded-xl p-4 border border-orange-100">
+                      {passageContent}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
             <h2 className="font-black text-foreground mb-4">Câu hỏi đọc hiểu</h2>
 
             {/* Thanh tiến trình */}

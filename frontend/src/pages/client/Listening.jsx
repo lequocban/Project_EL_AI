@@ -23,6 +23,8 @@ import {
   Wand2,
   Clock,
   Upload,
+  ShieldCheck,
+  Eye,
 } from "lucide-react";
 import { listeningApi } from "@/api/client/listeningApi";
 import PracticeHistoryModal from "@/components/client/practice/PracticeHistoryModal";
@@ -631,7 +633,7 @@ function CreateListeningModal({ onClose, onCreated }) {
                       <div className="mt-1.5 w-full bg-blue-200 rounded-full h-1.5">
                         <div
                           className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
-                          style={{ width: `${uploadProgress}%` }}
+                          style={{ width: uploadProgress + "%" }}
                         />
                       </div>
                     </div>
@@ -842,6 +844,72 @@ function LessonStarter({ lesson, onBack }) {
   // Các câu hỏi gốc từ server (dùng để phát hiện thay đổi)
   const originalQuestionsRef = useRef(lesson.questions || []);
 
+  // State cho việc gửi yêu cầu công khai / chuyển riêng tư
+  const [isRequestingPublic, setIsRequestingPublic] = useState(false);
+  const [isMakingPrivate, setIsMakingPrivate] = useState(false);
+  const [actionMessage, setActionMessage] = useState("");
+
+  // Gửi yêu cầu công khai bài luyện nghe (chỉ gửi yêu cầu, không chuyển trang)
+  const handleRequestPublic = async () => {
+    if (!window.confirm("Bạn có muốn gửi yêu cầu công khai bài luyện nghe này không?\nNội dung sẽ được kiểm duyệt trước khi hiển thị công khai.")) {
+      return false;
+    }
+    try {
+      setIsRequestingPublic(true);
+      setActionMessage("");
+      await listeningApi.requestPublic(lesson.id);
+      setActionMessage("Đã gửi yêu cầu công khai! Nội dung sẽ được kiểm duyệt trước khi hiển thị công khai.");
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+      return true;
+    } catch (err) {
+      setActionMessage(`Lỗi: ${err.message || "Không thể gửi yêu cầu công khai"}`);
+      return false;
+    } finally {
+      setIsRequestingPublic(false);
+    }
+  };
+
+  // Gửi yêu cầu kiểm duyệt và chuyển đến trang Kiểm duyệt của admin
+  const handleModeration = async () => {
+    if (!window.confirm("Bạn có muốn gửi yêu cầu kiểm duyệt cho bài luyện nghe này không?\nYêu cầu sẽ được hiển thị trên trang Kiểm duyệt của admin.")) {
+      return;
+    }
+    try {
+      setIsRequestingPublic(true);
+      setActionMessage("");
+      await listeningApi.requestPublic(lesson.id);
+      setActionMessage("Đã gửi yêu cầu kiểm duyệt! Admin sẽ xem xét và phản hồi.");
+      setTimeout(() => {
+        navigate("/admin/moderation");
+      }, 1500);
+    } catch (err) {
+      setActionMessage(`Lỗi: ${err.message || "Không thể gửi yêu cầu kiểm duyệt"}`);
+      setIsRequestingPublic(false);
+    }
+  };
+
+  // Chuyển bài luyện nghe về chế độ riêng tư
+  const handleMakePrivate = async () => {
+    if (!window.confirm("Bạn có muốn chuyển bài luyện nghe này về chế độ riêng tư không?")) {
+      return;
+    }
+    try {
+      setIsMakingPrivate(true);
+      setActionMessage("");
+      await listeningApi.makePrivate(lesson.id);
+      setActionMessage("Đã chuyển bài luyện nghe về chế độ riêng tư.");
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (err) {
+      setActionMessage(`Lỗi: ${err.message || "Không thể chuyển về chế độ riêng tư"}`);
+    } finally {
+      setIsMakingPrivate(false);
+    }
+  };
+
   const handleStart = () => {
     navigate(`/listening/${lesson.id}/practice`, {
       state: { lesson: { ...lesson, questions, transcript: transcriptEn, vi_translation: transcriptVi } }
@@ -1019,15 +1087,67 @@ function LessonStarter({ lesson, onBack }) {
             >
               {LEVEL_LABELS[lesson.level] || lesson.level}
             </span>
-            {!isEditing && !lesson.is_public && (
-              <button
-                onClick={() => setIsEditing(true)}
-                className="flex items-center gap-1 bg-gradient-to-r from-green-500 to-teal-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm hover:opacity-90 transition-all"
-              >
-                <Edit3 className="w-3.5 h-3.5" />
-                Chỉnh sửa
-              </button>
-            )}
+            {/* Các nút Kiểm duyệt và Công khai */}
+            <div className="flex items-center gap-2">
+              {lesson.is_public ? (
+                <button
+                  onClick={handleMakePrivate}
+                  disabled={isMakingPrivate || isRequestingPublic}
+                  className="flex items-center gap-1.5 bg-orange-50 text-orange-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-orange-100 transition-all border border-orange-200 disabled:opacity-50"
+                  title="Chuyển về chế độ riêng tư"
+                >
+                  {isMakingPrivate ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                  )}
+                  Riêng tư
+                </button>
+              ) : lesson.is_pending ? (
+                <span className="flex items-center gap-1.5 bg-amber-50 text-amber-600 px-3 py-1.5 rounded-lg text-xs font-bold border border-amber-200">
+                  <Clock className="w-3.5 h-3.5" />
+                  Chờ duyệt
+                </span>
+              ) : (
+                <>
+                  <button
+                    onClick={handleModeration}
+                    disabled={isMakingPrivate || isRequestingPublic}
+                    className="flex items-center gap-1.5 bg-violet-50 text-violet-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-violet-100 transition-all border border-violet-200 disabled:opacity-50"
+                    title="Gửi yêu cầu kiểm duyệt"
+                  >
+                    {isRequestingPublic ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Eye className="w-3.5 h-3.5" />
+                    )}
+                    Kiểm duyệt
+                  </button>
+                  <button
+                    onClick={handleRequestPublic}
+                    disabled={isMakingPrivate || isRequestingPublic}
+                    className="flex items-center gap-1.5 bg-green-50 text-green-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-green-100 transition-all border border-green-200 disabled:opacity-50"
+                    title="Gửi yêu cầu công khai"
+                  >
+                    {isRequestingPublic ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Globe className="w-3.5 h-3.5" />
+                    )}
+                    Công khai
+                  </button>
+                </>
+              )}
+              {!isEditing && !lesson.is_public && (
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="flex items-center gap-1 bg-gradient-to-r from-green-500 to-teal-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm hover:opacity-90 transition-all"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  Chỉnh sửa
+                </button>
+              )}
+            </div>
           </div>
 
           <h1 className="text-2xl font-black text-foreground mb-2">
@@ -1057,6 +1177,15 @@ function LessonStarter({ lesson, onBack }) {
           {saveError && (
             <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-600">
               {saveError}
+            </div>
+          )}
+          {actionMessage && (
+            <div className={`mb-4 rounded-xl p-3 text-sm font-medium ${
+              actionMessage.includes("Lỗi")
+                ? "bg-red-50 text-red-600 border border-red-200"
+                : "bg-green-50 text-green-600 border border-green-200"
+            }`}>
+              {actionMessage}
             </div>
           )}
 
@@ -1360,6 +1489,9 @@ function LessonPlayer({ lesson, onBack }) {
   const [questions] = useState(lesson.questions || []);
   const [transcriptEn] = useState(lesson.transcript || lesson.audio_script || "");
   const [transcriptVi] = useState(lesson.vi_translation || "");
+  const [aiExplainingIndex, setAiExplainingIndex] = useState(null); // index của câu đang giải thích AI
+  const [aiExplanation, setAiExplanation] = useState(""); // nội dung giải thích AI
+  const [aiModalOpen, setAiModalOpen] = useState(false); // dialog AI đang mở
 
   useEffect(() => {
     return () => {
@@ -1433,6 +1565,27 @@ function LessonPlayer({ lesson, onBack }) {
     } catch (err) {
       setSubmitError(err.message || "Không thể nộp bài");
       setSubmitting(false);
+    }
+  };
+
+  // Gọi AI giải thích đáp án cho một câu hỏi
+  const handleExplainWithAI = async (q, qi) => {
+    setAiModalOpen(true);
+    setAiExplainingIndex(qi);
+    setAiExplanation("");
+    try {
+      const explanation = await listeningApi.explainAnswer({
+        content: transcriptEn,
+        viTranslation: transcriptVi,
+        question: q.question,
+        allAnswers: { a: q.options[0], b: q.options[1], c: q.options[2], d: q.options[3] },
+        userAnswer: q.userAnswer,
+        correctAnswer: q.correct_answer,
+      });
+      // Xóa ký tự ** trong giải thích
+      setAiExplanation(explanation.replace(/\*\*/g, ""));
+    } catch (err) {
+      setAiExplanation(`Lỗi: ${err.message || "Không thể lấy giải thích từ AI. Vui lòng thử lại."}`);
     }
   };
 
@@ -1513,7 +1666,7 @@ function LessonPlayer({ lesson, onBack }) {
   // Trang kết quả chi tiết
   if (submitted) {
     return (
-      <div className="min-h-screen bg-background p-6 lg:p-8">
+      <div className="min-h-screen bg-background p-6 lg:p-10">
         <button
           onClick={() => {
             stopAudio();
@@ -1525,7 +1678,7 @@ function LessonPlayer({ lesson, onBack }) {
         </button>
 
         {/* Tổng kết quả */}
-        <div className="bg-white rounded-2xl p-6 max-w-lg mx-auto text-center shadow-md mb-6">
+        <div className="bg-white rounded-2xl p-6 max-w-5xl mx-auto text-center shadow-md mb-6">
           <h2 className="text-lg font-black mb-1">Kết quả bài luyện nghe</h2>
           <div className="text-5xl font-black text-primary my-3">{percentage}%</div>
           <p className="text-muted-foreground font-medium">
@@ -1546,7 +1699,7 @@ function LessonPlayer({ lesson, onBack }) {
         </div>
 
         {/* Audio player */}
-        <div className="max-w-lg mx-auto mb-6">
+        <div className="max-w-5xl mx-auto mb-6">
           <div className="bg-gradient-to-br from-green-500 to-teal-600 rounded-2xl p-6 text-white shadow-lg">
             <div className="flex items-center gap-4">
               <div className="flex gap-3">
@@ -1589,7 +1742,7 @@ function LessonPlayer({ lesson, onBack }) {
 
         {/* Transcript */}
         {(transcriptEn || transcriptVi) && (
-          <div className="max-w-lg mx-auto mb-6">
+          <div className="max-w-5xl mx-auto mb-6">
             <div className="bg-white rounded-2xl border border-border overflow-hidden shadow-md">
               <button
                 onClick={() => setShowTranscript(!showTranscript)}
@@ -1639,7 +1792,7 @@ function LessonPlayer({ lesson, onBack }) {
         )}
 
         {/* Chi tiết từng câu */}
-        <div className="space-y-4 max-w-lg mx-auto">
+        <div className="space-y-4 max-w-5xl mx-auto">
           {results.map((q, qi) => {
             const borderColor = q.isCorrect
               ? "border-green-400 bg-green-50"
@@ -1705,12 +1858,20 @@ function LessonPlayer({ lesson, onBack }) {
                     <strong>Giải thích:</strong> {q.explain}
                   </div>
                 )}
+                {/* Nút giải thích bằng AI */}
+                <button
+                  onClick={() => handleExplainWithAI(q, qi)}
+                  className="mt-3 flex items-center gap-2 gradient-green text-white px-3 py-2 rounded-lg text-xs font-bold hover:opacity-90 transition-all"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Giải thích bằng AI
+                </button>
               </div>
             );
           })}
         </div>
 
-        <div className="max-w-lg mx-auto mt-6">
+        <div className="max-w-5xl mx-auto mt-6">
           <button
             onClick={() => {
               stopAudio();
@@ -1721,6 +1882,44 @@ function LessonPlayer({ lesson, onBack }) {
             Quay lại danh sách bài
           </button>
         </div>
+
+        {/* Dialog giải thích bằng AI */}
+        {aiModalOpen && (
+          <div
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={() => setAiModalOpen(false)}
+          >
+            <div
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-6 border-b border-border">
+                <div className="flex items-center gap-3">
+                  <Sparkles className="w-6 h-6 text-green-500" />
+                  <h3 className="text-xl font-black text-foreground">Giải thích bằng AI</h3>
+                </div>
+                <button
+                  onClick={() => setAiModalOpen(false)}
+                  className="p-2 hover:bg-muted rounded-lg transition-all"
+                >
+                  <X className="w-6 h-6 text-muted-foreground" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-8">
+                {aiExplanation ? (
+                  <p className="text-base text-foreground whitespace-pre-line leading-relaxed">
+                    {aiExplanation}
+                  </p>
+                ) : (
+                  <div className="flex items-center justify-center py-10 gap-3 text-muted-foreground text-base">
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                    <span>Đang tải giải thích...</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
