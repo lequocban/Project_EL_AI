@@ -126,10 +126,11 @@ export const vocabularyApi = {
 
   // Cập nhật thông tin bộ từ vựng (title, description)
   updateSet: async (id, { title, description }) => {
-    return fetchWithAuth(`${VOCABULARY_SET_URL}/${id}`, {
+    const response = await fetchWithAuth(`${VOCABULARY_SET_URL}/${id}`, {
       method: "PATCH",
       body: JSON.stringify({ title, description }),
     });
+    return normalizeSet({ ...response.data, title, description });
   },
 
   // Thêm danh sách từ vựng vào bộ từ

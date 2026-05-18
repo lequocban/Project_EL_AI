@@ -9,9 +9,11 @@ import {
   Trash2,
   ChevronRight,
   Heart,
+  PencilLine,
   Clock,
 } from "lucide-react";
 import CreateSetModal from "@/components/client/vocabulary/CreateSetModal";
+import EditSetModal from "@/components/client/vocabulary/EditSetModal";
 import SetDetail from "@/components/client/vocabulary/SetDetail";
 import PracticeHistoryModal from "@/components/client/practice/PracticeHistoryModal";
 import { vocabularyApi } from "@/api/client/vocabularyApi";
@@ -68,6 +70,8 @@ export default function Vocabulary() {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState("mine");
   const [showCreate, setShowCreate] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
+  const [editingSet, setEditingSet] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
   const [selectedSet, setSelectedSet] = useState(null);
   const [error, setError] = useState("");
@@ -246,6 +250,22 @@ export default function Vocabulary() {
     }
   };
 
+  const openEdit = (setItem, e) => {
+    e?.stopPropagation();
+    setEditingSet(setItem);
+    setShowEdit(true);
+  };
+
+  const handleSetUpdated = (updatedSet) => {
+    // Cập nhật UI ngay lập tức mà không cần reload toàn bộ
+    setSets((prev) => prev.map((s) => String(s.id) === String(updatedSet.id) ? { ...s, ...updatedSet } : s));
+    setFavorites((prev) => prev.map((s) => String(s.id) === String(updatedSet.id) ? { ...s, ...updatedSet } : s));
+    // Cập nhật selectedSet để SetDetail đang mở cũng thấy thay đổi ngay lập tức
+    setSelectedSet((prev) => prev && String(prev.id) === String(updatedSet.id) ? { ...prev, ...updatedSet } : prev);
+    setShowEdit(false);
+    setEditingSet(null);
+  };
+
   const getDisplayed = () => {
     let data = [];
     let statusMap = {};
@@ -415,6 +435,15 @@ export default function Vocabulary() {
                           className={`w-4 h-4 transition-all ${isFav ? "fill-red-500" : ""}`}
                         />
                       </button>
+                      {tab === "mine" && (
+                        <button
+                          onClick={(e) => openEdit(set, e)}
+                          className="p-1 rounded-lg hover:bg-primary/10 text-muted-foreground/40 hover:text-primary transition-colors"
+                          title="Chỉnh sửa bộ từ"
+                        >
+                          <PencilLine className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                       {/* Icon công khai: chỉ hiện Globe khi đã được duyệt public */}
                       {set.is_public ? (
                         <Globe className="w-4 h-4 text-blue-400" title="Đã công khai" />
@@ -515,6 +544,16 @@ export default function Vocabulary() {
             setShowCreate(false);
             setSelectedSet(s);
           }}
+        />
+      )}
+      {showEdit && editingSet && (
+        <EditSetModal
+          set={editingSet}
+          onClose={() => {
+            setShowEdit(false);
+            setEditingSet(null);
+          }}
+          onUpdated={handleSetUpdated}
         />
       )}
       {showHistory && (
