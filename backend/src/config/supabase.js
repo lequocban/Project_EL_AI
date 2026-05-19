@@ -10,8 +10,13 @@ const supabase = createClient(env.supabaseUrl, serviceKey, {
 });
 
 const createAuthedClient = (accessToken) => {
-  return createClient(env.supabaseUrl, serviceKey, {
+  return createClient(env.supabaseUrl, env.supabaseAnonKey, {
     auth: { persistSession: false },
+    global: {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
   });
 };
 
