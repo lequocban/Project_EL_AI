@@ -6,6 +6,7 @@ import { Check, ChevronDown, ChevronUp } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
+// Component dropdown chọn giá trị từ danh sách
 const Select = SelectPrimitive.Root;
 
 const SelectGroup = SelectPrimitive.Group;

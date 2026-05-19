@@ -39,6 +39,7 @@ const LEVEL_COLORS = {
 
 const LESSONS_PER_PAGE = 6;
 
+// Trang luyện đọc với danh sách bài học và tính năng tạo bài mới
 export default function Reading() {
   const [lessons, setLessons] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -55,6 +56,7 @@ export default function Reading() {
   const loadDataRef = useRef(null);
   const safePage = Math.min(currentPage, totalPages);
 
+  // Tải danh sách bài luyện đọc theo tab, trang và từ khóa tìm kiếm
   const loadData = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -104,6 +106,7 @@ export default function Reading() {
     }
   };
 
+  // Xử lý sau khi tạo bài đọc thành công
   const handleCreated = async (lesson) => {
     await loadData();
     try {
@@ -376,6 +379,7 @@ function CreateReadingModal({ onClose, onCreated }) {
   const [aiTopic, setAiTopic] = useState("");
   const [aiQuestionCount, setAiQuestionCount] = useState(3);
 
+  // Xử lý tạo bài đọc thủ công từ form nhập liệu
   const handleManualSubmit = async () => {
     if (!title.trim()) {
       setError("Vui lòng nhập tiêu đề bài luyện đọc");
@@ -398,6 +402,7 @@ function CreateReadingModal({ onClose, onCreated }) {
     }
   };
 
+  // Xử lý tạo bài đọc bằng AI với chủ đề và số câu hỏi
   const handleAISubmit = async () => {
     if (!aiTitle.trim()) {
       setError("Vui lòng nhập tiêu đề bài luyện đọc");
@@ -673,6 +678,7 @@ function ReadingStarter({ lesson, onBack }) {
     }
   };
 
+  // Chuyển sang trang làm bài luyện đọc
   const handleStart = () => {
     navigate(`/reading/${lesson.id}/practice`, {
       state: { lesson: { ...lesson, questions, content: passageContent, vi_translation: passageVi } }
@@ -769,6 +775,7 @@ function ReadingStarter({ lesson, onBack }) {
     }
   };
 
+  // Mở modal thêm câu hỏi mới cho bài luyện đọc
   const handleAddQuestion = () => {
     setEditingQuestion({
       id: null,
@@ -780,6 +787,7 @@ function ReadingStarter({ lesson, onBack }) {
     setShowAddQuestion(true);
   };
 
+  // Mở modal chỉnh sửa câu hỏi có sẵn
   const handleEditQuestion = (q) => {
     setEditingQuestion({
       ...q,
@@ -788,6 +796,7 @@ function ReadingStarter({ lesson, onBack }) {
     setShowAddQuestion(true);
   };
 
+  // Lưu câu hỏi mới hoặc cập nhật câu hỏi đã chỉnh sửa
   const handleSaveQuestion = () => {
     if (!editingQuestion.question.trim()) {
       alert("Vui lòng nhập nội dung câu hỏi");
@@ -825,8 +834,8 @@ function ReadingStarter({ lesson, onBack }) {
     setEditingQuestion(null);
   };
 
+  // Xóa câu hỏi khỏi danh sách và đánh dấu xóa ở server nếu có id thật
   const handleDeleteQuestion = (id) => {
-    // Nếu là câu hỏi từ server (có id thật) thì đánh dấu đã xóa
     if (id && !String(id).startsWith("temp_")) {
       setDeletedQuestionIds((prev) => [...prev, id]);
     }
@@ -1241,6 +1250,7 @@ function ReadingStarter({ lesson, onBack }) {
   );
 }
 
+// Giao diện làm bài luyện đọc với đoạn văn và câu hỏi
 function ReadingPlayer({ lesson, onBack }) {
   const [answers, setAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
@@ -1257,6 +1267,7 @@ function ReadingPlayer({ lesson, onBack }) {
   const [aiExplanation, setAiExplanation] = useState(""); // nội dung giải thích AI
   const [aiModalOpen, setAiModalOpen] = useState(false); // dialog AI đang mở
 
+  // Nộp bài luyện đọc và hiển thị kết quả
   const handleSubmit = async () => {
     if (Object.keys(answers).length < questions.length) return;
     setSubmitting(true);
@@ -1297,6 +1308,7 @@ function ReadingPlayer({ lesson, onBack }) {
     }
   };
 
+  // Lấy kết quả chi tiết từng câu hỏi sau khi nộp bài
   const getResults = () => {
     if (submitted && result) {
       return questions.map((q, i) => {

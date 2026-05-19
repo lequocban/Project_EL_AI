@@ -1,10 +1,12 @@
 import { useState, useRef } from "react";
 import { ArrowLeft, Volume2, CheckCircle, XCircle } from "lucide-react";
 
+// Xáo trộn mảng ngẫu nhiên
 function shuffle(arr) {
   return [...arr].sort(() => Math.random() - 0.5);
 }
 
+// Component trò chơi nghe và viết chính tả tiếng Anh
 export default function DictationGame({ words, onBack }) {
   const [questions] = useState(() => shuffle(words));
   const [index, setIndex] = useState(0);
@@ -17,6 +19,7 @@ export default function DictationGame({ words, onBack }) {
 
   const q = questions[index];
 
+  // Phát âm từ hiện tại bằng SpeechSynthesis
   const speak = () => {
     const utt = new SpeechSynthesisUtterance(q.word);
     utt.lang = "en-US";
@@ -25,6 +28,7 @@ export default function DictationGame({ words, onBack }) {
     setPlayed(true);
   };
 
+  // Kiểm tra đáp án người dùng nhập so với từ đúng
   const check = () => {
     const correct = input.trim().toLowerCase() === q.word.toLowerCase();
     setFeedback(correct ? "correct" : "wrong");

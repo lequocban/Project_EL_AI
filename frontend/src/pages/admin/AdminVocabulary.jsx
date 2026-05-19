@@ -19,6 +19,7 @@ import {
 import { adminApi } from "@/api/admin";
 import { vocabularyApi } from "@/api/client/vocabularyApi";
 
+// Trang quản lý bộ từ vựng dành cho admin
 export default function AdminVocabulary() {
   const [tab, setTab] = useState("pending"); // "pending" | "all"
   const [pendingSets, setPendingSets] = useState([]);
@@ -40,6 +41,7 @@ export default function AdminVocabulary() {
     loadData();
   }, [tab, pendingPage, allPage, search]);
 
+  // Tải danh sách bộ từ vựng theo tab đang chọn
   const loadData = async () => {
     try {
       setIsLoading(true);
@@ -70,6 +72,7 @@ export default function AdminVocabulary() {
     }
   };
 
+  // Duyệt bộ từ vựng
   const handleApprove = async (id) => {
     setActionLoading(id);
     try {
@@ -83,6 +86,7 @@ export default function AdminVocabulary() {
     }
   };
 
+  // Từ chối bộ từ vựng
   const handleReject = async (id) => {
     setActionLoading(id);
     try {
@@ -96,6 +100,7 @@ export default function AdminVocabulary() {
     }
   };
 
+  // Xóa bộ từ vựng
   const handleDelete = async (id) => {
     if (!window.confirm("Bạn có chắc muốn xóa bộ từ vựng này?")) return;
     setActionLoading(id);
@@ -110,6 +115,7 @@ export default function AdminVocabulary() {
     }
   };
 
+  // Tạo bộ từ vựng mới
   const handleCreate = async (data) => {
     try {
       await adminApi.createVocabSet(data);
@@ -120,6 +126,7 @@ export default function AdminVocabulary() {
     }
   };
 
+  // Cập nhật bộ từ vựng
   const handleEdit = async (data) => {
     if (!editingSet) return;
     try {
@@ -398,6 +405,7 @@ export default function AdminVocabulary() {
   );
 }
 
+// Modal hiển thị chi tiết bộ từ vựng
 function SetDetailModal({ set, onClose }) {
   const [words, setWords] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -406,6 +414,7 @@ function SetDetailModal({ set, onClose }) {
     loadWords();
   }, [set.id]);
 
+  // Tải danh sách từ vựng từ API
   const loadWords = async () => {
     try {
       setIsLoading(true);
@@ -467,11 +476,13 @@ function SetDetailModal({ set, onClose }) {
   );
 }
 
+// Modal tạo bộ từ vựng mới
 function CreateVocabSetModal({ onClose, onCreate }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  // Xử lý gửi form tạo bộ từ vựng
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!title.trim()) return;
@@ -535,11 +546,13 @@ function CreateVocabSetModal({ onClose, onCreate }) {
   );
 }
 
+// Modal chỉnh sửa bộ từ vựng
 function EditVocabSetModal({ set, onClose, onSave }) {
   const [title, setTitle] = useState(set.title || "");
   const [description, setDescription] = useState(set.description || "");
   const [isLoading, setIsLoading] = useState(false);
 
+  // Xử lý gửi form chỉnh sửa bộ từ vựng
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!title.trim()) return;

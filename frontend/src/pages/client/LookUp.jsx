@@ -2,12 +2,14 @@ import { useState } from "react";
 import { Search, Volume2, BookText } from "lucide-react";
 import { API_BASE_URL } from "@/api/authApi";
 
+// Trang tra cứu từ vựng Anh - Việt
 export default function LookUp() {
   const [word, setWord] = useState("");
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Tra cứu từ vựng qua API từ điển
   const handleLookup = async (e) => {
     e.preventDefault();
     if (!word.trim()) return;
@@ -42,6 +44,7 @@ export default function LookUp() {
     }
   };
 
+  // Phát âm thanh phát âm của từ tra cứu
   const playAudio = () => {
     if (result?.audioUrl) {
       const audio = new Audio(result.audioUrl);

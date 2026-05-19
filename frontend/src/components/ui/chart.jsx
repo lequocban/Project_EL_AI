@@ -4,6 +4,7 @@ import * as RechartsPrimitive from "recharts";
 
 import { cn } from "@/lib/utils";
 
+// Component biểu đồ sử dụng Recharts
 // Format: { THEME_NAME: CSS_SELECTOR }
 const THEMES = {
   light: "",

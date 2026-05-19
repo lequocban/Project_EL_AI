@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Shield, Mail, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { useAdminAuth } from "@/lib/AdminAuthContext";
 
+// Trang đăng nhập cho admin
 export default function AdminLogin() {
   const navigate = useNavigate();
   const { login } = useAdminAuth();
@@ -12,6 +13,7 @@ export default function AdminLogin() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Xử lý đăng nhập admin
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");

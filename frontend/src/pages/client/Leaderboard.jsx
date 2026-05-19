@@ -25,6 +25,7 @@ const TOP_BG = [
   "bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200",
 ];
 
+// Trang bảng xếp hạng người dùng theo điểm luyện tập
 export default function Leaderboard() {
   const [leaderboard, setLeaderboard] = useState([]);
   const [currentUserRank, setCurrentUserRank] = useState(null);
@@ -37,6 +38,7 @@ export default function Leaderboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Lấy dữ liệu bảng xếp hạng từ API theo trang
   const fetchLeaderboard = async (page = 1) => {
     setLoading(true);
     setError("");
@@ -61,12 +63,14 @@ export default function Leaderboard() {
     fetchLeaderboard(1);
   }, []);
 
+  // Chuyển về trang trước trong bảng xếp hạng
   const handlePrevPage = () => {
     if (pagination.page > 1) {
       fetchLeaderboard(pagination.page - 1);
     }
   };
 
+  // Chuyển đến trang sau trong bảng xếp hạng
   const handleNextPage = () => {
     if (pagination.page < pagination.totalPages) {
       fetchLeaderboard(pagination.page + 1);

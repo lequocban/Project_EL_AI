@@ -3,6 +3,7 @@ import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
 
 import { cn } from "@/lib/utils";
 
+// Component vùng cuộn tùy chỉnh
 const ScrollArea = React.forwardRef(
   ({ className, children, ...props }, ref) => (
     <ScrollAreaPrimitive.Root

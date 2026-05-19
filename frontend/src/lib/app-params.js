@@ -2,10 +2,12 @@ const isNode = typeof window === "undefined";
 const windowObj = isNode ? { localStorage: new Map() } : window;
 const storage = windowObj.localStorage;
 
+// Chuyển camelCase sang snake_case
 const toSnakeCase = (str) => {
   return str.replace(/([A-Z])/g, "_$1").toLowerCase();
 };
 
+// Lấy giá trị tham số từ URL hoặc localStorage
 const getAppParamValue = (
   paramName,
   { defaultValue = undefined, removeFromUrl = false } = {},
@@ -38,6 +40,7 @@ const getAppParamValue = (
   return null;
 };
 
+// Lấy tất cả tham số cấu hình ứng dụng
 const getAppParams = () => {
   if (getAppParamValue("clear_access_token") === "true") {
     storage.removeItem("englishup_access_token");

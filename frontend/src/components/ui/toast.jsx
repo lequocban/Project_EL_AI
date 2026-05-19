@@ -3,6 +3,7 @@ import { cva } from "class-variance-authority";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// Component thông báo toast
 const ToastProvider = React.forwardRef(({ ...props }, ref) => (
   <div
     ref={ref}

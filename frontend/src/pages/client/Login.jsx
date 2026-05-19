@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Zap, Eye, EyeOff } from "lucide-react";
 import { authApi } from "@/api/authApi";
 
+// Trang đăng nhập với các bước đăng nhập, quên mật khẩu và đặt lại mật khẩu
 export default function Login() {
   const [step, setStep] = useState("login");
   const [form, setForm] = useState({
@@ -19,11 +20,13 @@ export default function Login() {
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
+  // Xóa thông báo lỗi và thành công
   const resetMessages = () => {
     setError("");
     setSuccessMsg("");
   };
 
+  // Xử lý đăng nhập với email và mật khẩu
   const handleLogin = async (e) => {
     e.preventDefault();
     resetMessages();
@@ -39,6 +42,7 @@ export default function Login() {
     }
   };
 
+  // Gửi yêu cầu OTP về email để đặt lại mật khẩu
   const handleRequestOtp = async (e) => {
     e.preventDefault();
     resetMessages();
@@ -55,6 +59,7 @@ export default function Login() {
     }
   };
 
+  // Xử lý đặt lại mật khẩu với OTP và mật khẩu mới
   const handleResetPassword = async (e) => {
     e.preventDefault();
     resetMessages();

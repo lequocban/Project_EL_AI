@@ -68,6 +68,7 @@ const MODES = [
   },
 ];
 
+// Component chi tiết bộ từ vựng với các chế độ học tập và quản lý từ
 export default function SetDetail({ set, onBack }) {
   // allWords: lưu tất cả từ để dùng cho game và luyện tập
   const [allWords, setAllWords] = useState([]);
@@ -111,23 +112,27 @@ export default function SetDetail({ set, onBack }) {
   // Số từ mỗi trang hiển thị
   const WORDS_PER_PAGE = 7;
 
+  // Lấy nhãn sắp xếp hiện tại
   const getCurrentSortLabel = () => {
     const opt = SORT_OPTIONS.find((o) => o.value === sortOption);
     return opt ? opt.label : "Sắp xếp";
   };
 
   // Tính words hiển thị theo trang từ allWords
+  // Tính danh sách từ hiển thị theo trang
   const calculateDisplayWords = (wordsList, page) => {
     const startIndex = (page - 1) * WORDS_PER_PAGE;
     return wordsList.slice(startIndex, startIndex + WORDS_PER_PAGE);
   };
 
   // Tính totalPages từ số từ
+  // Tính tổng số trang từ tổng số từ
   const calculateTotalPages = (totalWords) => {
     return Math.max(1, Math.ceil(totalWords / WORDS_PER_PAGE));
   };
 
   // Load tất cả từ từ backend để dùng cho game và luyện tập
+  // Tải tất cả từ từ backend cho game và luyện tập
   const fetchAllWords = async (sortField, sortOrder) => {
     try {
       setIsLoadingWords(true);
@@ -182,6 +187,7 @@ export default function SetDetail({ set, onBack }) {
   };
 
   // Load nhiều từ để search phía client
+  // Tải nhiều từ để search phía client
   const fetchAllWordsForSearch = async (sortField, sortOrder) => {
     try {
       setIsLoadingWords(true);
@@ -249,6 +255,7 @@ export default function SetDetail({ set, onBack }) {
   }, [showSortDropdown]);
 
   // Thêm một ô nhập từ mới vào danh sách chờ
+  // Thêm một ô nhập từ mới vào danh sách chờ
   const addWordField = () => {
     setPendingWords((current) => [
       ...current,
@@ -257,6 +264,7 @@ export default function SetDetail({ set, onBack }) {
   };
 
   // Cập nhật từ tiếng Anh trong ô chờ, tự động tra cứu nghĩa khi có từ
+  // Cập nhật từ trong ô chờ và tự động tra cứu nghĩa
   const updatePendingWord = async (index, field, value) => {
     setPendingWords((current) => {
       const updated = [...current];
@@ -306,11 +314,13 @@ export default function SetDetail({ set, onBack }) {
   };
 
   // Xóa một ô nhập từ khỏi danh sách chờ
+  // Xóa một ô nhập từ khỏi danh sách chờ
   const removePendingWord = (index) => {
     setPendingWords((current) => current.filter((_, i) => i !== index));
   };
 
   // Lưu tất cả từ đã tra cứu vào bộ từ vựng
+  // Lưu tất cả từ đã nhập vào bộ từ vựng
   const saveAllWords = async () => {
     // Lọc ra các từ có nghĩa hợp lệ
     const validWords = pendingWords
@@ -340,11 +350,13 @@ export default function SetDetail({ set, onBack }) {
   };
 
   // Đóng phần thêm từ và xóa toàn bộ ô chờ
+  // Đóng phần thêm từ và xóa toàn bộ ô chờ
   const cancelAddWords = () => {
     setPendingWords([]);
     setShowAddWord(false);
   };
 
+  // Xóa một từ khỏi bộ từ vựng
   const deleteWord = async (id) => {
     try {
       await vocabularyApi.deleteWordsFromSet(set.id, [id]);
@@ -365,6 +377,7 @@ export default function SetDetail({ set, onBack }) {
   };
 
   // Gửi yêu cầu công khai bộ từ vựng (chỉ gửi yêu cầu, không chuyển trang)
+  // Gửi yêu cầu công khai bộ từ vựng
   const handleRequestPublic = async () => {
     if (!window.confirm("Bạn có muốn gửi yêu cầu công khai bộ từ vựng này không?\nNội dung sẽ được kiểm duyệt trước khi hiển thị công khai.")) {
       return false;
@@ -387,6 +400,7 @@ export default function SetDetail({ set, onBack }) {
   };
 
   // Gửi yêu cầu kiểm duyệt (dùng endpoint moderation-requests chung)
+  // Gửi yêu cầu kiểm duyệt bộ từ vựng
   const handleModeration = async () => {
     if (!window.confirm("Bạn có muốn gửi yêu cầu kiểm duyệt cho bộ từ vựng này không?\nYêu cầu sẽ được hiển thị trên trang Kiểm duyệt của admin.")) {
       return;
@@ -402,6 +416,7 @@ export default function SetDetail({ set, onBack }) {
     }
   };
 
+  // Chuyển bộ từ vựng về chế độ riêng tư
   // Chuyển bộ từ vựng về chế độ riêng tư
   const handleMakePrivate = async () => {
     if (!window.confirm("Bạn có muốn chuyển bộ từ vựng này về chế độ riêng tư không?")) {
@@ -424,11 +439,13 @@ export default function SetDetail({ set, onBack }) {
   };
 
   // Gửi kết quả bài kiểm tra lên backend để lưu lịch sử
+  // Nộp kết quả bài kiểm tra từ vựng lên backend
   const handlePracticeSubmit = async ({ setId, type, answers, timeSpent }) => {
     return vocabularyApi.submitPractice({ setId, type, answers, timeSpent });
   };
 
   // Phát âm từ vựng. Nếu từ chưa có audioUrl thì gọi lookup để lấy từ backend.
+  // Phát âm từ vựng qua audio URL hoặc SpeechSynthesis
   const playAudio = async (word) => {
     // Nếu đang phát từ này rồi thì dừng
     if (speakingId === word.id) {
@@ -461,6 +478,7 @@ export default function SetDetail({ set, onBack }) {
   // words state đã chứa dữ liệu đã sắp xếp từ API
 
   // Load đủ từ rồi bắt đầu game
+  // Bắt đầu chế độ chơi game sau khi đảm bảo đủ từ
   const startGame = async (modeId) => {
     if (allWords.length >= 4) {
       setMode(modeId);
@@ -489,6 +507,7 @@ export default function SetDetail({ set, onBack }) {
   };
 
   // Load đủ từ rồi bắt đầu bài kiểm tra
+  // Bắt đầu bài kiểm tra sau khi đảm bảo đủ từ
   const startExam = async (type) => {
     if (allWords.length >= 4) {
       setExamType(type);

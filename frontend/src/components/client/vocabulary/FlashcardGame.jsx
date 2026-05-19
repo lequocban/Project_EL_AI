@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ArrowLeft, RotateCcw, Check, X } from "lucide-react";
 
+// Component trò chơi flashcard học từ vựng
 export default function FlashcardGame({ words, set, onBack }) {
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
@@ -11,6 +12,7 @@ export default function FlashcardGame({ words, set, onBack }) {
   const current = words[index];
   const total = words.length;
 
+  // Đánh dấu từ đã biết hoặc chưa biết và chuyển sang từ tiếp theo
   const handleKnow = (knew) => {
     if (knew) setKnown([...known, current.id]);
     else setUnknown([...unknown, current.id]);
@@ -19,6 +21,7 @@ export default function FlashcardGame({ words, set, onBack }) {
     else setIndex(index + 1);
   };
 
+  // Chơi lại từ đầu
   const restart = () => {
     setIndex(0);
     setFlipped(false);

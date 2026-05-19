@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Zap, Eye, EyeOff } from "lucide-react";
 import { authApi } from "@/api/authApi";
 
+// Trang đăng ký tài khoản người dùng mới
 export default function Register() {
   const [form, setForm] = useState({
     fullName: "",
@@ -15,6 +16,7 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Xử lý đăng ký tài khoản mới
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");

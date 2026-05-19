@@ -6,6 +6,7 @@ const ADMIN_ACCESS_TOKEN_KEY = "englishup_admin_token";
 const ADMIN_TOKEN_EXPIRES_AT_KEY = "englishup_admin_token_expires_at";
 const REFRESH_BUFFER_SECONDS = 300;
 
+// Provider xác thực admin với tự động refresh token
 export const AdminAuthProvider = ({ children }) => {
   const [admin, setAdmin] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -14,7 +15,7 @@ export const AdminAuthProvider = ({ children }) => {
 
   const refreshIntervalRef = useRef(null);
 
-  // Tính thời gian (ms) đến khi cần refresh
+  // Tính thời gian (ms) đến lúc cần refresh token
   const getMsUntilRefresh = () => {
     const expiresAt = getTokenExpiresAt();
     if (!expiresAt) return null;
@@ -24,7 +25,7 @@ export const AdminAuthProvider = ({ children }) => {
     return Math.max(0, expiresAt * 1000 - bufferMs - now);
   };
 
-  // Kiểm tra token có sắp hết hạn không
+  // Kiểm tra token sắp hết hạn dựa vào buffer
   const isTokenExpiringSoon = () => {
     const expiresAt = getTokenExpiresAt();
     if (!expiresAt) return false;
@@ -34,7 +35,7 @@ export const AdminAuthProvider = ({ children }) => {
     return expiresAt * 1000 - bufferMs < now;
   };
 
-  // Thiết lập interval tự động refresh token trước khi hết hạn
+  // Thiết lập interval tự động refresh token
   const setupProactiveRefresh = () => {
     if (refreshIntervalRef.current) {
       clearInterval(refreshIntervalRef.current);
@@ -77,7 +78,7 @@ export const AdminAuthProvider = ({ children }) => {
     };
   }, []);
 
-  // Kiểm tra auth khi app mount - chỉ gọi khi có token
+  // Kiểm tra và khôi phục phiên đăng nhập admin khi khởi động
   const checkAdminAuth = async () => {
     try {
       setIsLoading(true);
@@ -108,6 +109,7 @@ export const AdminAuthProvider = ({ children }) => {
     }
   };
 
+  // Đăng nhập admin và lưu session
   const login = async (email, password) => {
     setError("");
     try {
@@ -132,6 +134,7 @@ export const AdminAuthProvider = ({ children }) => {
     }
   };
 
+  // Đăng xuất admin và xóa session
   const logout = async () => {
     // Dừng interval refresh
     if (refreshIntervalRef.current) {
@@ -170,6 +173,7 @@ export const AdminAuthProvider = ({ children }) => {
   );
 };
 
+// Hook lấy context xác thực admin
 export const useAdminAuth = () => {
   const context = useContext(AdminAuthContext);
   if (!context) {

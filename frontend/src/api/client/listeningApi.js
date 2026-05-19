@@ -209,18 +209,7 @@ export const listeningApi = {
     return response.data || {};
   },
 
-  /**
-   * Gọi AI giải thích chi tiết đáp án cho một câu hỏi luyện nghe.
-   * Kết quả trả về ngay lập tức, không lưu vào database.
-   * @param {object} params
-   * @param {string} params.content - Transcript bài nghe tiếng Anh
-   * @param {string} params.viTranslation - Bản dịch tiếng Việt (tùy chọn)
-   * @param {string} params.question - Câu hỏi bằng tiếng Anh
-   * @param {object} params.allAnswers - Object chứa 4 đáp án { a, b, c, d }
-   * @param {string} params.userAnswer - Đáp án người dùng đã chọn (A/B/C/D)
-   * @param {string} params.correctAnswer - Đáp án đúng (A/B/C/D)
-   * @returns {Promise<string>} - Chuỗi giải thích từ AI
-   */
+  // Gọi AI giải thích chi tiết đáp án cho câu hỏi luyện nghe
   explainAnswer: async ({ content, viTranslation, question, allAnswers, userAnswer, correctAnswer }) => {
     // Chỉ truyền viTranslation khi có nội dung, tránh lỗi validation backend (.min(1))
     const body = {
@@ -241,14 +230,7 @@ export const listeningApi = {
     return response.data?.explanation || "";
   },
 
-  /**
-   * Upload file audio lên Cloudinary.
-   * Sử dụng Cloudinary unsigned upload (Upload Preset).
-   * @param {File} file - File audio (mp3)
-   * @param {string} title - Tiêu đề bài nghe (để tạo tên file)
-   * @param {Function} onProgress - Callback progress (0-100)
-   * @returns {Promise<string>} - URL công khai của file audio
-   */
+  // Upload file audio lên Cloudinary và trả về URL công khai
   uploadAudio: async (file, title, onProgress) => {
     const url = await uploadAudioToCloudinary(file, title, onProgress);
     return url;

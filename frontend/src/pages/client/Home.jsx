@@ -21,6 +21,7 @@ const MODULE_COLORS = {
   toeic: "from-pink-500 to-rose-500",
 };
 
+// Trang chủ hiển thị tổng quan học tập
 export default function Home() {
   const { user } = useAuth();
   const [mySets, setMySets] = useState([]);
@@ -31,6 +32,7 @@ export default function Home() {
     loadData();
   }, []);
 
+  // Tải dữ liệu bộ từ vựng, bài nghe và bài đọc của người dùng
   const loadData = async () => {
     try {
       const sets = await vocabularyApi.getMySets();

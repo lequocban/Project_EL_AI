@@ -5,6 +5,7 @@ import { DayPicker } from "react-day-picker";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 
+// Component lịch chọn ngày sử dụng react-day-picker
 function Calendar({ className, classNames, showOutsideDays = true, ...props }) {
   return (
     <DayPicker

@@ -42,6 +42,7 @@ const LEVEL_COLORS = {
 
 const LESSONS_PER_PAGE = 6;
 
+// Trang luyện nghe với danh sách bài học và tính năng tạo bài mới
 export default function Listening() {
   const [lessons, setLessons] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -58,6 +59,7 @@ export default function Listening() {
   const loadDataRef = useRef(null);
   const safePage = Math.min(currentPage, totalPages);
 
+  // Tải danh sách bài luyện nghe theo tab, trang và từ khóa tìm kiếm
   const loadData = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -117,6 +119,7 @@ export default function Listening() {
     }
   };
 
+  // Xử lý sau khi tạo bài nghe thành công
   const handleCreated = async (lesson) => {
     await loadData();
     try {
@@ -484,6 +487,7 @@ function CreateListeningModal({ onClose, onCreated }) {
     }
   };
 
+  // Xử lý tạo bài nghe thủ công từ form nhập liệu
   const handleManualSubmit = async () => {
     if (!title.trim()) {
       setError("Vui lòng nhập tiêu đề bài luyện nghe");
@@ -507,6 +511,7 @@ function CreateListeningModal({ onClose, onCreated }) {
     }
   };
 
+  // Xử lý tạo bài nghe bằng AI với chủ đề và số câu hỏi
   const handleAISubmit = async () => {
     if (!aiTitle.trim()) {
       setError("Vui lòng nhập tiêu đề bài luyện nghe");
@@ -907,12 +912,14 @@ function LessonStarter({ lesson, onBack }) {
     }
   };
 
+  // Chuyển sang trang làm bài luyện nghe
   const handleStart = () => {
     navigate(`/listening/${lesson.id}/practice`, {
       state: { lesson: { ...lesson, questions, transcript: transcriptEn, vi_translation: transcriptVi } }
     });
   };
 
+  // Lưu nội dung bài nghe và đồng bộ câu hỏi xuống database
   const handleSave = async () => {
     setSaving(true);
     setSaveError("");
@@ -1000,6 +1007,7 @@ function LessonStarter({ lesson, onBack }) {
     }
   };
 
+  // Mở modal thêm câu hỏi mới cho bài luyện nghe
   const handleAddQuestion = () => {
     setEditingQuestion({
       id: null,
@@ -1011,6 +1019,7 @@ function LessonStarter({ lesson, onBack }) {
     setShowAddQuestion(true);
   };
 
+  // Mở modal chỉnh sửa câu hỏi có sẵn
   const handleEditQuestion = (q) => {
     setEditingQuestion({
       ...q,
@@ -1019,6 +1028,7 @@ function LessonStarter({ lesson, onBack }) {
     setShowAddQuestion(true);
   };
 
+  // Lưu câu hỏi mới hoặc cập nhật câu hỏi đã chỉnh sửa
   const handleSaveQuestion = () => {
     if (!editingQuestion.question.trim()) {
       alert("Vui lòng nhập nội dung câu hỏi");
@@ -1056,8 +1066,8 @@ function LessonStarter({ lesson, onBack }) {
     setEditingQuestion(null);
   };
 
+  // Xóa câu hỏi khỏi danh sách và đánh dấu xóa ở server nếu có id thật
   const handleDeleteQuestion = (id) => {
-    // Nếu là câu hỏi từ server (có id thật) thì đánh dấu đã xóa
     if (id && !String(id).startsWith("temp_")) {
       setDeletedQuestionIds((prev) => [...prev, id]);
     }
@@ -1471,6 +1481,7 @@ function LessonStarter({ lesson, onBack }) {
   );
 }
 
+// Giao diện làm bài luyện nghe với audio player và câu hỏi
 function LessonPlayer({ lesson, onBack }) {
   const [speaking, setSpeaking] = useState(false);
   const uttRef = useRef(null);
@@ -1500,6 +1511,7 @@ function LessonPlayer({ lesson, onBack }) {
     };
   }, []);
 
+  // Dừng phát âm thanh và hủy giọng nói
   const stopAudio = () => {
     window.speechSynthesis.cancel();
     setSpeaking(false);
@@ -1509,6 +1521,7 @@ function LessonPlayer({ lesson, onBack }) {
     }
   };
 
+  // Phát nội dung bài nghe bằng giọng đọc tiếng Anh
   const speak = () => {
     window.speechSynthesis.cancel();
     const text = transcriptEn;
@@ -1523,6 +1536,7 @@ function LessonPlayer({ lesson, onBack }) {
     window.speechSynthesis.speak(utt);
   };
 
+  // Phát nội dung bản dịch tiếng Việt bằng giọng đọc
   const speakVietnamese = (text) => {
     window.speechSynthesis.cancel();
     if (!text) return;
@@ -1536,6 +1550,7 @@ function LessonPlayer({ lesson, onBack }) {
     window.speechSynthesis.speak(utt);
   };
 
+  // Nộp bài luyện nghe và hiển thị kết quả
   const handleSubmit = async () => {
     if (Object.keys(answers).length < questions.length) return;
     stopAudio();
@@ -1590,6 +1605,7 @@ function LessonPlayer({ lesson, onBack }) {
   const answeredCount = Object.keys(answers).length;
   const audioUrl = lesson.audioUrl || lesson.audio_url || "";
 
+  // Lấy kết quả chi tiết từng câu hỏi sau khi nộp bài
   const getResults = () => {
     if (submitted && result) {
       return questions.map((q, i) => {

@@ -4,6 +4,7 @@ import { Circle } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
+// Component nhóm nút radio
 const RadioGroup = React.forwardRef(({ className, ...props }, ref) => {
   return (
     <RadioGroupPrimitive.Root

@@ -4,6 +4,7 @@ import { Minus } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
+// Component nhập mã OTP
 const InputOTP = React.forwardRef(
   ({ className, containerClassName, ...props }, ref) => (
     <OTPInput

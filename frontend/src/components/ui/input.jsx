@@ -2,6 +2,7 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
+// Component ô nhập liệu văn bản
 const Input = React.forwardRef(({ className, type, ...props }, ref) => {
   return (
     <input

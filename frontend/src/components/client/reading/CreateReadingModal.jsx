@@ -8,6 +8,7 @@ const LEVEL_OPTIONS = [
   { value: "advanced", label: "Nâng cao" },
 ];
 
+// Component modal tạo bài đọc mới bằng AI
 export default function CreateReadingModal({ onClose, onCreated }) {
   const [title, setTitle] = useState("");
   const [topic, setTopic] = useState("");
@@ -16,6 +17,7 @@ export default function CreateReadingModal({ onClose, onCreated }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Xử lý tạo bài đọc qua AI và gọi API
   const handleCreate = async () => {
     if (!title.trim()) {
       setError("Vui lòng nhập tên bài đọc");

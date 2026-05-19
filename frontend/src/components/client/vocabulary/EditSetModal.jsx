@@ -2,12 +2,14 @@ import { useState } from "react";
 import { X, PencilLine } from "lucide-react";
 import { vocabularyApi } from "@/api/client/vocabularyApi";
 
+// Component modal chỉnh sửa thông tin bộ từ vựng
 export default function EditSetModal({ set, onClose, onUpdated }) {
   const [title, setTitle] = useState(set.title || "");
   const [description, setDescription] = useState(set.description || "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Lưu thay đổi thông tin bộ từ vựng lên backend
   const handleSave = async () => {
     if (!title.trim()) {
       setError("Vui lòng nhập tên bộ từ vựng");

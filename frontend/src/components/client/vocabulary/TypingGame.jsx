@@ -1,10 +1,12 @@
 import { useState, useRef } from "react";
 import { ArrowLeft, CheckCircle, XCircle } from "lucide-react";
 
+// Xáo trộn mảng ngẫu nhiên
 function shuffle(arr) {
   return [...arr].sort(() => Math.random() - 0.5);
 }
 
+// Component trò chơi gõ từ tiếng Anh dựa trên nghĩa cho sẵn
 export default function TypingGame({ words, onBack }) {
   const [questions] = useState(() => shuffle(words));
   const [index, setIndex] = useState(0);
@@ -16,6 +18,7 @@ export default function TypingGame({ words, onBack }) {
 
   const q = questions[index];
 
+  // Kiểm tra đáp án người dùng gõ và tính điểm
   const check = () => {
     const correct = input.trim().toLowerCase() === q.word.toLowerCase();
     setFeedback(correct ? "correct" : "wrong");

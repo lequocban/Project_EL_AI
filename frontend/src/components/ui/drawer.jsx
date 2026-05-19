@@ -5,6 +5,7 @@ import { Drawer as DrawerPrimitive } from "vaul";
 
 import { cn } from "@/lib/utils";
 
+// Component drawer trượt từ dưới lên (sử dụng vaul)
 const Drawer = ({ shouldScaleBackground = true, ...props }) => (
   <DrawerPrimitive.Root
     shouldScaleBackground={shouldScaleBackground}

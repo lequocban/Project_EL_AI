@@ -14,13 +14,7 @@ const normalizeEntry = (entry) => ({
 });
 
 export const leaderboardApi = {
-  /**
-   * Lấy bảng xếp hạng với phân trang.
-   * @param {object} params
-   * @param {number} params.page  - Số trang (mặc định: 1)
-   * @param {number} params.limit - Số item mỗi trang (mặc định: 10, tối đa: 50)
-   * @returns {Promise<{leaderboard: Array, pagination: object, currentUserRank: number|null}>}
-   */
+  // Lấy bảng xếp hạng với phân trang
   getLeaderboard: async ({ page = 1, limit = 10 } = {}) => {
     // Giới hạn tối đa 50 item mỗi trang theo API contract
     const safeLimit = Math.min(Math.max(1, limit), 50);

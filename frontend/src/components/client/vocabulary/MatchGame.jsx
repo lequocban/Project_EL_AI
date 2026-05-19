@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { ArrowLeft } from "lucide-react";
 
+// Xáo trộn mảng ngẫu nhiên
 function shuffle(arr) {
   return [...arr].sort(() => Math.random() - 0.5);
 }
 
+// Component trò chơi nối từ với nghĩa
 export default function MatchGame({ words, set, onBack }) {
   const [pairs, setPairs] = useState([]);
   const [selected, setSelected] = useState(null); // { id, side }
@@ -24,6 +26,7 @@ export default function MatchGame({ words, set, onBack }) {
     setPairs({ left: leftItems, right: rightItems });
   }, []);
 
+  // Xử lý chọn và ghép cặp từ với nghĩa tương ứng
   const handleSelect = (item) => {
     if (matched.includes(item.id)) return;
     if (!selected) {
@@ -50,8 +53,10 @@ export default function MatchGame({ words, set, onBack }) {
     }
   };
 
+  // Kiểm tra item đang được chọn
   const isSelected = (item) =>
     selected?.id === item.id && selected?.side === item.side;
+  // Kiểm tra item đang bị đánh dấu sai
   const isWrong = (item) => wrong.includes(item.id + item.side);
 
   if (done) {

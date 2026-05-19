@@ -15,6 +15,7 @@ import {
   Zap,
 } from "lucide-react";
 
+// Chuyển đổi ngày tháng từ API sang định dạng input date
 const toInputDate = (value) => {
   if (!value) return "";
   const [day, month, year] = value.includes("/")
@@ -24,16 +25,19 @@ const toInputDate = (value) => {
   return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
 };
 
+// Chuyển đổi ngày tháng từ input date sang định dạng API
 const toApiDate = (value) => {
   if (!value) return undefined;
   const [year, month, day] = value.split("-");
   return `${day}/${month}/${year}`;
 };
 
+// Kiểm tra mật khẩu có đủ mạnh không (>=8 ký tự, có chữ hoa và số)
 const isStrongPassword = (value) =>
   value.length >= 8 && /[A-Z]/.test(value) && /[0-9]/.test(value);
 
 
+// Trang hồ sơ người dùng với thông tin cá nhân và thống kê
 export default function Profile() {
   const { user: authUser, logout, checkUserAuth } = useAuth();
   const [profileOpen, setProfileOpen] = useState(false);
@@ -54,6 +58,7 @@ export default function Profile() {
 
   if (!authUser) return null;
 
+  // Mở modal cập nhật hồ sơ với dữ liệu hiện tại
   const openProfileModal = () => {
     setProfileForm({
       userName: authUser.full_name || authUser.userName || "",
@@ -63,6 +68,7 @@ export default function Profile() {
     setProfileOpen(true);
   };
 
+  // Mở modal đổi mật khẩu
   const openPasswordModal = () => {
     setPasswordForm({
       currentPassword: "",
@@ -73,6 +79,7 @@ export default function Profile() {
     setPasswordOpen(true);
   };
 
+  // Xử lý cập nhật hồ sơ người dùng
   const handleProfileSubmit = async (event) => {
     event.preventDefault();
     const userName = profileForm.userName.trim();
@@ -98,6 +105,7 @@ export default function Profile() {
     }
   };
 
+  // Xử lý đổi mật khẩu người dùng
   const handlePasswordSubmit = async (event) => {
     event.preventDefault();
     if (!isStrongPassword(passwordForm.newPassword)) {

@@ -41,6 +41,7 @@ const SET_COLORS = [
 // setStatuses: map từ setId -> status (dùng khi backend không trả status)
 // defaultStatus: giá trị mặc định cho tab mà backend không trả status (vd: tab "Cộng đồng")
 // Tab "Cộng đồng" dùng defaultStatus làm ưu tiên cao nhất vì tất cả bộ từ đều public
+// Chuẩn hóa dữ liệu bộ từ để hiển thị đúng trạng thái public/private
 const normalizeSetForDisplay = (set, setStatuses = {}, defaultStatus) => {
   let rawStatus;
   if (defaultStatus !== null) {
@@ -63,6 +64,7 @@ const normalizeSetForDisplay = (set, setStatuses = {}, defaultStatus) => {
 const isFavSet = (setId, favorites) =>
   favorites.some((f) => String(f.id) === String(setId));
 
+// Trang từ vựng với danh sách bộ từ và tính năng quản lý
 export default function Vocabulary() {
   const [sets, setSets] = useState([]);
   const [publicSets, setPublicSets] = useState([]);
@@ -204,20 +206,24 @@ export default function Vocabulary() {
     };
   }, [tab, page, search, reloadTrigger]);
 
+  // Chuyển tab và reset về trang đầu tiên
   const handleTabChange = (newTab) => {
     setTab(newTab);
     setPage(1);
   };
 
+  // Cập nhật từ khóa tìm kiếm và reset về trang đầu tiên
   const handleSearchChange = (value) => {
     setSearch(value);
     setPage(1);
   };
 
+  // Chuyển đến trang được chọn trong phân trang
   const handlePageChange = (newPage) => {
     setPage(newPage);
   };
 
+  // Thêm hoặc xóa bộ từ khỏi danh sách yêu thích
   const toggleFavorite = async (setId, e) => {
     e?.stopPropagation();
     const id = String(setId);
@@ -239,6 +245,7 @@ export default function Vocabulary() {
     }
   };
 
+  // Xóa bộ từ vựng sau khi xác nhận
   const deleteSet = async (id, e) => {
     e.stopPropagation();
     try {
@@ -250,12 +257,14 @@ export default function Vocabulary() {
     }
   };
 
+  // Mở modal chỉnh sửa bộ từ vựng
   const openEdit = (setItem, e) => {
     e?.stopPropagation();
     setEditingSet(setItem);
     setShowEdit(true);
   };
 
+  // Cập nhật UI ngay lập tức sau khi chỉnh sửa bộ từ
   const handleSetUpdated = (updatedSet) => {
     // Cập nhật UI ngay lập tức mà không cần reload toàn bộ
     setSets((prev) => prev.map((s) => String(s.id) === String(updatedSet.id) ? { ...s, ...updatedSet } : s));
@@ -266,6 +275,7 @@ export default function Vocabulary() {
     setEditingSet(null);
   };
 
+  // Lấy danh sách bộ từ đã chuẩn hóa theo tab hiện tại
   const getDisplayed = () => {
     let data = [];
     let statusMap = {};

@@ -6,6 +6,7 @@ import { Check, ChevronRight, Circle } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
+// Component thanh menu ngang
 function MenubarMenu({ ...props }) {
   return <MenubarPrimitive.Menu {...props} />;
 }

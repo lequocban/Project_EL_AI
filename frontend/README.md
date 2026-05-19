@@ -1,40 +1,43 @@
-**Welcome to your Base44 project** 
+# English Up - Ứng dụng học Tiếng Anh
 
-**About**
+## Giới thiệu
 
-View and Edit  your app on [Base44.com](http://Base44.com) 
+English Up là ứng dụng web học tiếng Anh toàn diện với các module:
+- **Vocabulary**: Học từ vựng theo chủ đề
+- **Grammar**: Ngữ pháp tiếng Anh
+- **Listening**: Luyện nghe
+- **Reading**: Đọc hiểu
+- **TOEIC**: Luyện thi TOEIC
+- **Leaderboard**: Bảng xếp hạng người học
 
-This project contains everything you need to run your app locally.
+## Cài đặt
 
-**Edit the code in your local development environment**
-
-Any change pushed to the repo will also be reflected in the Base44 Builder.
-
-**Prerequisites:** 
-
-1. Clone the repository using the project's Git URL 
-2. Navigate to the project directory
-3. Install dependencies: `npm install`
-4. Create an `.env.local` file and set the right environment variables
-5. access localhost:5173
-
-```
-VITE_BASE44_APP_ID=your_app_id
-VITE_BASE44_APP_BASE_URL=your_backend_url
-
-e.g.
-VITE_BASE44_APP_ID=cbef744a8545c389ef439ea6
-VITE_BASE44_APP_BASE_URL=https://my-to-do-list-81bfaad7.base44.app
+1. Cài đặt dependencies:
+```bash
+npm install
 ```
 
-Run the app: `npm run dev`
+2. Tạo file `.env.local` với các biến môi trường:
+```
+VITE_APP_BASE_URL=http://localhost:3000
+VITE_CLOUDINARY_CLOUD_NAME=your_cloud_name
+VITE_CLOUDINARY_UPLOAD_PRESET=your_upload_preset
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
 
-**Publish your changes**
+## Chạy ứng dụng
 
-Open [Base44.com](http://Base44.com) and click on Publish.
+- **Development**: `npm run dev` (chạy tại `http://localhost:5173`)
+- **Build**: `npm run build`
+- **Preview build**: `npm run preview`
 
-**Docs & Support**
+## Công nghệ sử dụng
 
-Documentation: [https://docs.base44.com/Integrations/Using-GitHub](https://docs.base44.com/Integrations/Using-GitHub)
-
-Support: [https://app.base44.com/support](https://app.base44.com/support)
+- React 18
+- Vite 6
+- TanStack Query
+- React Router v6
+- Tailwind CSS
+- Supabase
+- Cloudinary

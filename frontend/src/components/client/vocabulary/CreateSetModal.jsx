@@ -2,6 +2,7 @@ import { useState } from "react";
 import { X, Sparkles, Keyboard } from "lucide-react";
 import { vocabularyApi } from "@/api/client/vocabularyApi";
 
+// Component modal tạo bộ từ vựng mới (thủ công hoặc AI)
 export default function CreateSetModal({ onClose, onCreated }) {
   const [mode, setMode] = useState("manual");
   const [title, setTitle] = useState("");
@@ -11,6 +12,7 @@ export default function CreateSetModal({ onClose, onCreated }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Tạo bộ từ vựng thủ công với tên và mô tả
   const createManual = async () => {
     if (!title.trim()) {
       setError("Vui lòng nhập tên bộ từ vựng");
@@ -32,6 +34,7 @@ export default function CreateSetModal({ onClose, onCreated }) {
     }
   };
 
+  // Tạo bộ từ vựng bằng AI theo chủ đề nhập vào
   const createWithAI = async () => {
     if (!aiPrompt.trim()) {
       setError("Vui lòng nhập chủ đề từ vựng");
