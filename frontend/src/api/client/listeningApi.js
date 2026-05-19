@@ -32,11 +32,13 @@ const normalizeQuestion = (q) => ({
 
 export const listeningApi = {
   // Lấy danh sách bài luyện nghe công khai (có phân trang)
-  getPublicLessons: async ({ page = 1, limit = 20, search = "" } = {}) => {
+  getPublicLessons: async ({ page = 1, limit = 20, search = "", sortField = "created_at", sortOrder = "desc" } = {}) => {
     const params = new URLSearchParams({
       page: String(page),
       limit: String(limit),
       ...(search ? { keyword: search } : {}),
+      ...(sortField ? { sortField } : {}),
+      ...(sortOrder ? { sortOrder } : {}),
     });
     const response = await fetchWithAuth(`${LISTENING_LESSON_URL}/public?${params}`, {
       method: "GET",
@@ -52,11 +54,13 @@ export const listeningApi = {
   },
 
   // Lấy danh sách bài luyện nghe của tôi (có phân trang)
-  getMyLessons: async ({ page = 1, limit = 20, search = "" } = {}) => {
+  getMyLessons: async ({ page = 1, limit = 20, search = "", sortField = "created_at", sortOrder = "desc" } = {}) => {
     const params = new URLSearchParams({
       page: String(page),
       limit: String(limit),
       ...(search ? { keyword: search } : {}),
+      ...(sortField ? { sortField } : {}),
+      ...(sortOrder ? { sortOrder } : {}),
     });
     const response = await fetchWithAuth(`${LISTENING_LESSON_URL}/my?${params}`, {
       method: "GET",

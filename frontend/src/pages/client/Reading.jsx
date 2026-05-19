@@ -22,6 +22,7 @@ import {
   Clock,
   ShieldCheck,
   Eye,
+  SortAsc,
 } from "lucide-react";
 import { readingApi } from "@/api/client/readingApi";
 import PracticeHistoryModal from "@/components/client/practice/PracticeHistoryModal";
@@ -53,18 +54,31 @@ export default function Reading() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
+  // State cho sắp xếp
+  const [sortOption, setSortOption] = useState("newest");
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
+
+  const SORT_OPTIONS = [
+    { value: "newest", label: "Mới nhất", sortField: "created_at", sortOrder: "desc" },
+    { value: "oldest", label: "Cũ nhất", sortField: "created_at", sortOrder: "asc" },
+    { value: "az", label: "A → Z", sortField: "title", sortOrder: "asc" },
+    { value: "za", label: "Z → A", sortField: "title", sortOrder: "desc" },
+  ];
+
   const loadDataRef = useRef(null);
   const safePage = Math.min(currentPage, totalPages);
+  const sortOptionRef = useRef(sortOption);
 
   // Tải danh sách bài luyện đọc theo tab, trang và từ khóa tìm kiếm
   const loadData = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
+      const sortOpt = SORT_OPTIONS.find((o) => o.value === sortOptionRef.current) || SORT_OPTIONS[0];
       const data =
         tab === "mine"
-          ? await readingApi.getMyLessons({ page: currentPage, limit: LESSONS_PER_PAGE, search })
-          : await readingApi.getPublicLessons({ page: currentPage, limit: LESSONS_PER_PAGE, search });
+          ? await readingApi.getMyLessons({ page: currentPage, limit: LESSONS_PER_PAGE, search, sortField: sortOpt.sortField, sortOrder: sortOpt.sortOrder })
+          : await readingApi.getPublicLessons({ page: currentPage, limit: LESSONS_PER_PAGE, search, sortField: sortOpt.sortField, sortOrder: sortOpt.sortOrder });
       setLessons(data.items || []);
       setTotalPages(Math.max(1, data.totalPages || 1));
     } catch (err) {
@@ -83,12 +97,28 @@ export default function Reading() {
       loadDataRef.current?.();
     }, 300);
     return () => clearTimeout(timer);
-  }, [tab, search, currentPage]);
+  }, [tab, search, currentPage, sortOption]);
 
-  // Reset về trang 1 khi tab hoặc search thay đổi
+  // Cập nhật ref khi sort thay đổi
+  useEffect(() => {
+    sortOptionRef.current = sortOption;
+  }, [sortOption]);
+
+  // Reset về trang 1 khi tab, search hoặc sort thay đổi
   useEffect(() => {
     setCurrentPage(1);
-  }, [tab, search]);
+  }, [tab, search, sortOption]);
+
+  // Đóng dropdown sắp xếp khi click ra ngoài
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (showSortDropdown && !e.target.closest(".reading-sort-dropdown")) {
+        setShowSortDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showSortDropdown]);
 
   // Hàm xóa bài luyện đọc
   const handleDeleteLesson = async (e, lessonId) => {
@@ -115,6 +145,18 @@ export default function Reading() {
     } catch {
       // Neu khong lay duoc chi tiet, van reload danh sach binh thuong
     }
+  };
+
+  // Xử lý thay đổi sắp xếp
+  const handleSortChange = (value) => {
+    setSortOption(value);
+    setShowSortDropdown(false);
+  };
+
+  // Lấy nhãn sắp xếp hiện tại
+  const getCurrentSortLabel = () => {
+    const opt = SORT_OPTIONS.find((o) => o.value === sortOption);
+    return opt ? opt.label : "Sắp xếp";
   };
 
   if (startLesson) {
@@ -178,15 +220,45 @@ export default function Reading() {
         ))}
       </div>
 
-      {/* Search */}
-      <div className="relative mb-6">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Tìm kiếm bài luyện đọc theo tiêu đề..."
-          className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
-        />
+      {/* Search & Sắp xếp */}
+      <div className="flex items-center gap-3 mb-6">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Tìm kiếm bài luyện đọc theo tiêu đề..."
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
+          />
+        </div>
+        <div className="relative reading-sort-dropdown">
+          <button
+            onClick={() => setShowSortDropdown(!showSortDropdown)}
+            className="flex items-center gap-2 bg-white border border-border px-3 py-2 rounded-xl font-bold text-sm hover:bg-muted transition-all"
+          >
+            <SortAsc className="w-4 h-4 text-orange-500" />
+            <span className="text-foreground">{getCurrentSortLabel()}</span>
+            <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${showSortDropdown ? "rotate-180" : ""}`} />
+          </button>
+          {showSortDropdown && (
+            <div className="absolute right-0 mt-2 w-40 bg-white border border-border rounded-xl shadow-lg z-20 overflow-hidden">
+              {SORT_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => handleSortChange(opt.value)}
+                  className={`w-full text-left px-4 py-2.5 text-sm font-medium hover:bg-muted transition-colors flex items-center gap-2 ${
+                    sortOption === opt.value ? "text-orange-500 bg-orange-50" : "text-foreground"
+                  }`}
+                >
+                  {opt.label}
+                  {sortOption === opt.value && (
+                    <span className="ml-auto text-orange-500">✓</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {error && (

@@ -25,6 +25,7 @@ import {
   Upload,
   ShieldCheck,
   Eye,
+  SortAsc,
 } from "lucide-react";
 import { listeningApi } from "@/api/client/listeningApi";
 import PracticeHistoryModal from "@/components/client/practice/PracticeHistoryModal";
@@ -42,6 +43,13 @@ const LEVEL_COLORS = {
 
 const LESSONS_PER_PAGE = 6;
 
+const SORT_OPTIONS = [
+  { value: "newest", label: "Mới nhất", sortField: "created_at", sortOrder: "desc" },
+  { value: "oldest", label: "Cũ nhất", sortField: "created_at", sortOrder: "asc" },
+  { value: "az", label: "A → Z", sortField: "title", sortOrder: "asc" },
+  { value: "za", label: "Z → A", sortField: "title", sortOrder: "desc" },
+];
+
 // Trang luyện nghe với danh sách bài học và tính năng tạo bài mới
 export default function Listening() {
   const [lessons, setLessons] = useState([]);
@@ -55,6 +63,9 @@ export default function Listening() {
   const [showHistory, setShowHistory] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [sortOption, setSortOption] = useState("newest");
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
+  const sortOptionRef = useRef(sortOption);
 
   const loadDataRef = useRef(null);
   const safePage = Math.min(currentPage, totalPages);
@@ -64,13 +75,22 @@ export default function Listening() {
     setLoading(true);
     setError("");
     try {
+      const sortOpt = SORT_OPTIONS.find((o) => o.value === sortOptionRef.current) || SORT_OPTIONS[0];
       const data =
         tab === "mine"
-          ? await listeningApi.getMyLessons({ page: currentPage, limit: LESSONS_PER_PAGE, search })
+          ? await listeningApi.getMyLessons({
+              page: currentPage,
+              limit: LESSONS_PER_PAGE,
+              search,
+              sortField: sortOpt.sortField,
+              sortOrder: sortOpt.sortOrder,
+            })
           : await listeningApi.getPublicLessons({
               page: currentPage,
               limit: LESSONS_PER_PAGE,
               search,
+              sortField: sortOpt.sortField,
+              sortOrder: sortOpt.sortOrder,
             });
       setLessons(data.items || []);
       setTotalPages(Math.max(1, data.totalPages || 1));
@@ -90,12 +110,28 @@ export default function Listening() {
       loadDataRef.current?.();
     }, 300);
     return () => clearTimeout(timer);
-  }, [tab, search, currentPage]);
+  }, [tab, search, currentPage, sortOption]);
 
-  // Reset về trang 1 khi tab hoặc search thay đổi
+  // Cập nhật ref khi sort thay đổi
+  useEffect(() => {
+    sortOptionRef.current = sortOption;
+  }, [sortOption]);
+
+  // Reset về trang 1 khi tab, search hoặc sort thay đổi
   useEffect(() => {
     setCurrentPage(1);
-  }, [tab, search]);
+  }, [tab, search, sortOption]);
+
+  // Đóng dropdown sắp xếp khi click ra ngoài
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (showSortDropdown && !e.target.closest(".listening-sort-dropdown")) {
+        setShowSortDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showSortDropdown]);
 
   // Hàm xóa bài luyện nghe
   const handleDeleteLesson = async (e, lessonId) => {
@@ -128,6 +164,18 @@ export default function Listening() {
     } catch {
       // Neu khong lay duoc chi tiet, van reload danh sach binh thuong
     }
+  };
+
+  // Xử lý thay đổi sắp xếp
+  const handleSortChange = (value) => {
+    setSortOption(value);
+    setShowSortDropdown(false);
+  };
+
+  // Lấy nhãn sắp xếp hiện tại
+  const getCurrentSortLabel = () => {
+    const opt = SORT_OPTIONS.find((o) => o.value === sortOption);
+    return opt ? opt.label : "Sắp xếp";
   };
 
   if (startLesson) {
@@ -191,15 +239,45 @@ export default function Listening() {
         ))}
       </div>
 
-      {/* Search */}
-      <div className="relative mb-6">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Tìm kiếm bài luyện nghe theo tiêu đề..."
-          className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
-        />
+      {/* Search & Sắp xếp */}
+      <div className="flex items-center gap-3 mb-6">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Tìm kiếm bài luyện nghe theo tiêu đề..."
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
+          />
+        </div>
+        <div className="relative listening-sort-dropdown">
+          <button
+            onClick={() => setShowSortDropdown(!showSortDropdown)}
+            className="flex items-center gap-2 bg-white border border-border px-3 py-2 rounded-xl font-bold text-sm hover:bg-muted transition-all"
+          >
+            <SortAsc className="w-4 h-4 text-green-500" />
+            <span className="text-foreground">{getCurrentSortLabel()}</span>
+            <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${showSortDropdown ? "rotate-180" : ""}`} />
+          </button>
+          {showSortDropdown && (
+            <div className="absolute right-0 mt-2 w-40 bg-white border border-border rounded-xl shadow-lg z-20 overflow-hidden">
+              {SORT_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => handleSortChange(opt.value)}
+                  className={`w-full text-left px-4 py-2.5 text-sm font-medium hover:bg-muted transition-colors flex items-center gap-2 ${
+                    sortOption === opt.value ? "text-green-600 bg-green-50" : "text-foreground"
+                  }`}
+                >
+                  {opt.label}
+                  {sortOption === opt.value && (
+                    <span className="ml-auto text-green-600">✓</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {error && (
