@@ -2,7 +2,7 @@
 
 > **Phiên bản:** v1
 > **Base URL:** `http://<domain>/api/v1`
-> **> **Ngày cập nhật:** 15/05/2026
+> **> **Ngày cập nhật:** 19/05/2026
 
 ---
 
@@ -249,6 +249,7 @@ Refresh Token được lưu trong **HttpOnly Cookie** tự động. Khi access t
 | `/admin/listening-lessons/pending` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | `/admin/moderation/*` | ✅ | ✅ | ❌ | ✅ `created_at` | ✅ `asc`, `desc` | ✅ | ❌ | ❌ |
 | `/leaderboard` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `/leaderboard/by-skill` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 
 ### 3.4. Ví Dụ Kết Hợp Nhiều Query Parameters
 
@@ -2747,7 +2748,7 @@ GET /learning-stats
 
 ### 4.15. Leaderboard - Bảng Xếp Hạng
 
-#### 4.15.1. Lấy bảng xếp hạng
+#### 4.15.1. Lấy bảng xếp hạng tổng
 
 ```
 GET /leaderboard
@@ -2795,24 +2796,92 @@ GET /api/v1/leaderboard?page=1&limit=10
 }
 ```
 
+#### 4.15.2. Lấy bảng xếp hạng theo kỹ năng
+
+```
+GET /leaderboard/by-skill
+```
+
+**Xác thực:** `verifyToken` + `requireAuth`
+
+**Mô tả:** Lấy bảng xếp hạng riêng cho từng kỹ năng: Từ vựng, Luyện đọc, hoặc Luyện nghe. Mỗi kỹ năng có thứ hạng độc lập dựa trên số lượt làm và điểm trung bình của kỹ năng đó.
+
+**Query Parameters:**
+
+| Tham số | Kiểu | Mặc định | Tối đa | Mô tả |
+|---------|------|-----------|---------|--------|
+| `skill` | string | - | - | Loại kỹ năng: `vocabulary`, `reading`, `listening` |
+| `page` | number | `1` | - | Số trang |
+| `limit` | number | `10` | `50` | Số item trên trang |
+
+**Ví dụ:**
+```
+GET /api/v1/leaderboard/by-skill?skill=vocabulary&page=1&limit=10
+GET /api/v1/leaderboard/by-skill?skill=reading&page=1&limit=10
+GET /api/v1/leaderboard/by-skill?skill=listening&page=1&limit=10
+```
+
+**Phản hồi (200):**
+```json
+{
+  "code": 200,
+  "success": true,
+  "message": "Lấy bảng xếp hạng theo kỹ năng thành công",
+  "data": {
+    "skill": "vocabulary",
+    "leaderboard": [
+      {
+        "rank": 1,
+        "user_id": "uuid",
+        "user_name": "Nguyễn Văn A",
+        "practice_count": 15,
+        "avg_score": 92,
+        "score": 925
+      },
+      {
+        "rank": 2,
+        "user_id": "uuid-2",
+        "user_name": "Trần Thị B",
+        "practice_count": 10,
+        "avg_score": 90,
+        "score": 910
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 80,
+      "totalPages": 8
+    },
+    "current_user_rank": 3
+  }
+}
+```
+
 **Chi tiết trường phản hồi:**
 
 | Trường | Kiểu | Mô tả |
 |--------|------|--------|
+| `skill` | string | Loại kỹ năng: `vocabulary` (Từ vựng), `reading` (Luyện đọc), `listening` (Luyện nghe) |
 | `leaderboard` | array | Danh sách người dùng trong bảng xếp hạng |
 | `leaderboard[].rank` | number | Thứ hạng trên trang hiện tại |
 | `leaderboard[].user_id` | uuid | ID người dùng |
 | `leaderboard[].user_name` | string | Tên hiển thị ("Người dùng ẩn danh" nếu không có) |
-| `leaderboard[].practice_count` | number | Tổng số lượt luyện tập |
-| `leaderboard[].avg_score` | number | Điểm trung bình (làm tròn 1 chữ số thập phân) |
-| `leaderboard[].score` | number | Điểm xếp hạng tổng |
-| `pagination.page` | number | Trang hiện tại |
-| `pagination.limit` | number | Số item mỗi trang |
-| `pagination.total` | number | Tổng số người dùng trong bảng xếp hạng |
-| `pagination.totalPages` | number | Tổng số trang |
-| `current_user_rank` | number \| null | Thứ hạng của người dùng hiện tại (null nếu chưa có lượt làm nào) |
+| `leaderboard[].practice_count` | number | Số lượt luyện tập kỹ năng đó |
+| `leaderboard[].avg_score` | number | Điểm trung bình của kỹ năng đó (làm tròn số nguyên) |
+| `leaderboard[].score` | number | Điểm xếp hạng |
+| `current_user_rank` | number \| null | Thứ hạng của user hiện tại trong kỹ năng đó |
 
-**Công thức tính điểm xếp hạng:**
+**Các trường hợp lỗi:**
+
+| Mã | Thông báo | Điều kiện |
+|----|-----------|-----------|
+| 400 | "Tham số 'skill' là bắt buộc. Chọn: vocabulary, reading, hoặc listening" | Không truyền `skill` |
+| 400 | "Loại kỹ năng không hợp lệ" | `skill` có giá trị khác `vocabulary`, `reading`, `listening` |
+
+#### Công thức tính điểm xếp hạng
+
+Công thức áp dụng cho cả bảng xếp hạng tổng và bảng xếp hạng theo kỹ năng:
 
 ```
 score = avg_score * 10 + practice_count
@@ -2820,9 +2889,9 @@ score = avg_score * 10 + practice_count
 
 | Người dùng | Điểm TB | Lượt làm | Tính điểm | Tổng |
 |------------|---------|----------|------------|------|
-| A | 88.5 | 25 | 88.5×10 + 25 | **910** |
-| B | 80.0 | 50 | 80×10 + 50 | **850** |
-| C | 85.0 | 10 | 85×10 + 10 | **860** |
+| A | 92 | 15 | 92×10 + 15 | **925** |
+| B | 90 | 10 | 90×10 + 10 | **910** |
+| C | 85 | 30 | 85×10 + 30 | **880** |
 
 > **Nguyên tắc:** Điểm trung bình có trọng số gấp 10 lần số lượt làm. Người có điểm trung bình cao luôn xếp trên người có nhiều lượt làm nhưng điểm thấp hơn. Điều này ngăn chặn việc spam lượt làm để leo top.
 

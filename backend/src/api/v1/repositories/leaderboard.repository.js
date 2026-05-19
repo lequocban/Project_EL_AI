@@ -109,8 +109,56 @@ const getUserRank = async (userId, userScore) => {
   return rank;
 };
 
+/**
+ * Lấy thống kê làm bài theo từng kỹ năng của tất cả user.
+ * @param {"vocabulary" | "reading" | "listening"} skillType - Loại kỹ năng
+ * @returns {Promise<Array>} - Danh sách user với practice_count và avg_score theo kỹ năng
+ */
+const getStatsBySkill = async (skillType) => {
+  const client = createAdminClient();
+
+  const tableMap = {
+    vocabulary: "vocabulary_practice",
+    reading: "reading_practice",
+    listening: "listening_practice",
+  };
+
+  const table = tableMap[skillType];
+  if (!table) {
+    throw new AppError("Loại kỹ năng không hợp lệ", 400);
+  }
+
+  const { data, error } = await client
+    .from(table)
+    .select("user_id, score")
+    .not("score", "is", null);
+
+  if (error) {
+    console.error(`[leaderboard.model] Lỗi khi lấy dữ liệu ${skillType}:`, error);
+    throw new AppError("Không thể lấy dữ liệu làm bài", 500);
+  }
+
+  const scoreMap = new Map();
+
+  for (const row of data || []) {
+    if (!scoreMap.has(row.user_id)) {
+      scoreMap.set(row.user_id, { totalScore: 0, count: 0 });
+    }
+    const entry = scoreMap.get(row.user_id);
+    entry.totalScore += row.score;
+    entry.count += 1;
+  }
+
+  return Array.from(scoreMap.entries()).map(([userId, stats]) => ({
+    user_id: userId,
+    practice_count: stats.count,
+    avg_score: Math.round(stats.totalScore / stats.count),
+  }));
+};
+
 module.exports = {
   getAllUsersWithStats,
   getProfilesByIds,
   getUserRank,
+  getStatsBySkill,
 };
