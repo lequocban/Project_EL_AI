@@ -7,7 +7,7 @@ const DEFAULT_WORD_COUNT = 10;
 const AI_MODELS = [
   "google/gemma-3-4b-it",
   "google/gemma-4-31b-it:free",
-  "anthropic/claude-3-haiku:free",
+  "deepseek/deepseek-chat-v3:free",
 ];
 
 /**
