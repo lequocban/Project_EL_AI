@@ -58,6 +58,7 @@ const TAB_CONFIG = [
 
 const PAGE_SIZE = 15;
 
+// Định dạng ngày tháng theo locale Việt Nam
 const formatDate = (dateStr) => {
   if (!dateStr) return "—";
   const date = new Date(dateStr);
@@ -67,6 +68,7 @@ const formatDate = (dateStr) => {
   });
 };
 
+// Lấy tên người yêu cầu từ object requester
   const getRequesterName = (requester) => {
   if (!requester) return "—";
   if (typeof requester === "string") return requester;
@@ -83,6 +85,7 @@ const formatDate = (dateStr) => {
 // =============================================
 // TRANG CHÍNH
 // =============================================
+// Trang kiểm duyệt nội dung dành cho admin
 export default function AdminModeration() {
   const [activeTab, setActiveTab] = useState("vocabulary");
   const [items, setItems] = useState([]);
@@ -95,6 +98,7 @@ export default function AdminModeration() {
   const [selectedItem, setSelectedItem] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
 
+  // Tải danh sách yêu cầu kiểm duyệt theo tab và bộ lọc
   const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -125,12 +129,14 @@ export default function AdminModeration() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  // Chuyển đến trang phân trang mới
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= pagination.totalPages) {
       setPagination((prev) => ({ ...prev, page: newPage }));
     }
   };
 
+  // Xử lý duyệt hoặc từ chối yêu cầu kiểm duyệt
   const handleReview = async (requestId, action, reason, notes) => {
     setActionLoading(requestId);
     try {
@@ -305,6 +311,7 @@ export default function AdminModeration() {
 // =============================================
 // MODAL CHI TIẾT
 // =============================================
+// Modal hiển thị chi tiết và xử lý yêu cầu kiểm duyệt
 function ModerationDetailModal({ item, tab, onClose, onReviewed }) {
   const [detail, setDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(true);
@@ -378,12 +385,14 @@ function ModerationDetailModal({ item, tab, onClose, onReviewed }) {
   // Reload key để buộc useEffect của Tab re-run khi content thay đổi
   const [reloadKey, setReloadKey] = useState(0);
 
+  // Xử lý sau khi lưu nội dung thành công
   const handleSaveSuccess = () => {
     setReloadKey((k) => k + 1);
     loadDetail();
     setDirty(false);
   };
 
+  // Lưu nội dung đã chỉnh sửa trong tab tương ứng
   const handleSaveContent = async () => {
     setSavingContent(true);
     try {
@@ -401,6 +410,7 @@ function ModerationDetailModal({ item, tab, onClose, onReviewed }) {
     }
   };
 
+  // Duyệt hoặc từ chối yêu cầu từ modal chi tiết
   const handleReview = async (action) => {
     setIsReviewing(true);
     try {
@@ -414,6 +424,7 @@ function ModerationDetailModal({ item, tab, onClose, onReviewed }) {
     }
   };
 
+  // Đóng modal, kiểm tra thay đổi chưa lưu
   const handleClose = () => {
     if (dirty) {
       if (window.confirm("Bạn có thay đổi chưa lưu. Bạn có chắc muốn đóng không?")) {
@@ -626,6 +637,7 @@ const VocabularyTab = forwardRef(function VocabularyTab({ detail, contentId, con
     setDirty(false);
   }, [contentData]);
 
+  // Hiển thị thông báo tạm thời trong 4 giây
   const showMsg = (text, type = "error") => {
     setMsg({ type, text });
     setTimeout(() => setMsg({ type: "", text: "" }), 4000);
@@ -939,6 +951,7 @@ const ReadingTab = forwardRef(function ReadingTab({ detail, contentId, contentDa
     setDirty(false);
   }, [contentData]);
 
+  // Hiển thị thông báo tạm thời trong 4 giây
   const showMsg = (text, type = "error") => {
     setMsg({ type, text });
     setTimeout(() => setMsg({ type: "", text: "" }), 4000);
@@ -1318,11 +1331,13 @@ const ListeningTab = forwardRef(function ListeningTab({ detail, contentId, conte
     };
   }, []);
 
+  // Hiển thị thông báo tạm thời trong 4 giây
   const showMsg = (text, type = "error") => {
     setMsg({ type, text });
     setTimeout(() => setMsg({ type: "", text: "" }), 4000);
   };
 
+  // Xử lý chọn file audio từ máy
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -1331,6 +1346,7 @@ const ListeningTab = forwardRef(function ListeningTab({ detail, contentId, conte
     setSelectedFile(file);
   };
 
+  // Upload file audio lên server và cập nhật đường dẫn
   const handleUploadAndSave = async () => {
     if (!selectedFile) return;
     setUploadingAudio(true);
@@ -1348,6 +1364,8 @@ const ListeningTab = forwardRef(function ListeningTab({ detail, contentId, conte
     }
   };
 
+  // Phát hoặc dừng audio
+  // Phát hoặc dừng audio
   const handlePlay = () => {
     if (!editAudioUrl) return;
     if (audioRef.current) {
@@ -1356,6 +1374,7 @@ const ListeningTab = forwardRef(function ListeningTab({ detail, contentId, conte
     }
   };
 
+  // Thêm câu hỏi mới (chưa gọi API)
   const addQuestion = () => {
     const id = `__new_${++newQCounter.current}`;
     setQuestions((prev) => [
@@ -1367,6 +1386,7 @@ const ListeningTab = forwardRef(function ListeningTab({ detail, contentId, conte
     setTimeout(() => document.getElementById(`lq-q-${id}`)?.focus(), 50);
   };
 
+  // Cập nhật câu hỏi (chưa gọi API)
   const updateQ = (id, field, value) => {
     setQuestions((prev) =>
       prev.map((q) => {
@@ -1380,12 +1400,14 @@ const ListeningTab = forwardRef(function ListeningTab({ detail, contentId, conte
     if (onDirtyChange) onDirtyChange(true);
   };
 
+  // Xóa câu hỏi (chưa gọi API)
   const deleteQ = (id) => {
     setQuestions((prev) => prev.filter((q) => q.id !== id));
     setDirty(true);
     if (onDirtyChange) onDirtyChange(true);
   };
 
+  // Bắt đầu sửa câu hỏi
   const startEditQ = (q) => {
     setEditQId(q.id);
     setEditQData({
@@ -1399,6 +1421,7 @@ const ListeningTab = forwardRef(function ListeningTab({ detail, contentId, conte
     });
   };
 
+  // Lưu câu hỏi đang sửa
   const applyEditQ = () => {
     if (!editQData.question.trim() || !editQData.optionA.trim() || !editQData.optionB.trim() || !editQData.optionC.trim() || !editQData.optionD.trim()) {
       alert("Vui lòng nhập đầy đủ câu hỏi và 4 đáp án");
@@ -1426,11 +1449,13 @@ const ListeningTab = forwardRef(function ListeningTab({ detail, contentId, conte
     if (onDirtyChange) onDirtyChange(true);
   };
 
+  // Hủy sửa câu hỏi
   const cancelEditQ = () => {
     setEditQId(null);
     setEditQData({ question: "", optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A", explanation: "" });
   };
 
+  // Lưu toàn bộ thay đổi bài luyện nghe lên server
   const handleSave = async () => {
     setSaving(true);
     try {

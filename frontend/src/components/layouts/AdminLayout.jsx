@@ -53,12 +53,14 @@ const adminNavItems = [
   },
 ];
 
+// Component bố cục trang admin với sidebar điều hướng và menu mobile
 export default function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { admin, logout } = useAdminAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  // Xử lý đăng xuất admin và chuyển hướng về trang đăng nhập
   const handleLogout = async () => {
     await logout();
     navigate("/admin/login");

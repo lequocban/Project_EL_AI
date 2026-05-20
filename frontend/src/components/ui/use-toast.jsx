@@ -1,6 +1,7 @@
 // Inspired by react-hot-toast library
 import { useState, useEffect } from "react";
 
+// Hook useToast và hàm toast để quản lý thông báo
 const TOAST_LIMIT = 20;
 const TOAST_REMOVE_DELAY = 1000000;
 

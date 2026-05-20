@@ -65,6 +65,7 @@ const navItems = [
   },
 ];
 
+// Component bố cục trang client với sidebar và menu mobile
 export default function Layout() {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);

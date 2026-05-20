@@ -6,10 +6,12 @@ const REFRESH_BUFFER_SECONDS = 300;
 let isRefreshing = false;
 let refreshSubscribers = [];
 
+// Đăng ký callback chờ refresh token xong
 const subscribeTokenRefresh = (callback) => {
   refreshSubscribers.push(callback);
 };
 
+// Thông báo cho các request đang chờ khi token được refresh
 const onTokenRefreshed = (newToken) => {
   refreshSubscribers.forEach((cb) => cb(newToken));
   refreshSubscribers = [];

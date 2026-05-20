@@ -6,6 +6,7 @@ import { X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
+// Component cửa sổ dialog/modal có overlay
 const Dialog = DialogPrimitive.Root;
 
 const DialogTrigger = DialogPrimitive.Trigger;

@@ -24,6 +24,7 @@ import {
 import { adminApi } from "@/api/admin";
 import { listeningApi } from "@/api/client/listeningApi";
 
+// Trang quản lý bài luyện nghe dành cho admin
 export default function AdminListening() {
   const [tab, setTab] = useState("pending");
   const [pendingLessons, setPendingLessons] = useState([]);
@@ -45,6 +46,7 @@ export default function AdminListening() {
     loadData();
   }, [tab, pendingPage, allPage, search]);
 
+  // Tải danh sách bài nghe theo tab đang chọn
   const loadData = async () => {
     try {
       setIsLoading(true);
@@ -74,6 +76,7 @@ export default function AdminListening() {
     }
   };
 
+  // Duyệt bài luyện nghe
   const handleApprove = async (id) => {
     setActionLoading(id);
     try {
@@ -87,6 +90,7 @@ export default function AdminListening() {
     }
   };
 
+  // Từ chối bài luyện nghe
   const handleReject = async (id) => {
     setActionLoading(id);
     try {
@@ -100,6 +104,7 @@ export default function AdminListening() {
     }
   };
 
+  // Xóa bài luyện nghe
   const handleDelete = async (id) => {
     if (!window.confirm("Bạn có chắc muốn xóa bài luyện nghe này?")) return;
     setActionLoading(id);
@@ -114,6 +119,7 @@ export default function AdminListening() {
     }
   };
 
+  // Tạo bài luyện nghe mới
   const handleCreate = async (data) => {
     try {
       await adminApi.createListeningLesson(data);
@@ -124,6 +130,7 @@ export default function AdminListening() {
     }
   };
 
+  // Cập nhật bài luyện nghe
   const handleEdit = async (data) => {
     if (!editingLesson) return;
     try {
@@ -416,6 +423,7 @@ export default function AdminListening() {
   );
 }
 
+// Modal hiển thị chi tiết bài luyện nghe
 function LessonDetailModal({ lesson, onClose }) {
   const [data, setData] = useState(null);
 
@@ -425,6 +433,7 @@ function LessonDetailModal({ lesson, onClose }) {
     }
   }, [lesson?.id]);
 
+  // Tải chi tiết bài nghe từ API
   const loadLesson = async () => {
     try {
       const res = await adminApi.getListeningLessonById(lesson.id);
@@ -483,6 +492,7 @@ function LessonDetailModal({ lesson, onClose }) {
   );
 }
 
+// Modal tạo bài luyện nghe mới
 function CreateListeningModal({ onClose, onCreate }) {
   const [title, setTitle] = useState("");
   const [audioUrl, setAudioUrl] = useState("");
@@ -490,6 +500,7 @@ function CreateListeningModal({ onClose, onCreate }) {
   const [viTranslation, setViTranslation] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  // Xử lý gửi form tạo bài nghe mới
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!title.trim()) return;
@@ -577,6 +588,7 @@ function CreateListeningModal({ onClose, onCreate }) {
   );
 }
 
+// Modal chỉnh sửa bài luyện nghe
 function EditListeningModal({ lesson, onClose, onSave }) {
   const [title, setTitle] = useState(lesson.title || "");
   const [audioUrl, setAudioUrl] = useState(lesson.audioUrl || "");
@@ -590,6 +602,7 @@ function EditListeningModal({ lesson, onClose, onSave }) {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadError, setUploadError] = useState("");
 
+  // Bật/tắt phát audio
   const togglePlayAudio = () => {
     if (!audioUrl) return;
     if (!audioRef) {
@@ -609,6 +622,7 @@ function EditListeningModal({ lesson, onClose, onSave }) {
     }
   };
 
+  // Xử lý chọn file audio từ máy
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -634,6 +648,7 @@ function EditListeningModal({ lesson, onClose, onSave }) {
     setAudioUrl(previewUrl);
   };
 
+  // Hủy chọn file audio và khôi phục đường dẫn cũ
   const handleRemoveFile = () => {
     if (audioRef) {
       audioRef.pause();
@@ -645,6 +660,7 @@ function EditListeningModal({ lesson, onClose, onSave }) {
     setUploadProgress(0);
   };
 
+  // Upload file audio lên server
   const handleUploadFile = async () => {
     if (!selectedFile) return;
     setIsUploading(true);
@@ -681,6 +697,7 @@ function EditListeningModal({ lesson, onClose, onSave }) {
     }
   };
 
+  // Xử lý gửi form chỉnh sửa bài nghe
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!title.trim()) return;

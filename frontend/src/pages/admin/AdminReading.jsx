@@ -19,6 +19,7 @@ import {
 import { adminApi } from "@/api/admin";
 import { readingApi } from "@/api/client/readingApi";
 
+// Trang quản lý bài luyện đọc dành cho admin
 export default function AdminReading() {
   const [tab, setTab] = useState("pending");
   const [pendingLessons, setPendingLessons] = useState([]);
@@ -40,6 +41,7 @@ export default function AdminReading() {
     loadData();
   }, [tab, pendingPage, allPage, search]);
 
+  // Tải danh sách bài đọc theo tab đang chọn
   const loadData = async () => {
     try {
       setIsLoading(true);
@@ -69,6 +71,7 @@ export default function AdminReading() {
     }
   };
 
+  // Duyệt bài luyện đọc
   const handleApprove = async (id) => {
     setActionLoading(id);
     try {
@@ -82,6 +85,7 @@ export default function AdminReading() {
     }
   };
 
+  // Từ chối bài luyện đọc
   const handleReject = async (id) => {
     setActionLoading(id);
     try {
@@ -95,6 +99,7 @@ export default function AdminReading() {
     }
   };
 
+  // Xóa bài luyện đọc
   const handleDelete = async (id) => {
     if (!window.confirm("Bạn có chắc muốn xóa bài luyện đọc này?")) return;
     setActionLoading(id);
@@ -109,6 +114,7 @@ export default function AdminReading() {
     }
   };
 
+  // Tạo bài luyện đọc mới
   const handleCreate = async (data) => {
     try {
       await adminApi.createReadingLesson(data);
@@ -119,6 +125,7 @@ export default function AdminReading() {
     }
   };
 
+  // Cập nhật bài luyện đọc
   const handleEdit = async (data) => {
     if (!editingLesson) return;
     try {
@@ -404,6 +411,7 @@ export default function AdminReading() {
   );
 }
 
+// Modal hiển thị chi tiết bài luyện đọc
 function LessonDetailModal({ lesson, onClose }) {
   const [content, setContent] = useState("");
 
@@ -415,6 +423,7 @@ function LessonDetailModal({ lesson, onClose }) {
     }
   }, [lesson?.id]);
 
+  // Tải nội dung bài đọc từ API
   const loadLesson = async () => {
     try {
       const res = await adminApi.getReadingLessonById(lesson.id);
@@ -460,12 +469,14 @@ function LessonDetailModal({ lesson, onClose }) {
   );
 }
 
+// Modal tạo bài luyện đọc mới
 function CreateReadingModal({ onClose, onCreate }) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [viTranslation, setViTranslation] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  // Xử lý gửi form tạo bài đọc mới
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!title.trim()) return;
@@ -538,12 +549,14 @@ function CreateReadingModal({ onClose, onCreate }) {
   );
 }
 
+// Modal chỉnh sửa bài luyện đọc
 function EditReadingModal({ lesson, onClose, onSave }) {
   const [title, setTitle] = useState(lesson.title || "");
   const [content, setContent] = useState(lesson.content || "");
   const [viTranslation, setViTranslation] = useState(lesson.viTranslation || "");
   const [isLoading, setIsLoading] = useState(false);
 
+  // Xử lý gửi form chỉnh sửa bài đọc
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!title.trim()) return;

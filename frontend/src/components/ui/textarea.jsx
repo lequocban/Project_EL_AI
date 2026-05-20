@@ -2,6 +2,7 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
+// Component ô nhập liệu nhiều dòng
 const Textarea = React.forwardRef(({ className, ...props }, ref) => {
   return (
     <textarea

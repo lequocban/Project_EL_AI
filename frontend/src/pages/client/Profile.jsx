@@ -4,6 +4,8 @@ import { useAuth } from "@/lib/AuthContext";
 import {
   BookOpen,
   Calendar,
+  Eye,
+  EyeOff,
   Flame,
   KeyRound,
   LogOut,
@@ -15,6 +17,7 @@ import {
   Zap,
 } from "lucide-react";
 
+// Chuyển đổi ngày tháng từ API sang định dạng input date
 const toInputDate = (value) => {
   if (!value) return "";
   const [day, month, year] = value.includes("/")
@@ -24,16 +27,19 @@ const toInputDate = (value) => {
   return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
 };
 
+// Chuyển đổi ngày tháng từ input date sang định dạng API
 const toApiDate = (value) => {
   if (!value) return undefined;
   const [year, month, day] = value.split("-");
   return `${day}/${month}/${year}`;
 };
 
+// Kiểm tra mật khẩu có đủ mạnh không (>=8 ký tự, có chữ hoa và số)
 const isStrongPassword = (value) =>
   value.length >= 8 && /[A-Z]/.test(value) && /[0-9]/.test(value);
 
 
+// Trang hồ sơ người dùng với thông tin cá nhân và thống kê
 export default function Profile() {
   const { user: authUser, logout, checkUserAuth } = useAuth();
   const [profileOpen, setProfileOpen] = useState(false);
@@ -51,9 +57,13 @@ export default function Profile() {
   const [passwordStatus, setPasswordStatus] = useState({ type: "", message: "" });
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   if (!authUser) return null;
 
+  // Mở modal cập nhật hồ sơ với dữ liệu hiện tại
   const openProfileModal = () => {
     setProfileForm({
       userName: authUser.full_name || authUser.userName || "",
@@ -63,6 +73,7 @@ export default function Profile() {
     setProfileOpen(true);
   };
 
+  // Mở modal đổi mật khẩu
   const openPasswordModal = () => {
     setPasswordForm({
       currentPassword: "",
@@ -70,9 +81,13 @@ export default function Profile() {
       confirmPassword: "",
     });
     setPasswordStatus({ type: "", message: "" });
+    setShowCurrentPassword(false);
+    setShowNewPassword(false);
+    setShowConfirmPassword(false);
     setPasswordOpen(true);
   };
 
+  // Xử lý cập nhật hồ sơ người dùng
   const handleProfileSubmit = async (event) => {
     event.preventDefault();
     const userName = profileForm.userName.trim();
@@ -98,6 +113,7 @@ export default function Profile() {
     }
   };
 
+  // Xử lý đổi mật khẩu người dùng
   const handlePasswordSubmit = async (event) => {
     event.preventDefault();
     if (!isStrongPassword(passwordForm.newPassword)) {
@@ -320,15 +336,28 @@ export default function Profile() {
                   <KeyRound className="w-4 h-4 text-primary" />
                   Mật khẩu hiện tại
                 </span>
-                <input
-                  type="password"
-                  value={passwordForm.currentPassword}
-                  onChange={(event) =>
-                    setPasswordForm((current) => ({ ...current, currentPassword: event.target.value }))
-                  }
-                  className="w-full rounded-2xl border border-border bg-white px-4 py-3 font-semibold text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                  placeholder="Nhập mật khẩu hiện tại"
-                />
+                <div className="relative">
+                  <input
+                    type={showCurrentPassword ? "text" : "password"}
+                    value={passwordForm.currentPassword}
+                    onChange={(event) =>
+                      setPasswordForm((current) => ({ ...current, currentPassword: event.target.value }))
+                    }
+                    className="w-full rounded-2xl border border-border bg-white px-4 py-3 font-semibold text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 pr-12"
+                    placeholder="Nhập mật khẩu hiện tại"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showCurrentPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
               </label>
 
               <label className="block">
@@ -336,15 +365,28 @@ export default function Profile() {
                   <KeyRound className="w-4 h-4 text-primary" />
                   Mật khẩu mới
                 </span>
-                <input
-                  type="password"
-                  value={passwordForm.newPassword}
-                  onChange={(event) =>
-                    setPasswordForm((current) => ({ ...current, newPassword: event.target.value }))
-                  }
-                  className="w-full rounded-2xl border border-border bg-white px-4 py-3 font-semibold text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                  placeholder="Tối thiểu 8 ký tự, 1 chữ hoa, 1 số"
-                />
+                <div className="relative">
+                  <input
+                    type={showNewPassword ? "text" : "password"}
+                    value={passwordForm.newPassword}
+                    onChange={(event) =>
+                      setPasswordForm((current) => ({ ...current, newPassword: event.target.value }))
+                    }
+                    className="w-full rounded-2xl border border-border bg-white px-4 py-3 font-semibold text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 pr-12"
+                    placeholder="Tối thiểu 8 ký tự, 1 chữ hoa, 1 số"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showNewPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
               </label>
 
               <label className="block">
@@ -352,15 +394,28 @@ export default function Profile() {
                   <KeyRound className="w-4 h-4 text-primary" />
                   Xác nhận mật khẩu mới
                 </span>
-                <input
-                  type="password"
-                  value={passwordForm.confirmPassword}
-                  onChange={(event) =>
-                    setPasswordForm((current) => ({ ...current, confirmPassword: event.target.value }))
-                  }
-                  className="w-full rounded-2xl border border-border bg-white px-4 py-3 font-semibold text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                  placeholder="Nhập lại mật khẩu mới"
-                />
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={passwordForm.confirmPassword}
+                    onChange={(event) =>
+                      setPasswordForm((current) => ({ ...current, confirmPassword: event.target.value }))
+                    }
+                    className="w-full rounded-2xl border border-border bg-white px-4 py-3 font-semibold text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 pr-12"
+                    placeholder="Nhập lại mật khẩu mới"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
               </label>
 
               {passwordStatus.message && (

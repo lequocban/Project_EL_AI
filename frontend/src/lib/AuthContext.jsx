@@ -8,6 +8,7 @@ const TOKEN_EXPIRES_AT_KEY = "englishup_token_expires_at";
 // Thời gian buffer (giây) trước khi token hết hạn thì tự động refresh
 const REFRESH_BUFFER_SECONDS = 300;
 
+// Provider xác thực người dùng với tự động refresh token
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -23,7 +24,7 @@ export const AuthProvider = ({ children }) => {
     return expiresAt ? parseInt(expiresAt, 10) : null;
   };
 
-  // Kiểm tra token có sắp hết hạn không
+  // Kiểm tra token sắp hết hạn dựa vào buffer
   const isTokenExpiringSoon = () => {
     const expiresAt = getTokenExpiresAt();
     if (!expiresAt) return false;
@@ -33,7 +34,7 @@ export const AuthProvider = ({ children }) => {
     return expiresAt * 1000 - bufferMs < now;
   };
 
-  // Tính thời gian (ms) đến khi cần refresh
+  // Tính thời gian (ms) đến lúc cần refresh token
   const getMsUntilRefresh = () => {
     const expiresAt = getTokenExpiresAt();
     if (!expiresAt) return null;
@@ -43,7 +44,7 @@ export const AuthProvider = ({ children }) => {
     return Math.max(0, expiresAt * 1000 - bufferMs - now);
   };
 
-  // Thiết lập interval tự động refresh token trước khi hết hạn
+  // Thiết lập interval tự động refresh token
   const setupProactiveRefresh = () => {
     // Xóa interval cũ nếu có
     if (refreshIntervalRef.current) {
@@ -88,6 +89,7 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
+  // Kiểm tra và khôi phục phiên đăng nhập người dùng khi khởi động
   const checkUserAuth = async () => {
     try {
       setIsLoadingAuth(true);
@@ -129,6 +131,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Đăng xuất và xóa session người dùng
   const logout = async (shouldRedirect = true) => {
     // Dừng interval refresh trước
     if (refreshIntervalRef.current) {
@@ -161,6 +164,7 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
+// Hook lấy context xác thực người dùng
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {

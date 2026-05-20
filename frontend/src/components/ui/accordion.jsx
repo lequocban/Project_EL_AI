@@ -4,6 +4,7 @@ import { ChevronDown } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
+// Component accordion với các mục thu gọn/mở rộng
 const Accordion = AccordionPrimitive.Root;
 
 const AccordionItem = React.forwardRef(({ className, ...props }, ref) => (

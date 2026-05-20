@@ -1,5 +1,6 @@
 import { useLocation } from "react-router-dom";
 
+// Component hiển thị trang 404 khi không tìm thấy route
 export default function PageNotFound() {
   const location = useLocation();
   const pageName = location.pathname.substring(1);

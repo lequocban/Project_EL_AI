@@ -26,18 +26,21 @@ import AdminListening from "@/pages/admin/AdminListening";
 import AdminUsers from "@/pages/admin/AdminUsers";
 import AdminModeration from "@/pages/admin/AdminModeration";
 
+// Component hiển thị spinner loading toàn màn hình
 const LoadingScreen = () => (
   <div className="fixed inset-0 flex items-center justify-center">
     <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
   </div>
 );
 
+// Component hiển thị spinner loading cho trang admin
 const AdminLoadingScreen = () => (
   <div className="min-h-screen bg-white flex items-center justify-center">
     <div className="w-8 h-8 border-4 border-slate-200 border-t-violet-500 rounded-full animate-spin"></div>
   </div>
 );
 
+// Route bảo vệ yêu cầu xác thực người dùng client
 const ProtectedRoute = () => {
   const { isAuthenticated, isLoadingAuth } = useAuth();
 
@@ -52,6 +55,7 @@ const ProtectedRoute = () => {
   return <ClientLayout />;
 };
 
+// Route bảo vệ yêu cầu xác thực admin
 const AdminProtectedRoute = () => {
   const { isAuthenticated, isLoading } = useAdminAuth();
 
@@ -66,6 +70,7 @@ const AdminProtectedRoute = () => {
   return <AdminLayout />;
 };
 
+// Component định tuyến chính dựa trên trạng thái xác thực người dùng
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isAuthenticated } = useAuth();
 
@@ -117,6 +122,7 @@ const AuthenticatedApp = () => {
   );
 };
 
+// Component gốc bao bọc ứng dụng với các Provider
 function App() {
   return (
     <AuthProvider>

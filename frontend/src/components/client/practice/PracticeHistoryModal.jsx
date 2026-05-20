@@ -16,11 +16,7 @@ const VOCAB_TYPE_LABELS = {
   listen_write: "Listen write",
 };
 
-// Map field từ response của từng loại practice
-// Backend trả về:
-// - Vocabulary: id, score, type, timeSpent, wrongWords, completedAt, vocabularySetTitle
-// - Listening: id, score, completedAt, lessonTitle, lessonId
-// - Reading: id, score, completedAt, lessonTitle, lessonId
+// Chuyển đổi dữ liệu lịch sử từ API theo loại bài tập
 const mapHistoryItem = (item, type) => {
   switch (type) {
     case "vocabulary":
@@ -55,9 +51,7 @@ const mapHistoryItem = (item, type) => {
   }
 };
 
-// Map chi tiết practice từ response
-// Vocabulary detail: score, totalQuestions, correctCount, wrongCount, wrongWords, timeSpent, completedAt
-// Listening/Reading detail: score, totalQuestions, correctCount, wrongCount, questions, lesson, completedAt
+// Chuyển đổi chi tiết bài làm từ API theo loại bài tập
 const mapPracticeDetail = (detail, type) => {
   if (!detail) return null;
   switch (type) {
@@ -108,6 +102,7 @@ const mapPracticeDetail = (detail, type) => {
   }
 };
 
+// Component modal hiển thị lịch sử luyện tập và kết quả chi tiết
 export default function PracticeHistoryModal({ type, onClose, getHistory, getDetail, title }) {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -124,6 +119,7 @@ export default function PracticeHistoryModal({ type, onClose, getHistory, getDet
     loadHistory(1);
   }, []);
 
+  // Tải lịch sử từ API theo số trang
   const loadHistory = async (pageNum) => {
     setLoading(true);
     setError("");
@@ -140,6 +136,7 @@ export default function PracticeHistoryModal({ type, onClose, getHistory, getDet
     }
   };
 
+  // Xem chi tiết bài làm, ưu tiên localStorage cho vocabulary
   const handleViewDetail = async (item) => {
     setSelectedItem(item);
 
@@ -180,6 +177,7 @@ export default function PracticeHistoryModal({ type, onClose, getHistory, getDet
     }
   };
 
+  // Định dạng ngày tháng theo kiểu Việt Nam
   const formatDate = (dateStr) => {
     if (!dateStr) return "";
     const date = new Date(dateStr);
@@ -192,12 +190,14 @@ export default function PracticeHistoryModal({ type, onClose, getHistory, getDet
     });
   };
 
+  // Lấy màu chữ dựa trên phần trăm điểm
   const getScoreColor = (score) => {
     if (score >= 80) return "text-green-600";
     if (score >= 50) return "text-amber-600";
     return "text-red-500";
   };
 
+  // Lấy màu nền dựa trên phần trăm điểm
   const getScoreBg = (score) => {
     if (score >= 80) return "bg-green-50 border-green-200";
     if (score >= 50) return "bg-amber-50 border-amber-200";

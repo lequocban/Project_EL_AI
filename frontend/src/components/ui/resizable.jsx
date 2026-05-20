@@ -5,6 +5,7 @@ import * as ResizablePrimitive from "react-resizable-panels";
 
 import { cn } from "@/lib/utils";
 
+// Component bảng điều khiển có thể thay đổi kích thước
 const ResizablePanelGroup = ({ className, ...props }) => (
   <ResizablePrimitive.PanelGroup
     className={cn(

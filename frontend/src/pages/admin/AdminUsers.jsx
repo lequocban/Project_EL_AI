@@ -46,6 +46,7 @@ const STATUS_COLORS = {
   inactive: "bg-red-50 text-red-600 border-red-200",
 };
 
+// Trang quản lý người dùng dành cho admin
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
   const [page, setPage] = useState(1);
@@ -80,6 +81,7 @@ export default function AdminUsers() {
     return () => clearTimeout(timer);
   }, [search]);
 
+  // Tải danh sách người dùng từ API với bộ lọc
   const loadUsers = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -106,7 +108,7 @@ export default function AdminUsers() {
     loadUsers();
   }, [loadUsers]);
 
-  // Tải chi tiết người dùng
+  // Xem chi tiết thông tin người dùng
   const handleViewDetail = async (userId) => {
     setSelectedUser({ id: userId });
     setShowDetailModal(true);
@@ -122,12 +124,13 @@ export default function AdminUsers() {
     }
   };
 
-  // Toggle trạng thái người dùng
+  // Hiển thị modal xác nhận khóa/mở khóa người dùng
   const handleToggleStatus = (userId, currentStatus) => {
     setSelectedUser({ id: userId, currentStatus });
     setShowStatusModal(true);
   };
 
+  // Xác nhận thay đổi trạng thái người dùng
   const confirmToggleStatus = async () => {
     if (!selectedUser) return;
     setActionLoading("status");
@@ -146,12 +149,13 @@ export default function AdminUsers() {
     }
   };
 
-  // Cấp hoặc thu hồi vai trò
+  // Hiển thị modal cấp/thu hồi vai trò cho người dùng
   const handleGrantRole = (userId, roles) => {
     setSelectedUser({ id: userId, roles: roles || [] });
     setShowRoleModal(true);
   };
 
+  // Xác nhận cấp hoặc thu hồi vai trò cho người dùng
   const confirmGrantRole = async (targetRole, action) => {
     if (!selectedUser) return;
     setActionLoading("role");
@@ -167,7 +171,7 @@ export default function AdminUsers() {
     }
   };
 
-  // Xóa tài khoản
+  // Xóa vĩnh viễn tài khoản người dùng
   const handleDelete = async (userId) => {
     if (
       !window.confirm(
@@ -187,7 +191,7 @@ export default function AdminUsers() {
     }
   };
 
-  // Format ngày
+  // Định dạng ngày tháng theo locale Việt Nam
   const formatDate = (dateString) => {
     if (!dateString) return "—";
     return new Date(dateString).toLocaleDateString("vi-VN", {
@@ -197,6 +201,7 @@ export default function AdminUsers() {
     });
   };
 
+  // Lấy vai trò chính từ danh sách roles
   const getPrimaryRoleInline = (roles) => {
     if (!Array.isArray(roles) || roles.length === 0) return "user";
     if (roles.includes("admin")) return "admin";

@@ -11,6 +11,8 @@ import {
   Heart,
   PencilLine,
   Clock,
+  ChevronDown,
+  SortAsc,
 } from "lucide-react";
 import CreateSetModal from "@/components/client/vocabulary/CreateSetModal";
 import EditSetModal from "@/components/client/vocabulary/EditSetModal";
@@ -41,6 +43,7 @@ const SET_COLORS = [
 // setStatuses: map từ setId -> status (dùng khi backend không trả status)
 // defaultStatus: giá trị mặc định cho tab mà backend không trả status (vd: tab "Cộng đồng")
 // Tab "Cộng đồng" dùng defaultStatus làm ưu tiên cao nhất vì tất cả bộ từ đều public
+// Chuẩn hóa dữ liệu bộ từ để hiển thị đúng trạng thái public/private
 const normalizeSetForDisplay = (set, setStatuses = {}, defaultStatus) => {
   let rawStatus;
   if (defaultStatus !== null) {
@@ -63,6 +66,7 @@ const normalizeSetForDisplay = (set, setStatuses = {}, defaultStatus) => {
 const isFavSet = (setId, favorites) =>
   favorites.some((f) => String(f.id) === String(setId));
 
+// Trang từ vựng với danh sách bộ từ và tính năng quản lý
 export default function Vocabulary() {
   const [sets, setSets] = useState([]);
   const [publicSets, setPublicSets] = useState([]);
@@ -83,6 +87,17 @@ export default function Vocabulary() {
   const [reloadTrigger, setReloadTrigger] = useState(0);
   const SETS_PER_PAGE = 6;
 
+  // State cho sắp xếp
+  const [sortOption, setSortOption] = useState("newest");
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
+
+  const SORT_OPTIONS = [
+    { value: "newest", label: "Mới nhất", sortField: "created_at", sortOrder: "desc" },
+    { value: "oldest", label: "Cũ nhất", sortField: "created_at", sortOrder: "asc" },
+    { value: "az", label: "A → Z", sortField: "title", sortOrder: "asc" },
+    { value: "za", label: "Z → A", sortField: "title", sortOrder: "desc" },
+  ];
+
   // Lưu chi tiết trạng thái (status) cho các bộ từ trong tab "Của tôi"
   // vì endpoint getMySets không trả về status
   const [setStatuses, setSetStatuses] = useState({});
@@ -94,16 +109,29 @@ export default function Vocabulary() {
   const tabRef = useRef(tab);
   const pageRef = useRef(page);
   const searchRef = useRef(search);
+  const sortOptionRef = useRef(sortOption);
 
   // Cập nhật ref khi state thay đổi
   useEffect(() => { tabRef.current = tab; }, [tab]);
   useEffect(() => { pageRef.current = page; }, [page]);
   useEffect(() => { searchRef.current = search; }, [search]);
+  useEffect(() => { sortOptionRef.current = sortOption; }, [sortOption]);
 
   // Cleanup khi unmount
   useEffect(() => {
     return () => { mountedRef.current = false; };
   }, []);
+
+  // Đóng dropdown sắp xếp khi click ra ngoài
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (showSortDropdown && !e.target.closest(".vocab-sort-dropdown")) {
+        setShowSortDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showSortDropdown]);
 
   // Load dữ liệu - được gọi mỗi khi tab/page/search thay đổi
   useEffect(() => {
@@ -117,6 +145,7 @@ export default function Vocabulary() {
         const keyword = search.trim();
         const currentTab = tabRef.current;
         const currentPage = pageRef.current;
+        const sortOpt = SORT_OPTIONS.find((o) => o.value === sortOptionRef.current) || SORT_OPTIONS[0];
 
         let data;
         if (currentTab === "mine") {
@@ -124,6 +153,8 @@ export default function Vocabulary() {
             page: currentPage,
             limit: SETS_PER_PAGE,
             keyword,
+            sortField: sortOpt.sortField,
+            sortOrder: sortOpt.sortOrder,
           });
           if (cancelled) return;
           const items = data.items || [];
@@ -151,6 +182,8 @@ export default function Vocabulary() {
             page: currentPage,
             limit: SETS_PER_PAGE,
             keyword,
+            sortField: sortOpt.sortField,
+            sortOrder: sortOpt.sortOrder,
           });
           if (cancelled) return;
           setPublicSets(data.items || []);
@@ -162,6 +195,8 @@ export default function Vocabulary() {
             page: currentPage,
             limit: SETS_PER_PAGE,
             keyword,
+            sortField: sortOpt.sortField,
+            sortOrder: sortOpt.sortOrder,
           });
           if (cancelled) return;
           const items = data.items || [];
@@ -202,43 +237,70 @@ export default function Vocabulary() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [tab, page, search, reloadTrigger]);
+  }, [tab, page, search, sortOption, reloadTrigger]);
 
+  // Chuyển tab và reset về trang đầu tiên
   const handleTabChange = (newTab) => {
     setTab(newTab);
     setPage(1);
   };
 
+  // Cập nhật từ khóa tìm kiếm và reset về trang đầu tiên
   const handleSearchChange = (value) => {
     setSearch(value);
     setPage(1);
   };
 
+  // Chuyển đến trang được chọn trong phân trang
   const handlePageChange = (newPage) => {
     setPage(newPage);
   };
 
+  // Xử lý thay đổi sắp xếp và reset về trang 1
+  const handleSortChange = (value) => {
+    setSortOption(value);
+    setPage(1);
+    setShowSortDropdown(false);
+  };
+
+  // Lấy nhãn sắp xếp hiện tại
+  const getCurrentSortLabel = () => {
+    const opt = SORT_OPTIONS.find((o) => o.value === sortOption);
+    return opt ? opt.label : "Sắp xếp";
+  };
+
+  // Thêm hoặc xóa bộ từ khỏi danh sách yêu thích
   const toggleFavorite = async (setId, e) => {
     e?.stopPropagation();
     const id = String(setId);
     const isFav = favorites.some((f) => String(f.id) === id);
+    const prevFavorites = [...favorites];
     try {
+      // Optimistic update
       if (isFav) {
-        await vocabularyApi.removeFavorite(id);
-        // Cập nhật UI ngay lập tức mà không cần reload toàn bộ
         setFavorites((prev) => prev.filter((f) => String(f.id) !== id));
       } else {
+        // Tìm thông tin bộ từ từ các danh sách hiện có
+        const existingSet = sets.find((s) => String(s.id) === id) ||
+                           publicSets.find((s) => String(s.id) === id);
+        if (existingSet) {
+          setFavorites((prev) => [...prev, existingSet]);
+        }
+      }
+      // Gọi API
+      if (isFav) {
+        await vocabularyApi.removeFavorite(id);
+      } else {
         await vocabularyApi.addFavorite(id);
-        // Cập nhật UI ngay lập tức mà không cần reload toàn bộ
-        setFavorites((prev) => [...prev, { id: setId }]);
       }
     } catch (err) {
-      // Nếu gọi API thất bại thì reload để đồng bộ lại
-      setReloadTrigger((n) => n + 1);
+      // Rollback nếu lỗi
+      setFavorites(prevFavorites);
       setError(err.message || "Không thể cập nhật yêu thích");
     }
   };
 
+  // Xóa bộ từ vựng sau khi xác nhận
   const deleteSet = async (id, e) => {
     e.stopPropagation();
     try {
@@ -250,12 +312,14 @@ export default function Vocabulary() {
     }
   };
 
+  // Mở modal chỉnh sửa bộ từ vựng
   const openEdit = (setItem, e) => {
     e?.stopPropagation();
     setEditingSet(setItem);
     setShowEdit(true);
   };
 
+  // Cập nhật UI ngay lập tức sau khi chỉnh sửa bộ từ
   const handleSetUpdated = (updatedSet) => {
     // Cập nhật UI ngay lập tức mà không cần reload toàn bộ
     setSets((prev) => prev.map((s) => String(s.id) === String(updatedSet.id) ? { ...s, ...updatedSet } : s));
@@ -266,6 +330,7 @@ export default function Vocabulary() {
     setEditingSet(null);
   };
 
+  // Lấy danh sách bộ từ đã chuẩn hóa theo tab hiện tại
   const getDisplayed = () => {
     let data = [];
     let statusMap = {};
@@ -295,6 +360,8 @@ export default function Vocabulary() {
           setSelectedSet(null);
           setReloadTrigger((n) => n + 1);
         }}
+        favorites={favorites}
+        onToggleFavorite={toggleFavorite}
       />
     );
   }
@@ -363,6 +430,38 @@ export default function Vocabulary() {
           placeholder="Tìm kiếm bộ từ vựng..."
           className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30"
         />
+      </div>
+
+      {/* Dropdown sắp xếp */}
+      <div className="flex items-center justify-end mb-4">
+        <div className="relative vocab-sort-dropdown">
+          <button
+            onClick={() => setShowSortDropdown(!showSortDropdown)}
+            className="flex items-center gap-2 bg-white border border-border px-3 py-2 rounded-xl font-bold text-sm hover:bg-muted transition-all"
+          >
+            <SortAsc className="w-4 h-4 text-primary" />
+            <span className="text-foreground">{getCurrentSortLabel()}</span>
+            <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${showSortDropdown ? "rotate-180" : ""}`} />
+          </button>
+          {showSortDropdown && (
+            <div className="absolute right-0 mt-2 w-40 bg-white border border-border rounded-xl shadow-lg z-20 overflow-hidden">
+              {SORT_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => handleSortChange(opt.value)}
+                  className={`w-full text-left px-4 py-2.5 text-sm font-medium hover:bg-muted transition-colors flex items-center gap-2 ${
+                    sortOption === opt.value ? "text-primary bg-primary/5" : "text-foreground"
+                  }`}
+                >
+                  {opt.label}
+                  {sortOption === opt.value && (
+                    <span className="ml-auto text-primary">✓</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {loading ? (

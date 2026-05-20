@@ -4,6 +4,7 @@ import { ChevronRight, MoreHorizontal } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
+// Component thanh điều hướng breadcrumb
 const Breadcrumb = React.forwardRef(({ ...props }, ref) => (
   <nav ref={ref} aria-label="breadcrumb" {...props} />
 ));

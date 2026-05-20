@@ -3,6 +3,7 @@
  * Dùng unsigned upload (Upload Preset) - không cần backend sign
  */
 
+// Lấy biến môi trường an toàn
 const getEnv = (key) => {
   try {
     return import.meta.env[key] || "";
@@ -14,13 +15,7 @@ const getEnv = (key) => {
 const CLOUD_NAME = getEnv("VITE_CLOUDINARY_CLOUD_NAME");
 const UPLOAD_PRESET = getEnv("VITE_CLOUDINARY_UPLOAD_PRESET");
 
-/**
- * Upload file audio lên Cloudinary
- * @param {File} file - File audio cần upload
- * @param {string} title - Tiêu đề bài nghe (để tạo public_id)
- * @param {Function} onProgress - Callback progress (0-100)
- * @returns {Promise<string>} - URL công khai của file audio
- */
+// Upload file audio lên Cloudinary bằng unsigned upload và theo dõi tiến trình
 export const uploadAudioToCloudinary = async (file, title, onProgress) => {
   if (!CLOUD_NAME || !UPLOAD_PRESET) {
     throw new Error(

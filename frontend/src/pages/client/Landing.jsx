@@ -67,6 +67,7 @@ const gradientText = {
   display: "inline-block",
 };
 
+// Trang giới thiệu sản phẩm cho người dùng chưa đăng nhập
 export default function Landing() {
   return (
     <div className="min-h-screen bg-background">

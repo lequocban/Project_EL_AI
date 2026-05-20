@@ -31,11 +31,13 @@ const normalizeQuestion = (q) => ({
 
 export const readingApi = {
   // Lấy danh sách bài luyện đọc công khai (có phân trang)
-  getPublicLessons: async ({ page = 1, limit = 20, search = "" } = {}) => {
+  getPublicLessons: async ({ page = 1, limit = 20, search = "", sortField = "created_at", sortOrder = "desc" } = {}) => {
     const params = new URLSearchParams({
       page: String(page),
       limit: String(limit),
       ...(search ? { keyword: search } : {}),
+      ...(sortField ? { sortField } : {}),
+      ...(sortOrder ? { sortOrder } : {}),
     });
     const response = await fetchWithAuth(`${READING_LESSON_URL}/public?${params}`, {
       method: "GET",
@@ -51,11 +53,13 @@ export const readingApi = {
   },
 
   // Lấy danh sách bài luyện đọc của tôi (có phân trang)
-  getMyLessons: async ({ page = 1, limit = 20, search = "" } = {}) => {
+  getMyLessons: async ({ page = 1, limit = 20, search = "", sortField = "created_at", sortOrder = "desc" } = {}) => {
     const params = new URLSearchParams({
       page: String(page),
       limit: String(limit),
       ...(search ? { keyword: search } : {}),
+      ...(sortField ? { sortField } : {}),
+      ...(sortOrder ? { sortOrder } : {}),
     });
     const response = await fetchWithAuth(`${READING_LESSON_URL}/my?${params}`, {
       method: "GET",
@@ -207,18 +211,7 @@ export const readingApi = {
     return response.data || {};
   },
 
-  /**
-   * Gọi AI giải thích chi tiết đáp án cho một câu hỏi luyện đọc.
-   * Kết quả trả về ngay lập tức, không lưu vào database.
-   * @param {object} params
-   * @param {string} params.content - Nội dung bài đọc tiếng Anh
-   * @param {string} params.viTranslation - Bản dịch tiếng Việt (tùy chọn)
-   * @param {string} params.question - Câu hỏi bằng tiếng Anh
-   * @param {object} params.allAnswers - Object chứa 4 đáp án { a, b, c, d }
-   * @param {string} params.userAnswer - Đáp án người dùng đã chọn (A/B/C/D)
-   * @param {string} params.correctAnswer - Đáp án đúng (A/B/C/D)
-   * @returns {Promise<string>} - Chuỗi giải thích từ AI
-   */
+  // Gọi AI giải thích chi tiết đáp án cho câu hỏi luyện đọc
   explainAnswer: async ({ content, viTranslation, question, allAnswers, userAnswer, correctAnswer }) => {
     // Chỉ truyền viTranslation khi có nội dung, tránh lỗi validation backend (.min(1))
     const body = {

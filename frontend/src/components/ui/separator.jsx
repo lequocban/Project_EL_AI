@@ -3,6 +3,7 @@ import * as SeparatorPrimitive from "@radix-ui/react-separator";
 
 import { cn } from "@/lib/utils";
 
+// Component đường kẻ ngăn cách
 const Separator = React.forwardRef(
   (
     { className, orientation = "horizontal", decorative = true, ...props },

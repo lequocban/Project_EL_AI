@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { ArrowLeft, CheckCircle, XCircle } from "lucide-react";
 
+// Xáo trộn mảng ngẫu nhiên
 function shuffle(arr) {
   return [...arr].sort(() => Math.random() - 0.5);
 }
 
+// Component trò chơi trắc nghiệm chọn nghĩa của từ
 export default function MultipleChoiceGame({ words, set, onBack }) {
   const [questions] = useState(() =>
     shuffle(words).map((w) => {
@@ -23,6 +25,7 @@ export default function MultipleChoiceGame({ words, set, onBack }) {
 
   const q = questions[index];
 
+  // Xử lý chọn đáp án và tính điểm, tự động chuyển câu sau 1 giây
   const handleAnswer = (choice) => {
     if (selected) return;
     setSelected(choice);

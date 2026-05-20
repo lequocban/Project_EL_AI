@@ -37,6 +37,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 
+// Lấy thống kê hệ thống từ API admin
 const fetchSystemStats = async () => {
   const res = await adminApi.getStats();
   return res.data;
@@ -56,21 +57,25 @@ const ROLE_LABELS = {
   3: "Quản trị viên",
 };
 
+// Lấy danh sách người dùng với phân trang và bộ lọc trạng thái
 const fetchUsers = async ({ page = 1, limit = 100, status = "" }) => {
   const res = await adminApi.getUsers({ page, limit, status });
   return res.data;
 };
 
+// Lấy danh sách bộ từ vựng với phân trang và tìm kiếm
 const fetchVocabSets = async ({ page = 1, limit = 100, keyword = "" } = {}) => {
   const res = await adminApi.getAllVocabularySets({ page, limit, keyword });
   return res.data;
 };
 
+// Lấy danh sách bài luyện đọc với phân trang và tìm kiếm
 const fetchReadingLessons = async ({ page = 1, limit = 100, keyword = "" } = {}) => {
   const res = await adminApi.getAllReadingLessons({ page, limit, keyword });
   return res.data;
 };
 
+// Lấy danh sách bài luyện nghe với phân trang và tìm kiếm
 const fetchListeningLessons = async ({ page = 1, limit = 100, keyword = "" } = {}) => {
   const res = await adminApi.getAllListeningLessons({ page, limit, keyword });
   return res.data;
@@ -472,6 +477,7 @@ function ListeningDialog({ open, onClose }) {
   );
 }
 
+// Trang tổng quan admin với thống kê và biểu đồ hệ thống
 export default function AdminDashboard() {
   const { data: stats, isLoading, isFetching, isError, refetch } = useQuery({
     queryKey: ["admin", "systemStats"],

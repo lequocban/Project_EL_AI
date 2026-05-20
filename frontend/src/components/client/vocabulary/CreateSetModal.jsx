@@ -2,15 +2,18 @@ import { useState } from "react";
 import { X, Sparkles, Keyboard } from "lucide-react";
 import { vocabularyApi } from "@/api/client/vocabularyApi";
 
+// Component modal tạo bộ từ vựng mới (thủ công hoặc AI)
 export default function CreateSetModal({ onClose, onCreated }) {
   const [mode, setMode] = useState("manual");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiDescription, setAiDescription] = useState("");
+  const [wordCount, setWordCount] = useState(10);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Tạo bộ từ vựng thủ công với tên và mô tả
   const createManual = async () => {
     if (!title.trim()) {
       setError("Vui lòng nhập tên bộ từ vựng");
@@ -32,6 +35,7 @@ export default function CreateSetModal({ onClose, onCreated }) {
     }
   };
 
+  // Tạo bộ từ vựng bằng AI theo chủ đề nhập vào
   const createWithAI = async () => {
     if (!aiPrompt.trim()) {
       setError("Vui lòng nhập chủ đề từ vựng");
@@ -39,6 +43,10 @@ export default function CreateSetModal({ onClose, onCreated }) {
     }
     if (!title.trim()) {
       setError("Vui lòng nhập tên bộ từ vựng");
+      return;
+    }
+    if (wordCount < 1 || wordCount > 30) {
+      setError("Số lượng từ phải từ 1 đến 30");
       return;
     }
 
@@ -49,7 +57,7 @@ export default function CreateSetModal({ onClose, onCreated }) {
         title: title.trim(),
         description: aiDescription.trim() || undefined,
         topic: aiPrompt.trim(),
-        wordCount: 10,
+        wordCount: wordCount,
       });
       onCreated(set);
     } catch (err) {
@@ -79,6 +87,7 @@ export default function CreateSetModal({ onClose, onCreated }) {
                 onClick={() => {
                   setMode(val);
                   setError("");
+                  if (val === "manual") setWordCount(10);
                 }}
                 className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-all ${
                   mode === val
@@ -153,6 +162,25 @@ export default function CreateSetModal({ onClose, onCreated }) {
                   placeholder="Mô tả ngắn về chủ đề (không bắt buộc)..."
                   className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
                 />
+              </div>
+              <div>
+                <label className="text-sm font-bold text-foreground mb-1 block">
+                  Số lượng từ vựng (1 - 30) *
+                </label>
+                <div className="flex items-center gap-4">
+                  <input
+                    type="range"
+                    min="1"
+                    max="30"
+                    value={wordCount}
+                    onChange={(e) => setWordCount(Number(e.target.value))}
+                    className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary"
+                  />
+                  <span className="text-lg font-black text-primary w-8 text-center">
+                    {wordCount}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">AI sẽ tạo từ 1 đến 30 từ vựng theo chủ đề của bạn</p>
               </div>
             </div>
           )}

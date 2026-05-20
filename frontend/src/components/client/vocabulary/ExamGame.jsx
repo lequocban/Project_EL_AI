@@ -11,6 +11,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 
+// Xáo trộn mảng ngẫu nhiên
 function shuffle(arr) {
   return [...arr].sort(() => Math.random() - 0.5);
 }
@@ -46,6 +47,7 @@ const EXAM_TYPES = [
   },
 ];
 
+// Xây dựng danh sách câu hỏi theo loại kiểm tra
 function buildQuestions(words, type) {
   const shuffled = shuffle(words);
   if (type === "quiz") {
@@ -103,6 +105,7 @@ function buildQuestions(words, type) {
   return [];
 }
 
+// Phát âm từ bằng SpeechSynthesis
 function speakWord(text) {
   const utt = new SpeechSynthesisUtterance(text);
   utt.lang = "en-US";
@@ -111,6 +114,7 @@ function speakWord(text) {
   window.speechSynthesis.speak(utt);
 }
 
+// Component kiểm tra từ vựng với nhiều dạng bài (quiz, nghe, viết)
 export default function ExamGame({ words, onBack, examType: initialExamType = null, setId = null, onSubmit = null }) {
   const [phase, setPhase] = useState(
     initialExamType ? "doing" : "select",
@@ -142,6 +146,7 @@ export default function ExamGame({ words, onBack, examType: initialExamType = nu
     }
   }, [phase, submitted]);
 
+  // Bắt đầu bài kiểm tra với loại đã chọn
   const startExam = (type) => {
     setExamType(type);
     setQuestions(buildQuestions(words, type));
@@ -151,6 +156,7 @@ export default function ExamGame({ words, onBack, examType: initialExamType = nu
     setCurrentIndex(0);
   };
 
+  // Nộp bài kiểm tra và lưu kết quả lên backend
   const submitExam = async () => {
     if (!setId || !onSubmit) return;
 
@@ -285,10 +291,12 @@ export default function ExamGame({ words, onBack, examType: initialExamType = nu
   if (phase === "doing") {
     const currentQ = questions[currentIndex];
 
+    // Chuyển về câu hỏi trước
     const handlePrev = () => {
       if (currentIndex > 0) setCurrentIndex(currentIndex - 1);
     };
 
+    // Chuyển đến câu hỏi tiếp theo
     const handleNext = () => {
       if (currentIndex < questions.length - 1) setCurrentIndex(currentIndex + 1);
     };
@@ -467,9 +475,11 @@ export default function ExamGame({ words, onBack, examType: initialExamType = nu
 // =============================================
 // Card câu hỏi khi đang làm bài
 // =============================================
+// Component hiển thị câu hỏi và nhận đáp án từ người dùng
 function QuestionCard({ q, index, examType, onAnswer }) {
   const [played, setPlayed] = useState(false);
 
+  // Phát âm từ cho câu hỏi nghe
   const handlePlay = () => {
     if (q.audioUrl) {
       const audio = new Audio(q.audioUrl);
@@ -620,9 +630,11 @@ function QuestionCard({ q, index, examType, onAnswer }) {
 // =============================================
 // Card kết quả sau khi nộp bài
 // =============================================
+// Component hiển thị kết quả từng câu sau khi nộp bài
 function ResultCard({ q, index, examType }) {
   const [played, setPlayed] = useState(false);
 
+  // Phát âm đáp án đúng cho câu hỏi nghe
   const handlePlay = () => {
     if (q.audioUrl) {
       const audio = new Audio(q.audioUrl);
