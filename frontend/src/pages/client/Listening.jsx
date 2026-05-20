@@ -922,7 +922,6 @@ export function LessonStarter({ lesson, onBack }) {
   const [settingsTab, setSettingsTab] = useState("visibility");
   const [visibilityMode, setVisibilityMode] = useState("private");
   const [editTitle, setEditTitle] = useState("");
-  const [editDescription, setEditDescription] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [settingsError, setSettingsError] = useState("");
@@ -1009,7 +1008,6 @@ export function LessonStarter({ lesson, onBack }) {
       setIsSaving(true);
       await listeningApi.updateLesson(lesson.id, {
         title: editTitle.trim(),
-        description: editDescription.trim(),
       });
       setSettingsSuccess("Đã lưu thay đổi thành công.");
       setTimeout(() => {
@@ -1045,7 +1043,6 @@ export function LessonStarter({ lesson, onBack }) {
     setSettingsTab("visibility");
     setVisibilityMode(lesson?.status || "private");
     setEditTitle(lesson?.title || "");
-    setEditDescription(lesson?.description || "");
     setSettingsError("");
     setSettingsSuccess("");
     setTimeout(() => setShowSettingsDialog(true), 0);
@@ -1810,19 +1807,6 @@ export function LessonStarter({ lesson, onBack }) {
                       placeholder="VD: Daily Conversation"
                       disabled={lesson.status !== "private"}
                       className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-green-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-bold text-foreground mb-1 block">
-                      Mô tả
-                    </label>
-                    <textarea
-                      value={editDescription}
-                      onChange={(e) => setEditDescription(e.target.value)}
-                      rows={3}
-                      placeholder="Mô tả ngắn..."
-                      disabled={lesson.status !== "private"}
-                      className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-green-500/30 resize-none disabled:opacity-50 disabled:cursor-not-allowed"
                     />
                   </div>
 
