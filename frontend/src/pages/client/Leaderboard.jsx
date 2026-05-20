@@ -5,6 +5,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Crown,
+  BookOpen,
+  Headphones,
+  Layers,
 } from "lucide-react";
 import { leaderboardApi } from "@/api/client/leaderboardApi";
 
@@ -25,8 +28,17 @@ const TOP_BG = [
   "bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200",
 ];
 
+// Cấu hình các tab kỹ năng - màu sắc trùng với sidebar
+const SKILL_TABS = [
+  { key: null, label: "Tổng quan", icon: Trophy, activeClass: "from-teal-500 to-cyan-600" },
+  { key: "vocabulary", label: "Từ vựng", icon: Layers, activeClass: "from-violet-500 to-indigo-500" },
+  { key: "reading", label: "Luyện đọc", icon: BookOpen, activeClass: "from-orange-500 to-amber-500" },
+  { key: "listening", label: "Luyện nghe", icon: Headphones, activeClass: "from-green-500 to-teal-500" },
+];
+
 // Trang bảng xếp hạng người dùng theo điểm luyện tập
 export default function Leaderboard() {
+  const [selectedSkill, setSelectedSkill] = useState(null);
   const [leaderboard, setLeaderboard] = useState([]);
   const [currentUserRank, setCurrentUserRank] = useState(null);
   const [pagination, setPagination] = useState({
@@ -38,12 +50,21 @@ export default function Leaderboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Lấy dữ liệu bảng xếp hạng từ API theo trang
+  // Lấy dữ liệu bảng xếp hạng từ API theo trang và kỹ năng đã chọn
   const fetchLeaderboard = async (page = 1) => {
     setLoading(true);
     setError("");
     try {
-      const result = await leaderboardApi.getLeaderboard({ page, limit: pagination.limit });
+      let result;
+      if (selectedSkill) {
+        result = await leaderboardApi.getLeaderboardBySkill({
+          skill: selectedSkill,
+          page,
+          limit: pagination.limit,
+        });
+      } else {
+        result = await leaderboardApi.getLeaderboard({ page, limit: pagination.limit });
+      }
       setLeaderboard(result.leaderboard);
       setCurrentUserRank(result.currentUserRank);
       setPagination((prev) => ({
@@ -59,9 +80,15 @@ export default function Leaderboard() {
     }
   };
 
+  // Xử lý khi chuyển tab kỹ năng
+  const handleSkillChange = (skill) => {
+    setSelectedSkill(skill);
+    setPagination((prev) => ({ ...prev, page: 1 }));
+  };
+
   useEffect(() => {
     fetchLeaderboard(1);
-  }, []);
+  }, [selectedSkill]);
 
   // Chuyển về trang trước trong bảng xếp hạng
   const handlePrevPage = () => {
@@ -90,18 +117,46 @@ export default function Leaderboard() {
           Bảng xếp hạng
         </h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Top người dùng có điểm luyện tập cao nhất
+          {selectedSkill
+            ? `Bảng xếp hạng ${SKILL_TABS.find(t => t.key === selectedSkill)?.label}`
+            : "Top người dùng có điểm luyện tập cao nhất"}
         </p>
       </div>
 
+      {/* Tab chọn kỹ năng */}
+      <div className="mb-5 flex flex-wrap gap-2">
+        {SKILL_TABS.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = selectedSkill === tab.key;
+          return (
+            <button
+              key={tab.key ?? "overall"}
+              onClick={() => handleSkillChange(tab.key)}
+              className={`
+                flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all duration-200 border
+                ${isActive
+                  ? `bg-gradient-to-r ${tab.activeClass} text-white shadow-md`
+                  : "bg-white text-muted-foreground border-border hover:border-violet-300 hover:text-violet-600"
+                }
+              `}
+            >
+              <Icon className="w-4 h-4" />
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
       {/* Thông tin thứ hạng của user hiện tại */}
-      {currentUserRank && (
+      {currentUserRank !== null && (
         <div className="mb-5 rounded-2xl border border-border bg-gradient-to-r from-violet-50 to-purple-50 p-4 flex items-center gap-3">
           <div className="w-10 h-10 bg-gradient-to-r from-violet-500 to-purple-500 rounded-full flex items-center justify-center shadow-md">
             <Trophy className="w-5 h-5 text-white" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-foreground">Thứ hạng của bạn</p>
+            <p className="text-sm font-semibold text-foreground">
+              Thứ hạng của bạn{selectedSkill ? ` (${SKILL_TABS.find(t => t.key === selectedSkill)?.label})` : ""}
+            </p>
             <p className="text-xl font-black text-violet-600">Hạng #{currentUserRank}</p>
           </div>
         </div>
