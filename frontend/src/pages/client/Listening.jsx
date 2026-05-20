@@ -64,13 +64,12 @@ const SORT_OPTIONS = [
 
 // Trang luyện nghe với danh sách bài học và tính năng tạo bài mới
 export default function Listening() {
+  const navigate = useNavigate();
   const [lessons, setLessons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [tab, setTab] = useState("mine");
   const [search, setSearch] = useState("");
-  const [startLesson, setStartLesson] = useState(null);
-  const [detailLoading, setDetailLoading] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -170,12 +169,7 @@ export default function Listening() {
   // Xử lý sau khi tạo bài nghe thành công
   const handleCreated = async (lesson) => {
     await loadData();
-    try {
-      const detail = await listeningApi.getLessonById(lesson.id);
-      setStartLesson(detail);
-    } catch {
-      // Neu khong lay duoc chi tiet, van reload danh sach binh thuong
-    }
+    navigate(`/listening/${lesson.id}`);
   };
 
   // Xử lý thay đổi sắp xếp
@@ -189,18 +183,6 @@ export default function Listening() {
     const opt = SORT_OPTIONS.find((o) => o.value === sortOption);
     return opt ? opt.label : "Sắp xếp";
   };
-
-  if (startLesson) {
-    return (
-      <LessonStarter
-        lesson={startLesson}
-        onBack={() => {
-          setStartLesson(null);
-          loadData();
-        }}
-      />
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background p-6 lg:p-8">
@@ -328,17 +310,7 @@ export default function Listening() {
             {lessons.map((lesson) => (
               <div
                 key={lesson.id}
-                onClick={async () => {
-                  setDetailLoading(true);
-                  try {
-                    const detail = await listeningApi.getLessonById(lesson.id);
-                    setStartLesson(detail);
-                  } catch (err) {
-                    setError(err.message || "Không thể tải chi tiết bài luyện nghe");
-                  } finally {
-                    setDetailLoading(false);
-                  }
-                }}
+                onClick={() => navigate(`/listening/${lesson.id}`)}
                 className="bg-white rounded-2xl p-5 border border-border card-hover cursor-pointer group relative"
               >
                 {tab === "mine" && (
@@ -925,7 +897,7 @@ function CreateListeningModal({ onClose, onCreated }) {
 }
 
 // Giao diện bắt đầu làm bài (có nút chỉnh sửa)
-function LessonStarter({ lesson, onBack }) {
+export function LessonStarter({ lesson, onBack }) {
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [questions, setQuestions] = useState(lesson.questions || []);

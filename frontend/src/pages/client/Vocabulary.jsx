@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Plus,
   Search,
@@ -16,7 +17,6 @@ import {
 } from "lucide-react";
 import CreateSetModal from "@/components/client/vocabulary/CreateSetModal";
 import EditSetModal from "@/components/client/vocabulary/EditSetModal";
-import SetDetail from "@/components/client/vocabulary/SetDetail";
 import PracticeHistoryModal from "@/components/client/practice/PracticeHistoryModal";
 import { vocabularyApi } from "@/api/client/vocabularyApi";
 
@@ -68,6 +68,7 @@ const isFavSet = (setId, favorites) =>
 
 // Trang từ vựng với danh sách bộ từ và tính năng quản lý
 export default function Vocabulary() {
+  const navigate = useNavigate();
   const [sets, setSets] = useState([]);
   const [publicSets, setPublicSets] = useState([]);
   const [favorites, setFavorites] = useState([]);
@@ -77,7 +78,6 @@ export default function Vocabulary() {
   const [showEdit, setShowEdit] = useState(false);
   const [editingSet, setEditingSet] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
-  const [selectedSet, setSelectedSet] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   // Phân trang
@@ -321,11 +321,8 @@ export default function Vocabulary() {
 
   // Cập nhật UI ngay lập tức sau khi chỉnh sửa bộ từ
   const handleSetUpdated = (updatedSet) => {
-    // Cập nhật UI ngay lập tức mà không cần reload toàn bộ
     setSets((prev) => prev.map((s) => String(s.id) === String(updatedSet.id) ? { ...s, ...updatedSet } : s));
     setFavorites((prev) => prev.map((s) => String(s.id) === String(updatedSet.id) ? { ...s, ...updatedSet } : s));
-    // Cập nhật selectedSet để SetDetail đang mở cũng thấy thay đổi ngay lập tức
-    setSelectedSet((prev) => prev && String(prev.id) === String(updatedSet.id) ? { ...prev, ...updatedSet } : prev);
     setShowEdit(false);
     setEditingSet(null);
   };
@@ -351,20 +348,6 @@ export default function Vocabulary() {
   };
 
   const displayed = getDisplayed();
-
-  if (selectedSet) {
-    return (
-      <SetDetail
-        set={selectedSet}
-        onBack={() => {
-          setSelectedSet(null);
-          setReloadTrigger((n) => n + 1);
-        }}
-        favorites={favorites}
-        onToggleFavorite={toggleFavorite}
-      />
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background p-6 lg:p-8">
@@ -504,7 +487,7 @@ export default function Vocabulary() {
               return (
                 <div
                   key={set.id}
-                  onClick={() => setSelectedSet(set)}
+                  onClick={() => navigate(`/vocabulary/${set.id}`)}
                   className="bg-white rounded-2xl p-5 border border-border card-hover cursor-pointer group relative"
                 >
                   <div
@@ -641,7 +624,7 @@ export default function Vocabulary() {
           onClose={() => setShowCreate(false)}
           onCreated={(s) => {
             setShowCreate(false);
-            setSelectedSet(s);
+            navigate(`/vocabulary/${s.id}`);
           }}
         />
       )}

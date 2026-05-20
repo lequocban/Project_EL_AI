@@ -26,12 +26,6 @@ import {
   Lock,
   Heart,
 } from "lucide-react";
-import FlashcardGame from "./FlashcardGame";
-import MatchGame from "./MatchGame";
-import MultipleChoiceGame from "./MultipleChoiceGame";
-import TypingGame from "./TypingGame";
-import DictationGame from "./DictationGame";
-import ExamGame from "./ExamGame";
 import { vocabularyApi } from "@/api/client/vocabularyApi";
 import {
   AlertDialog,
@@ -85,12 +79,8 @@ const MODES = [
 
 // Component chi tiết bộ từ vựng với các chế độ học tập và quản lý từ
 export default function SetDetail({ set, onBack, favorites = [], onToggleFavorite }) {
-  // allWords: lưu tất cả từ để dùng cho game và luyện tập
   const [allWords, setAllWords] = useState([]);
-  // words: chỉ dùng để hiển thị (slice theo trang)
   const [words, setWords] = useState([]);
-  const [mode, setMode] = useState(null);
-  const [examType, setExamType] = useState(null);
   const [showAddWord, setShowAddWord] = useState(false);
   // Mỗi phần tử: { word, meaning, pronunciation, isLoading }
   const [pendingWords, setPendingWords] = useState([]);
@@ -440,12 +430,6 @@ export default function SetDetail({ set, onBack, favorites = [], onToggleFavorit
     }
   };
 
-  // Gửi kết quả bài kiểm tra lên backend để lưu lịch sử
-  // Nộp kết quả bài kiểm tra từ vựng lên backend
-  const handlePracticeSubmit = async ({ setId, type, answers, timeSpent }) => {
-    return vocabularyApi.submitPractice({ setId, type, answers, timeSpent });
-  };
-
   // Xử lý thay đổi visibility trong dialog Setting
   const handleVisibilitySubmit = async () => {
     setSettingsError("");
@@ -569,83 +553,12 @@ export default function SetDetail({ set, onBack, favorites = [], onToggleFavorit
   // Load đủ từ rồi bắt đầu game
   // Bắt đầu chế độ chơi game sau khi đảm bảo đủ từ
   const startGame = async (modeId) => {
-    if (allWords.length >= 4) {
-      setMode(modeId);
-      return;
-    }
-
-    // Nếu allWords chưa đủ, load từ backend trước
-    try {
-      setIsLoadingWords(true);
-      const opt = SORT_OPTIONS.find((o) => o.value === sortOption);
-      const detail = await vocabularyApi.getSetById(set.id, {
-        page: 1,
-        limit: 500,
-        sortField: opt?.sortField || "word",
-        sortOrder: opt?.sortOrder || "asc",
-      });
-
-      const fetchedWords = detail.words || [];
-      setAllWords(fetchedWords);
-      setMode(modeId);
-    } catch (err) {
-      setError(err.message || "Không thể tải dữ liệu để chơi");
-    } finally {
-      setIsLoadingWords(false);
-    }
+    navigate(`/vocabulary/${set.id}/practice/${modeId}`);
   };
 
-  // Load đủ từ rồi bắt đầu bài kiểm tra
-  // Bắt đầu bài kiểm tra sau khi đảm bảo đủ từ
   const startExam = async (type) => {
-    if (allWords.length >= 4) {
-      setExamType(type);
-      setMode("exam");
-      return;
-    }
-
-    // Nếu allWords chưa đủ, load từ backend trước
-    try {
-      setIsLoadingWords(true);
-      const opt = SORT_OPTIONS.find((o) => o.value === sortOption);
-      const detail = await vocabularyApi.getSetById(set.id, {
-        page: 1,
-        limit: 500,
-        sortField: opt?.sortField || "word",
-        sortOrder: opt?.sortOrder || "asc",
-      });
-
-      const fetchedWords = detail.words || [];
-      setAllWords(fetchedWords);
-      setExamType(type);
-      setMode("exam");
-    } catch (err) {
-      setError(err.message || "Không thể tải dữ liệu để kiểm tra");
-    } finally {
-      setIsLoadingWords(false);
-    }
+    navigate(`/vocabulary/${set.id}/practice/exam-${type}`);
   };
-
-  if (mode === "flashcard") {
-    return <FlashcardGame words={allWords} set={set} onBack={() => setMode(null)} />;
-  }
-  if (mode === "match") {
-    return <MatchGame words={allWords} set={set} onBack={() => setMode(null)} />;
-  }
-  if (mode === "quiz") {
-    return (
-      <MultipleChoiceGame words={allWords} set={set} onBack={() => setMode(null)} />
-    );
-  }
-  if (mode === "typing") {
-    return <TypingGame words={allWords} set={set} onBack={() => setMode(null)} />;
-  }
-  if (mode === "dictation") {
-    return <DictationGame words={allWords} set={set} onBack={() => setMode(null)} />;
-  }
-  if (mode === "exam") {
-    return <ExamGame words={allWords} onBack={() => setMode(null)} examType={examType} setId={set.id} onSubmit={handlePracticeSubmit} />;
-  }
 
   return (
     <div className="min-h-screen bg-background p-6 lg:p-8">

@@ -54,13 +54,12 @@ const LESSONS_PER_PAGE = 6;
 
 // Trang luyện đọc với danh sách bài học và tính năng tạo bài mới
 export default function Reading() {
+  const navigate = useNavigate();
   const [lessons, setLessons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [tab, setTab] = useState("mine");
   const [search, setSearch] = useState("");
-  const [startLesson, setStartLesson] = useState(null);
-  const [detailLoading, setDetailLoading] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -151,12 +150,7 @@ export default function Reading() {
   // Xử lý sau khi tạo bài đọc thành công
   const handleCreated = async (lesson) => {
     await loadData();
-    try {
-      const detail = await readingApi.getLessonById(lesson.id);
-      setStartLesson(detail);
-    } catch {
-      // Neu khong lay duoc chi tiet, van reload danh sach binh thuong
-    }
+    navigate(`/reading/${lesson.id}`);
   };
 
   // Xử lý thay đổi sắp xếp
@@ -170,18 +164,6 @@ export default function Reading() {
     const opt = SORT_OPTIONS.find((o) => o.value === sortOption);
     return opt ? opt.label : "Sắp xếp";
   };
-
-  if (startLesson) {
-    return (
-      <ReadingStarter
-        lesson={startLesson}
-        onBack={() => {
-          setStartLesson(null);
-          loadData();
-        }}
-      />
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background p-6 lg:p-8">
@@ -309,17 +291,7 @@ export default function Reading() {
             {lessons.map((lesson) => (
               <div
                 key={lesson.id}
-                onClick={async () => {
-                  setDetailLoading(true);
-                  try {
-                    const detail = await readingApi.getLessonById(lesson.id);
-                    setStartLesson(detail);
-                  } catch (err) {
-                    setError(err.message || "Không thể tải chi tiết bài luyện đọc");
-                  } finally {
-                    setDetailLoading(false);
-                  }
-                }}
+                onClick={() => navigate(`/reading/${lesson.id}`)}
                 className="bg-white rounded-2xl p-5 border border-border card-hover cursor-pointer group relative"
               >
                 {tab === "mine" && (
@@ -684,7 +656,7 @@ function CreateReadingModal({ onClose, onCreated }) {
 }
 
 // Giao diện bắt đầu làm bài (có nút chỉnh sửa)
-function ReadingStarter({ lesson, onBack }) {
+export function ReadingStarter({ lesson, onBack }) {
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [questions, setQuestions] = useState(lesson.questions || []);

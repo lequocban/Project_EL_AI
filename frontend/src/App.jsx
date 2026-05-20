@@ -9,9 +9,13 @@ import ClientLayout from "@/components/layouts/ClientLayout";
 import AdminLayout from "@/components/layouts/AdminLayout";
 import Home from "@/pages/client/Home";
 import Vocabulary from "@/pages/client/Vocabulary";
+import VocabularyDetail from "@/pages/client/VocabularyDetail";
+import VocabularyPractice from "@/pages/client/VocabularyPractice";
 import LookUp from "@/pages/client/LookUp";
 import Listening, { ListeningPractice } from "@/pages/client/Listening";
+import ListeningDetail from "@/pages/client/ListeningDetail";
 import Reading, { ReadingPractice } from "@/pages/client/Reading";
+import ReadingDetail from "@/pages/client/ReadingDetail";
 import Stats from "@/pages/client/Stats";
 import Leaderboard from "@/pages/client/Leaderboard";
 import Profile from "@/pages/client/Profile";
@@ -96,11 +100,15 @@ const AuthenticatedApp = () => {
       <Route element={<ProtectedRoute />}>
         <Route path="/home" element={<Home />} />
         <Route path="/vocabulary" element={<Vocabulary />} />
+        <Route path="/vocabulary/:id/practice/:mode" element={<VocabularyPractice />} />
+        <Route path="/vocabulary/:id" element={<VocabularyDetail />} />
         <Route path="/lookup" element={<LookUp />} />
         <Route path="/listening" element={<Listening />} />
         <Route path="/listening/:id/practice" element={<ListeningPractice />} />
+        <Route path="/listening/:id" element={<ListeningDetail />} />
         <Route path="/reading" element={<Reading />} />
         <Route path="/reading/:id/practice" element={<ReadingPractice />} />
+        <Route path="/reading/:id" element={<ReadingDetail />} />
         <Route path="/stats" element={<Stats />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/profile" element={<Profile />} />
