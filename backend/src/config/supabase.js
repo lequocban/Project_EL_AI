@@ -2,7 +2,7 @@ const { createClient } = require("@supabase/supabase-js");
 const env = require("./env.config");
 const { normalizeSupabaseKey } = require("../utils/supabase-key");
 
-const rawServiceKey = env.supabaseServiceRoleKey || env.supabaseAnonKey || env.supabaseKey;
+const rawServiceKey = env.supabaseServiceRoleKey ;
 const serviceKey = normalizeSupabaseKey(rawServiceKey);
 
 const supabase = createClient(env.supabaseUrl, serviceKey, {

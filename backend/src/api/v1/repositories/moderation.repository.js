@@ -1,4 +1,4 @@
-const { createAuthedClient } = require("../../../config/supabase");
+const { createAuthedClient, createAdminClient } = require("../../../config/supabase");
 const { AppError } = require("../../../utils/appError");
 const { parseSortParams, buildSupabaseOrder } = require("../../../utils/sorting");
 
@@ -163,7 +163,7 @@ const getRequestsByContentType = async (
   contentType,
   { status, page = 1, limit = 15, sortField, sortOrder } = {}
 ) => {
-  const client = createAuthedClient(accessToken);
+  const client = createAdminClient();
   const safeLimit = Math.min(Math.max(1, limit), 15);
   const from = (page - 1) * safeLimit;
   const to = from + safeLimit - 1;
