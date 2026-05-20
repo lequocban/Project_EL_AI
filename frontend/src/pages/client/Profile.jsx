@@ -4,6 +4,8 @@ import { useAuth } from "@/lib/AuthContext";
 import {
   BookOpen,
   Calendar,
+  Eye,
+  EyeOff,
   Flame,
   KeyRound,
   LogOut,
@@ -55,6 +57,9 @@ export default function Profile() {
   const [passwordStatus, setPasswordStatus] = useState({ type: "", message: "" });
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   if (!authUser) return null;
 
@@ -76,6 +81,9 @@ export default function Profile() {
       confirmPassword: "",
     });
     setPasswordStatus({ type: "", message: "" });
+    setShowCurrentPassword(false);
+    setShowNewPassword(false);
+    setShowConfirmPassword(false);
     setPasswordOpen(true);
   };
 
@@ -328,15 +336,28 @@ export default function Profile() {
                   <KeyRound className="w-4 h-4 text-primary" />
                   Mật khẩu hiện tại
                 </span>
-                <input
-                  type="password"
-                  value={passwordForm.currentPassword}
-                  onChange={(event) =>
-                    setPasswordForm((current) => ({ ...current, currentPassword: event.target.value }))
-                  }
-                  className="w-full rounded-2xl border border-border bg-white px-4 py-3 font-semibold text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                  placeholder="Nhập mật khẩu hiện tại"
-                />
+                <div className="relative">
+                  <input
+                    type={showCurrentPassword ? "text" : "password"}
+                    value={passwordForm.currentPassword}
+                    onChange={(event) =>
+                      setPasswordForm((current) => ({ ...current, currentPassword: event.target.value }))
+                    }
+                    className="w-full rounded-2xl border border-border bg-white px-4 py-3 font-semibold text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 pr-12"
+                    placeholder="Nhập mật khẩu hiện tại"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showCurrentPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
               </label>
 
               <label className="block">
@@ -344,15 +365,28 @@ export default function Profile() {
                   <KeyRound className="w-4 h-4 text-primary" />
                   Mật khẩu mới
                 </span>
-                <input
-                  type="password"
-                  value={passwordForm.newPassword}
-                  onChange={(event) =>
-                    setPasswordForm((current) => ({ ...current, newPassword: event.target.value }))
-                  }
-                  className="w-full rounded-2xl border border-border bg-white px-4 py-3 font-semibold text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                  placeholder="Tối thiểu 8 ký tự, 1 chữ hoa, 1 số"
-                />
+                <div className="relative">
+                  <input
+                    type={showNewPassword ? "text" : "password"}
+                    value={passwordForm.newPassword}
+                    onChange={(event) =>
+                      setPasswordForm((current) => ({ ...current, newPassword: event.target.value }))
+                    }
+                    className="w-full rounded-2xl border border-border bg-white px-4 py-3 font-semibold text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 pr-12"
+                    placeholder="Tối thiểu 8 ký tự, 1 chữ hoa, 1 số"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showNewPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
               </label>
 
               <label className="block">
@@ -360,15 +394,28 @@ export default function Profile() {
                   <KeyRound className="w-4 h-4 text-primary" />
                   Xác nhận mật khẩu mới
                 </span>
-                <input
-                  type="password"
-                  value={passwordForm.confirmPassword}
-                  onChange={(event) =>
-                    setPasswordForm((current) => ({ ...current, confirmPassword: event.target.value }))
-                  }
-                  className="w-full rounded-2xl border border-border bg-white px-4 py-3 font-semibold text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                  placeholder="Nhập lại mật khẩu mới"
-                />
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={passwordForm.confirmPassword}
+                    onChange={(event) =>
+                      setPasswordForm((current) => ({ ...current, confirmPassword: event.target.value }))
+                    }
+                    className="w-full rounded-2xl border border-border bg-white px-4 py-3 font-semibold text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 pr-12"
+                    placeholder="Nhập lại mật khẩu mới"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
               </label>
 
               {passwordStatus.message && (

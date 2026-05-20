@@ -23,6 +23,7 @@ import {
   ShieldCheck,
   Eye,
   SortAsc,
+  Settings,
 } from "lucide-react";
 import { readingApi } from "@/api/client/readingApi";
 import PracticeHistoryModal from "@/components/client/practice/PracticeHistoryModal";
@@ -692,27 +693,16 @@ function ReadingStarter({ lesson, onBack }) {
   const [isMakingPrivate, setIsMakingPrivate] = useState(false);
   const [actionMessage, setActionMessage] = useState("");
 
-  // Gửi yêu cầu công khai bài luyện đọc (chỉ gửi yêu cầu, không chuyển trang)
-  const handleRequestPublic = async () => {
-    if (!window.confirm("Bạn có muốn gửi yêu cầu công khai bài luyện đọc này không?\nNội dung sẽ được kiểm duyệt trước khi hiển thị công khai.")) {
-      return false;
-    }
-    try {
-      setIsRequestingPublic(true);
-      setActionMessage("");
-      await readingApi.requestPublic(lesson.id);
-      setActionMessage("Đã gửi yêu cầu công khai! Nội dung sẽ được kiểm duyệt trước khi hiển thị công khai.");
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
-      return true;
-    } catch (err) {
-      setActionMessage(`Lỗi: ${err.message || "Không thể gửi yêu cầu công khai"}`);
-      return false;
-    } finally {
-      setIsRequestingPublic(false);
-    }
-  };
+  // State cho dialog Setting
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+  const [settingsTab, setSettingsTab] = useState("visibility");
+  const [visibilityMode, setVisibilityMode] = useState("private");
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [settingsError, setSettingsError] = useState("");
+  const [settingsSuccess, setSettingsSuccess] = useState("");
 
   // Gửi yêu cầu kiểm duyệt (dùng endpoint moderation-requests chung)
   const handleModeration = async () => {
@@ -755,6 +745,88 @@ function ReadingStarter({ lesson, onBack }) {
     navigate(`/reading/${lesson.id}/practice`, {
       state: { lesson: { ...lesson, questions, content: passageContent, vi_translation: passageVi } }
     });
+  };
+
+  // Xử lý thay đổi visibility trong dialog Setting
+  const handleVisibilitySubmit = async () => {
+    setSettingsError("");
+    setSettingsSuccess("");
+    try {
+      if (visibilityMode === "req_public") {
+        setIsRequestingPublic(true);
+        await readingApi.requestPublic(lesson.id);
+        setSettingsSuccess("Đã gửi yêu cầu công khai! Nội dung sẽ được kiểm duyệt.");
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } else if (visibilityMode === "private" && lesson.status === "public") {
+        setIsMakingPrivate(true);
+        await readingApi.makePrivate(lesson.id);
+        setSettingsSuccess("Đã chuyển về chế độ riêng tư.");
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      }
+    } catch (err) {
+      setSettingsError(err.message || "Không thể thực hiện thao tác");
+    } finally {
+      setIsRequestingPublic(false);
+      setIsMakingPrivate(false);
+    }
+  };
+
+  // Xử lý lưu chỉnh sửa trong dialog Setting
+  const handleEditSubmit = async () => {
+    if (!editTitle.trim()) {
+      setSettingsError("Vui lòng nhập tiêu đề bài luyện đọc");
+      return;
+    }
+    setSettingsError("");
+    setSettingsSuccess("");
+    try {
+      setIsSaving(true);
+      await readingApi.updateLesson(lesson.id, {
+        title: editTitle.trim(),
+        description: editDescription.trim(),
+      });
+      setSettingsSuccess("Đã lưu thay đổi thành công.");
+      setTimeout(() => {
+        setShowSettingsDialog(false);
+      }, 800);
+    } catch (err) {
+      setSettingsError(err.message || "Không thể cập nhật bài luyện đọc");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Xử lý xoá bài luyện đọc trong dialog Setting
+  const handleDeleteLesson = async () => {
+    if (!window.confirm("Bạn có chắc muốn xoá bài luyện đọc này không? Hành động này không thể hoàn tác.")) {
+      return;
+    }
+    setSettingsError("");
+    try {
+      setIsDeleting(true);
+      await readingApi.deleteLesson(lesson.id);
+      setShowSettingsDialog(false);
+      onBack();
+    } catch (err) {
+      setSettingsError(err.message || "Không thể xoá bài luyện đọc");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Mở dialog Setting
+  const openSettingsDialog = () => {
+    setSettingsTab("visibility");
+    setVisibilityMode(lesson?.status || "private");
+    setEditTitle(lesson?.title || "");
+    setEditDescription(lesson?.description || "");
+    setSettingsError("");
+    setSettingsSuccess("");
+    setTimeout(() => setShowSettingsDialog(true), 0);
   };
 
   // Lưu content, vi_translation và đồng bộ câu hỏi xuống database
@@ -934,7 +1006,7 @@ function ReadingStarter({ lesson, onBack }) {
             >
               {LEVEL_LABELS[lesson.level] || lesson.level}
             </span>
-            {/* Các nút Kiểm duyệt và Công khai */}
+            {/* Các nút Kiểm duyệt và Setting */}
             <div className="flex items-center gap-2">
               {lesson.is_public ? (
                 <button
@@ -956,35 +1028,28 @@ function ReadingStarter({ lesson, onBack }) {
                   Chờ duyệt
                 </span>
               ) : (
-                <>
-                  <button
-                    onClick={handleModeration}
-                    disabled={isMakingPrivate || isRequestingPublic}
-                    className="flex items-center gap-1.5 bg-violet-50 text-violet-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-violet-100 transition-all border border-violet-200 disabled:opacity-50"
-                    title="Gửi yêu cầu kiểm duyệt"
-                  >
-                    {isRequestingPublic ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <Eye className="w-3.5 h-3.5" />
-                    )}
-                    Kiểm duyệt
-                  </button>
-                  <button
-                    onClick={handleRequestPublic}
-                    disabled={isMakingPrivate || isRequestingPublic}
-                    className="flex items-center gap-1.5 bg-green-50 text-green-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-green-100 transition-all border border-green-200 disabled:opacity-50"
-                    title="Gửi yêu cầu công khai"
-                  >
-                    {isRequestingPublic ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <Globe className="w-3.5 h-3.5" />
-                    )}
-                    Công khai
-                  </button>
-                </>
+                <button
+                  onClick={handleModeration}
+                  disabled={isMakingPrivate || isRequestingPublic}
+                  className="flex items-center gap-1.5 bg-violet-50 text-violet-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-violet-100 transition-all border border-violet-200 disabled:opacity-50"
+                  title="Gửi yêu cầu kiểm duyệt"
+                >
+                  {isRequestingPublic ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Eye className="w-3.5 h-3.5" />
+                  )}
+                  Kiểm duyệt
+                </button>
               )}
+              <button
+                onClick={openSettingsDialog}
+                className="flex items-center gap-1 bg-gray-100 text-gray-700 px-2 py-1.5 rounded-lg text-xs font-bold hover:bg-gray-200 transition-all border border-gray-200"
+                title="Cài đặt bài đọc"
+              >
+                <Settings className="w-3.5 h-3.5" />
+                Setting
+              </button>
               {!isEditing && !lesson.is_public && (
                 <button
                   onClick={() => setIsEditing(true)}
@@ -1318,11 +1383,253 @@ function ReadingStarter({ lesson, onBack }) {
           </div>
         </div>
       )}
+
+      {/* Dialog Setting */}
+      {showSettingsDialog && (
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 9999, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}
+          onClick={() => setShowSettingsDialog(false)}
+        >
+          <div style={{ backgroundColor: "white", borderRadius: "1rem", width: "100%", maxWidth: "28rem", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)" }} onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-border">
+              <h2 className="text-lg font-black flex items-center gap-2">
+                <Settings className="w-5 h-5 text-orange-500" />
+                Cài đặt bài đọc
+              </h2>
+              <button onClick={() => setShowSettingsDialog(false)} className="p-2 rounded-xl hover:bg-muted">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex border-b border-border">
+              <button
+                onClick={() => setSettingsTab("visibility")}
+                className={`flex-1 px-4 py-3 text-sm font-bold transition-all ${
+                  settingsTab === "visibility"
+                    ? "text-orange-500 border-b-2 border-orange-500"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Công khai
+              </button>
+              <button
+                onClick={() => setSettingsTab("edit")}
+                className={`flex-1 px-4 py-3 text-sm font-bold transition-all ${
+                  settingsTab === "edit"
+                    ? "text-orange-500 border-b-2 border-orange-500"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Chỉnh sửa
+              </button>
+            </div>
+
+            <div className="p-6">
+              {settingsError && (
+                <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-600">
+                  {settingsError}
+                </div>
+              )}
+              {settingsSuccess && (
+                <div className="mb-4 rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-600">
+                  {settingsSuccess}
+                </div>
+              )}
+
+              {settingsTab === "visibility" && (
+                <div className="space-y-4">
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Chọn chế độ hiển thị cho bài luyện đọc
+                  </p>
+
+                  {/* Radio options */}
+                  <div className="space-y-3">
+                    {/* Riêng tư */}
+                    <div
+                      onClick={() => setVisibilityMode("private")}
+                      className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
+                        visibilityMode === "private"
+                          ? "border-orange-500 bg-orange-50"
+                          : "border-border hover:bg-muted"
+                      }`}
+                    >
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                        visibilityMode === "private" ? "border-orange-500" : "border-muted-foreground/40"
+                      }`}>
+                        {visibilityMode === "private" && <div className="w-2 h-2 rounded-full bg-orange-500" />}
+                      </div>
+                      <div className="flex-1">
+                        <span className="text-sm font-bold text-foreground">Riêng tư</span>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Chỉ bạn mới có thể xem bài này
+                        </p>
+                      </div>
+                      <Lock className={`w-4 h-4 ${visibilityMode === "private" ? "text-orange-500" : "text-muted-foreground/50"}`} />
+                    </div>
+
+                    {/* Duyệt công khai */}
+                    <div
+                      onClick={() => {
+                        if (lesson.status !== "req_public" && lesson.status !== "public") {
+                          setVisibilityMode("req_public");
+                        }
+                      }}
+                      className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
+                        visibilityMode === "req_public"
+                          ? "border-amber-400 bg-amber-50"
+                          : "border-border hover:bg-muted"
+                      } ${lesson.status === "req_public" || lesson.status === "public" ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                    >
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                        visibilityMode === "req_public" ? "border-amber-500" : "border-muted-foreground/40"
+                      }`}>
+                        {visibilityMode === "req_public" && <div className="w-2 h-2 rounded-full bg-amber-500" />}
+                      </div>
+                      <div className="flex-1">
+                        <span className="text-sm font-bold text-foreground">Duyệt công khai</span>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Gửi yêu cầu để admin kiểm duyệt
+                        </p>
+                      </div>
+                      {lesson.status === "req_public" ? (
+                        <Clock className="w-4 h-4 text-amber-500" />
+                      ) : (
+                        <Eye className={`w-4 h-4 ${visibilityMode === "req_public" ? "text-amber-500" : "text-muted-foreground/50"}`} />
+                      )}
+                    </div>
+
+                    {/* Công khai */}
+                    <div
+                      className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
+                        lesson.status === "public"
+                          ? "border-green-400 bg-green-50"
+                          : "border-border opacity-40"
+                      }`}
+                    >
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                        visibilityMode === "public" ? "border-green-600" : "border-muted-foreground/40"
+                      }`}>
+                        {visibilityMode === "public" && <div className="w-2 h-2 rounded-full bg-green-600" />}
+                      </div>
+                      <div className="flex-1">
+                        <span className="text-sm font-bold text-foreground">Công khai</span>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Tất cả người dùng đều có thể xem (chỉ admin mới có thể đặt)
+                        </p>
+                      </div>
+                      <Globe className={`w-4 h-4 ${lesson.status === "public" ? "text-green-600" : "text-muted-foreground/50"}`} />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 mt-6">
+                    <button
+                      onClick={() => setShowSettingsDialog(false)}
+                      className="flex-1 px-4 py-2.5 rounded-xl border border-border font-bold text-sm hover:bg-muted"
+                    >
+                      Huỷ
+                    </button>
+                    {(visibilityMode === "req_public" || (visibilityMode === "private" && lesson.status === "public")) && (
+                      <button
+                        onClick={handleVisibilitySubmit}
+                        disabled={isRequestingPublic || isMakingPrivate}
+                        className="flex-1 gradient-orange text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-md hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                      >
+                        {isRequestingPublic || isMakingPrivate ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Đang xử lý...
+                          </>
+                        ) : visibilityMode === "req_public" ? (
+                          "Gửi yêu cầu"
+                        ) : (
+                          "Chuyển về riêng tư"
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {settingsTab === "edit" && (
+                <div className="space-y-4">
+                  {lesson.status !== "private" && (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
+                      Không thể chỉnh sửa khi bài đang ở chế độ công khai hoặc chờ duyệt.
+                    </div>
+                  )}
+                  <div>
+                    <label className="text-sm font-bold text-foreground mb-1 block">
+                      Tiêu đề *
+                    </label>
+                    <input
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      placeholder="VD: The Future of Technology"
+                      disabled={lesson.status !== "private"}
+                      className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-orange-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-bold text-foreground mb-1 block">
+                      Mô tả
+                    </label>
+                    <textarea
+                      value={editDescription}
+                      onChange={(e) => setEditDescription(e.target.value)}
+                      rows={3}
+                      placeholder="Mô tả ngắn..."
+                      disabled={lesson.status !== "private"}
+                      className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-orange-500/30 resize-none disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                  </div>
+
+                  <div className="flex gap-3 mt-6">
+                    <button
+                      onClick={() => setShowSettingsDialog(false)}
+                      className="flex-1 px-4 py-2.5 rounded-xl border border-border font-bold text-sm hover:bg-muted"
+                    >
+                      Huỷ
+                    </button>
+                    {lesson.status === "private" && (
+                      <>
+                        <button
+                          onClick={handleDeleteLesson}
+                          disabled={isDeleting}
+                          className="px-4 py-2.5 rounded-xl bg-red-50 text-red-600 border border-red-200 font-bold text-sm hover:bg-red-100 disabled:opacity-50 transition-all flex items-center gap-1.5"
+                        >
+                          {isDeleting ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
+                          Xoá
+                        </button>
+                        <button
+                          onClick={handleEditSubmit}
+                          disabled={isSaving || !editTitle.trim()}
+                          className="flex-1 gradient-orange text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-md hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                        >
+                          {isSaving ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Đang lưu...
+                            </>
+                          ) : (
+                            "Lưu"
+                          )}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
-// Giao diện làm bài luyện đọc với đoạn văn và câu hỏi
 function ReadingPlayer({ lesson, onBack }) {
   const [answers, setAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);

@@ -143,21 +143,9 @@ export default function Login() {
               </div>
 
               <div>
-                <div className="flex justify-between items-center mb-1.5">
-                  <label className="text-sm font-bold text-foreground block">
-                    Mật khẩu
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setStep("forgot");
-                      resetMessages();
-                    }}
-                    className="text-sm font-semibold text-primary hover:underline"
-                  >
-                    Quên mật khẩu?
-                  </button>
-                </div>
+                <label className="text-sm font-bold text-foreground mb-1.5 block">
+                  Mật khẩu
+                </label>
                 <div className="relative">
                   <input
                     type={showPassword ? "text" : "password"}
@@ -181,6 +169,19 @@ export default function Login() {
                     )}
                   </button>
                 </div>
+              </div>
+
+              <div className="text-right">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStep("forgot");
+                    resetMessages();
+                  }}
+                  className="text-sm font-semibold text-primary hover:underline"
+                >
+                  Quên mật khẩu?
+                </button>
               </div>
 
               <button
