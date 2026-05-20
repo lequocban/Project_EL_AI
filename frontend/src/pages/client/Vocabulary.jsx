@@ -274,19 +274,28 @@ export default function Vocabulary() {
     e?.stopPropagation();
     const id = String(setId);
     const isFav = favorites.some((f) => String(f.id) === id);
+    const prevFavorites = [...favorites];
     try {
+      // Optimistic update
       if (isFav) {
-        await vocabularyApi.removeFavorite(id);
-        // Cập nhật UI ngay lập tức mà không cần reload toàn bộ
         setFavorites((prev) => prev.filter((f) => String(f.id) !== id));
       } else {
+        // Tìm thông tin bộ từ từ các danh sách hiện có
+        const existingSet = sets.find((s) => String(s.id) === id) ||
+                           publicSets.find((s) => String(s.id) === id);
+        if (existingSet) {
+          setFavorites((prev) => [...prev, existingSet]);
+        }
+      }
+      // Gọi API
+      if (isFav) {
+        await vocabularyApi.removeFavorite(id);
+      } else {
         await vocabularyApi.addFavorite(id);
-        // Cập nhật UI ngay lập tức mà không cần reload toàn bộ
-        setFavorites((prev) => [...prev, { id: setId }]);
       }
     } catch (err) {
-      // Nếu gọi API thất bại thì reload để đồng bộ lại
-      setReloadTrigger((n) => n + 1);
+      // Rollback nếu lỗi
+      setFavorites(prevFavorites);
       setError(err.message || "Không thể cập nhật yêu thích");
     }
   };
@@ -351,6 +360,8 @@ export default function Vocabulary() {
           setSelectedSet(null);
           setReloadTrigger((n) => n + 1);
         }}
+        favorites={favorites}
+        onToggleFavorite={toggleFavorite}
       />
     );
   }

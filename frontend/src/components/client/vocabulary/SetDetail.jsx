@@ -24,6 +24,7 @@ import {
   Settings,
   X,
   Lock,
+  Heart,
 } from "lucide-react";
 import FlashcardGame from "./FlashcardGame";
 import MatchGame from "./MatchGame";
@@ -72,7 +73,7 @@ const MODES = [
 ];
 
 // Component chi tiết bộ từ vựng với các chế độ học tập và quản lý từ
-export default function SetDetail({ set, onBack }) {
+export default function SetDetail({ set, onBack, favorites = [], onToggleFavorite }) {
   // allWords: lưu tất cả từ để dùng cho game và luyện tập
   const [allWords, setAllWords] = useState([]);
   // words: chỉ dùng để hiển thị (slice theo trang)
@@ -654,8 +655,22 @@ export default function SetDetail({ set, onBack }) {
             )}
             <p className="text-sm font-semibold text-primary mt-1">{(wordsPagination.total || words.length)} từ vựng</p>
           </div>
-          {/* Các nút Kiểm duyệt và Setting */}
+          {/* Các nút Yêu thích, Kiểm duyệt và Setting */}
           <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Nút yêu thích */}
+            {onToggleFavorite && (
+              <button
+                onClick={() => onToggleFavorite(set.id)}
+                className={`p-2 rounded-xl transition-colors ${
+                  favorites.some((f) => String(f.id) === String(set.id))
+                    ? "text-red-500 bg-red-50 hover:bg-red-100"
+                    : "text-muted-foreground/60 hover:text-red-400 hover:bg-red-50"
+                }`}
+                title={favorites.some((f) => String(f.id) === String(set.id)) ? "Bỏ yêu thích" : "Yêu thích"}
+              >
+                <Heart className={`w-5 h-5 ${favorites.some((f) => String(f.id) === String(set.id)) ? "fill-red-500" : ""}`} />
+              </button>
+            )}
             {set.is_public ? (
               <button
                 onClick={handleMakePrivate}
