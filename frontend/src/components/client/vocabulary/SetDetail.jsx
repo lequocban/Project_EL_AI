@@ -33,6 +33,17 @@ import TypingGame from "./TypingGame";
 import DictationGame from "./DictationGame";
 import ExamGame from "./ExamGame";
 import { vocabularyApi } from "@/api/client/vocabularyApi";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const MODES = [
   {
@@ -105,6 +116,7 @@ export default function SetDetail({ set, onBack, favorites = [], onToggleFavorit
   const [isRequestingPublic, setIsRequestingPublic] = useState(false);
   const [isMakingPrivate, setIsMakingPrivate] = useState(false);
   const [actionMessage, setActionMessage] = useState("");
+  const [showModerationDialog, setShowModerationDialog] = useState(false);
 
   // State cho dialog Setting
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
@@ -393,10 +405,8 @@ export default function SetDetail({ set, onBack, favorites = [], onToggleFavorit
 
   // Gửi yêu cầu kiểm duyệt (dùng endpoint moderation-requests chung)
   // Gửi yêu cầu kiểm duyệt bộ từ vựng
-  const handleModeration = async () => {
-    if (!window.confirm("Bạn có muốn gửi yêu cầu kiểm duyệt cho bộ từ vựng này không?\nYêu cầu sẽ được hiển thị trên trang Kiểm duyệt của admin.")) {
-      return;
-    }
+  const handleConfirmModeration = async () => {
+    setShowModerationDialog(false);
     try {
       setIsRequestingPublic(true);
       setActionMessage("");
@@ -691,19 +701,43 @@ export default function SetDetail({ set, onBack, favorites = [], onToggleFavorit
                 Chờ duyệt
               </span>
             ) : (
-              <button
-                onClick={handleModeration}
-                disabled={isMakingPrivate || isRequestingPublic}
-                className="flex items-center gap-1.5 bg-violet-50 text-violet-600 px-3 py-2 rounded-xl text-sm font-bold hover:bg-violet-100 transition-all border border-violet-200 disabled:opacity-50"
-                title="Gửi yêu cầu kiểm duyệt"
-              >
-                {isRequestingPublic ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Eye className="w-4 h-4" />
-                )}
-                Kiểm duyệt
-              </button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <button
+                    disabled={isMakingPrivate || isRequestingPublic}
+                    className="flex items-center gap-1.5 bg-violet-50 text-violet-600 px-3 py-2 rounded-xl text-sm font-bold hover:bg-violet-100 transition-all border border-violet-200 disabled:opacity-50"
+                    title="Gửi yêu cầu kiểm duyệt"
+                  >
+                    {isRequestingPublic ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                    Kiểm duyệt
+                  </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Xác nhận gửi yêu cầu kiểm duyệt</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Bạn có muốn gửi yêu cầu kiểm duyệt cho bộ từ vựng này không? Yêu cầu sẽ được hiển thị trên trang Kiểm duyệt của admin.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Hủy</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleConfirmModeration} disabled={isRequestingPublic}>
+                      {isRequestingPublic ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                          Đang gửi...
+                        </>
+                      ) : (
+                        "Gửi yêu cầu"
+                      )}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             )}
             <button
               onClick={openSettingsDialog}

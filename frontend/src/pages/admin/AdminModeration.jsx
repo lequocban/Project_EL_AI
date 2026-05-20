@@ -3,7 +3,7 @@ import {
   ShieldCheck, BookOpen, BookText, Headphones,
   Loader2, Eye, CheckCircle, XCircle,
   ChevronLeft, ChevronRight, AlertTriangle, Clock,
-  Check, X, Filter, Plus, Trash2, Save,
+  X, Filter, Plus, Trash2,
   ArrowUpDown, User, Calendar, Volume2, Play, Pause, Upload,
   Edit2,
 } from "lucide-react";
@@ -257,18 +257,6 @@ export default function AdminModeration() {
                         className="p-2 rounded-lg bg-violet-50 text-violet-600 hover:bg-violet-100 transition-colors" title="Xem chi tiết">
                         <Eye className="w-4 h-4" />
                       </button>
-                      {status === "pending" && (
-                        <>
-                          <button onClick={() => handleReview(item.id, "approve", "", "")} disabled={actionLoading === item.id}
-                            className="p-2 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors disabled:opacity-50" title="Duyệt">
-                            {actionLoading === item.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                          </button>
-                          <button onClick={() => handleReview(item.id, "reject", "", "")} disabled={actionLoading === item.id}
-                            className="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors disabled:opacity-50" title="Từ chối">
-                            <X className="w-4 h-4" />
-                          </button>
-                        </>
-                      )}
                     </div>
                   </td>
                 </tr>
@@ -357,7 +345,6 @@ function ModerationDetailModal({ item, tab, onClose, onReviewed }) {
         id: moderationReq.id,
         contentType: moderationReq.contentType,
         contentId: moderationReq.contentId,
-        status: moderationReq.status,
         createdAt: moderationReq.createdAt || moderationReq.created_at,
         submitter: moderationReq.submitter || moderationReq.requester || moderationReq.requestedBy,
         moderator: moderationReq.moderator || moderationReq.reviewer,
@@ -365,6 +352,7 @@ function ModerationDetailModal({ item, tab, onClose, onReviewed }) {
         notes: moderationReq.notes || "",
         ...mergedContent,
         contentData: mergedContent,
+        status: moderationReq.status,
       });
 
       setAdminReason(moderationReq.reason || moderationReq.reviewNote || "");
@@ -414,6 +402,23 @@ function ModerationDetailModal({ item, tab, onClose, onReviewed }) {
   const handleReview = async (action) => {
     setIsReviewing(true);
     try {
+      // Nếu có thay đổi chưa lưu, lưu content trước
+      if (dirty) {
+        try {
+          if (tab === "vocabulary" && vocabTabRef.current) {
+            await vocabTabRef.current.save();
+          } else if (tab === "reading" && readingTabRef.current) {
+            await readingTabRef.current.save();
+          } else if (tab === "listening" && listeningTabRef.current) {
+            await listeningTabRef.current.save();
+          }
+        } catch (saveErr) {
+          setDetailError("Lưu thay đổi thất bại: " + (saveErr.message || "Lỗi không xác định"));
+          setIsReviewing(false);
+          return;
+        }
+      }
+
       await adminApi.reviewModerationRequest(item.id, action, adminReason, adminNotes);
       onReviewed();
       onClose();
@@ -438,6 +443,7 @@ function ModerationDetailModal({ item, tab, onClose, onReviewed }) {
   const effectiveStatus = detail?.status || item.status || "pending";
   const StatusCfg = STATUS_CONFIG[effectiveStatus] || STATUS_CONFIG.pending;
   const TabIcon = TAB_CONFIG.find((t) => t.key === tab)?.icon || BookOpen;
+  const isReadOnly = effectiveStatus === "approved" || effectiveStatus === "rejected";
 
   const contentId = detail?.contentId || item.contentId;
   const requesterName = getRequesterName(detail?.requester || item.requester);
@@ -517,17 +523,17 @@ function ModerationDetailModal({ item, tab, onClose, onReviewed }) {
 
               {/* Nội dung chi tiết theo tab */}
               {tab === "vocabulary" && contentId && (
-                <VocabularyTab ref={vocabTabRef} detail={detail} contentId={contentId} contentData={detail?.contentData || detail} key={reloadKey} onSaveSuccess={handleSaveSuccess} onDirtyChange={setDirty} />
+                <VocabularyTab ref={vocabTabRef} detail={detail} contentId={contentId} contentData={detail?.contentData || detail} key={reloadKey} onSaveSuccess={handleSaveSuccess} onDirtyChange={setDirty} isReadOnly={isReadOnly} />
               )}
               {tab === "reading" && contentId && (
-                <ReadingTab ref={readingTabRef} detail={detail} contentId={contentId} contentData={detail?.contentData || detail} key={`reading-${reloadKey}`} onSaveSuccess={handleSaveSuccess} onDirtyChange={setDirty} />
+                <ReadingTab ref={readingTabRef} detail={detail} contentId={contentId} contentData={detail?.contentData || detail} key={`reading-${reloadKey}`} onSaveSuccess={handleSaveSuccess} onDirtyChange={setDirty} isReadOnly={isReadOnly} />
               )}
               {tab === "listening" && contentId && (
-                <ListeningTab ref={listeningTabRef} detail={detail} contentId={contentId} contentData={detail?.contentData || detail} key={`listening-${reloadKey}`} onSaveSuccess={handleSaveSuccess} onDirtyChange={setDirty} />
+                <ListeningTab ref={listeningTabRef} detail={detail} contentId={contentId} contentData={detail?.contentData || detail} key={`listening-${reloadKey}`} onSaveSuccess={handleSaveSuccess} onDirtyChange={setDirty} isReadOnly={isReadOnly} />
               )}
 
               {/* 2 ô nhập reason và notes */}
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+              <div className={`p-4 rounded-xl border border-slate-200 space-y-3 ${isReadOnly ? "bg-slate-100 opacity-60" : "bg-slate-50"}`}>
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
                     Lý do (admin)
@@ -537,7 +543,8 @@ function ModerationDetailModal({ item, tab, onClose, onReviewed }) {
                     value={adminReason}
                     onChange={(e) => setAdminReason(e.target.value)}
                     placeholder="Nhập lý do duyệt hoặc từ chối (có thể bỏ trống)..."
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30"
+                    disabled={isReadOnly}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30 disabled:bg-slate-100 disabled:cursor-not-allowed"
                   />
                 </div>
                 <div>
@@ -549,7 +556,8 @@ function ModerationDetailModal({ item, tab, onClose, onReviewed }) {
                     onChange={(e) => setAdminNotes(e.target.value)}
                     placeholder="Nhập ghi chú bổ sung cho người gửi (có thể bỏ trống)..."
                     rows={2}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30 resize-none"
+                    disabled={isReadOnly}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30 resize-none disabled:bg-slate-100 disabled:cursor-not-allowed"
                   />
                 </div>
               </div>
@@ -572,29 +580,18 @@ function ModerationDetailModal({ item, tab, onClose, onReviewed }) {
               Hủy
             </button>
             <button
-              onClick={handleSaveContent}
-              disabled={savingContent || isReviewing || detailLoading}
-              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-violet-500 text-white font-bold text-sm hover:bg-violet-600 disabled:opacity-50 transition-colors">
-              {savingContent ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              Lưu
+              onClick={() => handleReview("reject")}
+              disabled={isReviewing || savingContent || detailLoading || isReadOnly}
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-red-50 text-red-600 font-bold text-sm hover:bg-red-100 border border-red-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+              <XCircle className="w-4 h-4" />Từ chối
             </button>
-            {effectiveStatus === "pending" && !detailLoading && contentId && (
-              <>
-                <button
-                  onClick={() => handleReview("reject")}
-                  disabled={isReviewing || savingContent}
-                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-red-50 text-red-600 font-bold text-sm hover:bg-red-100 border border-red-200 disabled:opacity-50 transition-colors">
-                  <XCircle className="w-4 h-4" />Từ chối
-                </button>
-                <button
-                  onClick={() => handleReview("approve")}
-                  disabled={isReviewing || savingContent}
-                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 disabled:opacity-50 transition-colors">
-                  {isReviewing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                  Duyệt
-                </button>
-              </>
-            )}
+            <button
+              onClick={() => handleReview("approve")}
+              disabled={isReviewing || savingContent || detailLoading || isReadOnly}
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+              {isReviewing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+              Duyệt
+            </button>
           </div>
         </div>
       </div>
@@ -605,7 +602,7 @@ function ModerationDetailModal({ item, tab, onClose, onReviewed }) {
 // =============================================
 // TAB BỘ TỪ VỰNG
 // =============================================
-const VocabularyTab = forwardRef(function VocabularyTab({ detail, contentId, contentData, onSaveSuccess, onDirtyChange }, ref) {
+const VocabularyTab = forwardRef(function VocabularyTab({ detail, contentId, contentData, onSaveSuccess, onDirtyChange, isReadOnly }, ref) {
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [words, setWords] = useState([]);
@@ -749,10 +746,10 @@ const VocabularyTab = forwardRef(function VocabularyTab({ detail, contentId, con
       )}
 
       {/* Tiêu đề */}
-      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+      <div className={`p-4 rounded-xl border border-slate-200 ${isReadOnly ? "bg-slate-100 opacity-60" : "bg-slate-50"}`}>
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider">Tiêu đề</h3>
-          {(dirty || editTitle !== (contentData?.title || "")) && (
+          {(dirty || editTitle !== (contentData?.title || "")) && !isReadOnly && (
             <span className="text-xs text-amber-500 font-medium">● Có thay đổi</span>
           )}
         </div>
@@ -760,42 +757,46 @@ const VocabularyTab = forwardRef(function VocabularyTab({ detail, contentId, con
           type="text"
           value={editTitle}
           onChange={(e) => { setEditTitle(e.target.value); setDirty(true); if (onDirtyChange) onDirtyChange(true); }}
-          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/30 bg-white"
+          disabled={isReadOnly}
+          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/30 bg-white disabled:bg-slate-100 disabled:cursor-not-allowed"
           placeholder="Tiêu đề bộ từ vựng..."
         />
       </div>
 
       {/* Mô tả */}
-      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+      <div className={`p-4 rounded-xl border border-slate-200 ${isReadOnly ? "bg-slate-100 opacity-60" : "bg-slate-50"}`}>
         <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider mb-2">Mô tả</h3>
         <textarea
           value={editDescription}
           onChange={(e) => { setEditDescription(e.target.value); setDirty(true); if (onDirtyChange) onDirtyChange(true); }}
           rows={2}
-          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 resize-none bg-white"
+          disabled={isReadOnly}
+          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 resize-none bg-white disabled:bg-slate-100 disabled:cursor-not-allowed"
           placeholder="Mô tả bộ từ vựng..."
         />
       </div>
 
       {/* Danh sách từ */}
-      <div className="rounded-xl bg-slate-50 border border-slate-200 overflow-hidden">
+      <div className={`rounded-xl border border-slate-200 overflow-hidden ${isReadOnly ? "opacity-60" : ""}`}>
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-white">
           <div className="flex items-center gap-3">
             <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider">
               Danh sách từ ({wordCount})
             </h3>
-            {editedCount > 0 && (
+            {editedCount > 0 && !isReadOnly && (
               <span className="text-xs text-amber-500 font-medium bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
                 {editedCount} từ đã sửa
               </span>
             )}
           </div>
-          <button
-            onClick={addNewWord}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500 text-white text-xs font-bold hover:bg-blue-600 transition-colors shadow-sm">
-            <Plus className="w-3.5 h-3.5" />Thêm từ
-          </button>
+          {!isReadOnly && (
+            <button
+              onClick={addNewWord}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500 text-white text-xs font-bold hover:bg-blue-600 transition-colors shadow-sm">
+              <Plus className="w-3.5 h-3.5" />Thêm từ
+            </button>
+          )}
         </div>
 
         {/* Bảng tiêu đề cột - chỉ hiện trên màn lớn */}
@@ -840,7 +841,8 @@ const VocabularyTab = forwardRef(function VocabularyTab({ detail, contentId, con
                 type="text"
                 value={w.word}
                 onChange={(e) => updateWord(w.id, "word", e.target.value)}
-                className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-400/50 bg-white"
+                disabled={isReadOnly}
+                className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-400/50 bg-white disabled:bg-slate-100 disabled:cursor-not-allowed"
                 placeholder="Từ..."
               />
 
@@ -849,7 +851,8 @@ const VocabularyTab = forwardRef(function VocabularyTab({ detail, contentId, con
                 type="text"
                 value={w.phonetic || ""}
                 onChange={(e) => updateWord(w.id, "phonetic", e.target.value)}
-                className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-400/50 bg-white font-mono"
+                disabled={isReadOnly}
+                className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-400/50 bg-white font-mono disabled:bg-slate-100 disabled:cursor-not-allowed"
                 placeholder="/phonetic/..."
               />
 
@@ -858,17 +861,20 @@ const VocabularyTab = forwardRef(function VocabularyTab({ detail, contentId, con
                 type="text"
                 value={w.meaning || ""}
                 onChange={(e) => updateWord(w.id, "meaning", e.target.value)}
-                className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400/50 bg-white"
+                disabled={isReadOnly}
+                className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400/50 bg-white disabled:bg-slate-100 disabled:cursor-not-allowed"
                 placeholder="Nghĩa tiếng Việt..."
               />
 
               {/* Nút xóa */}
-              <button
-                onClick={() => removeWord(w.id)}
-                className="w-8 h-8 flex items-center justify-center rounded-lg text-red-400 hover:bg-red-50 hover:text-red-500 transition-colors mt-0.5"
-                title="Xóa từ">
-                <Trash2 className="w-4 h-4" />
-              </button>
+              {!isReadOnly && (
+                <button
+                  onClick={() => removeWord(w.id)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-red-400 hover:bg-red-50 hover:text-red-500 transition-colors mt-0.5"
+                  title="Xóa từ">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
 
               {/* Ví dụ - hiện ở dòng dưới trên mobile, ẩn trên desktop */}
               <div className="md:hidden col-span-4">
@@ -876,7 +882,8 @@ const VocabularyTab = forwardRef(function VocabularyTab({ detail, contentId, con
                   type="text"
                   value={w.example || ""}
                   onChange={(e) => updateWord(w.id, "example", e.target.value)}
-                  className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400/50 bg-white italic"
+                  disabled={isReadOnly}
+                  className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400/50 bg-white italic disabled:bg-slate-100 disabled:cursor-not-allowed"
                   placeholder="Ví dụ (tùy chọn)..."
                 />
               </div>
@@ -901,7 +908,7 @@ const VocabularyTab = forwardRef(function VocabularyTab({ detail, contentId, con
 // =============================================
 // TAB BÀI ĐỌC
 // =============================================
-const ReadingTab = forwardRef(function ReadingTab({ detail, contentId, contentData, onSaveSuccess, onDirtyChange }, ref) {
+const ReadingTab = forwardRef(function ReadingTab({ detail, contentId, contentData, onSaveSuccess, onDirtyChange, isReadOnly }, ref) {
   const [editTitle, setEditTitle] = useState("");
   const [editContent, setEditContent] = useState("");
   const [editVi, setEditVi] = useState("");
@@ -1106,55 +1113,60 @@ const ReadingTab = forwardRef(function ReadingTab({ detail, contentId, contentDa
       )}
 
       {/* Tiêu đề */}
-      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+      <div className={`p-4 rounded-xl border border-slate-200 ${isReadOnly ? "bg-slate-100 opacity-60" : "bg-slate-50"}`}>
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider">Tiêu đề</h3>
-          {dirty && <span className="text-xs text-amber-500 font-medium">● Có thay đổi</span>}
+          {dirty && !isReadOnly && <span className="text-xs text-amber-500 font-medium">● Có thay đổi</span>}
         </div>
         <input
           type="text"
           value={editTitle}
           onChange={(e) => { setEditTitle(e.target.value); setDirty(true); if (onDirtyChange) onDirtyChange(true); }}
-          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-orange-500/30 bg-white"
+          disabled={isReadOnly}
+          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-orange-500/30 bg-white disabled:bg-slate-100 disabled:cursor-not-allowed"
           placeholder="Tiêu đề bài luyện đọc..."
         />
       </div>
 
       {/* Nội dung tiếng Anh */}
-      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+      <div className={`p-4 rounded-xl border border-slate-200 ${isReadOnly ? "bg-slate-100 opacity-60" : "bg-slate-50"}`}>
         <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider mb-2">Nội dung tiếng Anh</h3>
         <textarea
           value={editContent}
           onChange={(e) => { setEditContent(e.target.value); setDirty(true); if (onDirtyChange) onDirtyChange(true); }}
           rows={5}
-          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 resize-none bg-white"
+          disabled={isReadOnly}
+          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 resize-none bg-white disabled:bg-slate-100 disabled:cursor-not-allowed"
           placeholder="Nhập nội dung bài đọc..."
         />
       </div>
 
       {/* Nội dung tiếng Việt */}
-      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+      <div className={`p-4 rounded-xl border border-slate-200 ${isReadOnly ? "bg-slate-100 opacity-60" : "bg-slate-50"}`}>
         <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider mb-2">Nội dung tiếng Việt</h3>
         <textarea
           value={editVi}
           onChange={(e) => { setEditVi(e.target.value); setDirty(true); if (onDirtyChange) onDirtyChange(true); }}
           rows={5}
-          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 resize-none bg-white"
+          disabled={isReadOnly}
+          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 resize-none bg-white disabled:bg-slate-100 disabled:cursor-not-allowed"
           placeholder="Nhập bản dịch tiếng Việt..."
         />
       </div>
 
       {/* Câu hỏi */}
-      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+      <div className={`p-4 rounded-xl border border-slate-200 ${isReadOnly ? "bg-slate-100 opacity-60" : "bg-slate-50"}`}>
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider">
             Câu hỏi ({questions.length})
           </h3>
-          <button
-            onClick={addQuestion}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-orange-500 text-white text-xs font-bold hover:bg-orange-600 transition-colors">
-            <Plus className="w-3.5 h-3.5" />Thêm câu hỏi
-          </button>
+          {!isReadOnly && (
+            <button
+              onClick={addQuestion}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-orange-500 text-white text-xs font-bold hover:bg-orange-600 transition-colors">
+              <Plus className="w-3.5 h-3.5" />Thêm câu hỏi
+            </button>
+          )}
         </div>
 
         <div className="space-y-3 max-h-80 overflow-y-auto">
@@ -1225,16 +1237,20 @@ const ReadingTab = forwardRef(function ReadingTab({ detail, contentId, contentDa
                         {q.isEdited && <span className="text-xs font-bold text-amber-500">✎ Đã sửa</span>}
                       </div>
                       <div className="flex gap-1">
-                        <button
-                          onClick={() => startEditQ(q)}
-                          className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200">
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => deleteQ(q.id)}
-                          className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-500">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {!isReadOnly && (
+                          <>
+                            <button
+                              onClick={() => startEditQ(q)}
+                              className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200">
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => deleteQ(q.id)}
+                              className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-500">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                     <p className="text-sm font-semibold text-slate-800 mb-2">{q.question || "—"}</p>
@@ -1266,7 +1282,7 @@ const ReadingTab = forwardRef(function ReadingTab({ detail, contentId, contentDa
 // =============================================
 // TAB BÀI NGHE
 // =============================================
-const ListeningTab = forwardRef(function ListeningTab({ detail, contentId, contentData, onSaveSuccess, onDirtyChange }, ref) {
+const ListeningTab = forwardRef(function ListeningTab({ detail, contentId, contentData, onSaveSuccess, onDirtyChange, isReadOnly }, ref) {
   const [editTitle, setEditTitle] = useState("");
   const [editTranscript, setEditTranscript] = useState("");
   const [editVi, setEditVi] = useState("");
@@ -1517,77 +1533,84 @@ const ListeningTab = forwardRef(function ListeningTab({ detail, contentId, conte
         </div>
       )}
 
-      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+      <div className={`p-4 rounded-xl border border-slate-200 space-y-3 ${isReadOnly ? "bg-slate-100 opacity-60" : "bg-slate-50"}`}>
         <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider">Upload file audio</h3>
-        {selectedFile ? (
-          <div className="p-3 bg-white border border-slate-200 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Volume2 className="w-5 h-5 text-green-500" />
-                <div>
-                  <p className="text-sm font-semibold">{selectedFile.name}</p>
-                  <p className="text-xs text-slate-400">{(selectedFile.size / (1024 * 1024)).toFixed(2)} MB</p>
+        {!isReadOnly && (
+          selectedFile ? (
+            <div className="p-3 bg-white border border-slate-200 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Volume2 className="w-5 h-5 text-green-500" />
+                  <div>
+                    <p className="text-sm font-semibold">{selectedFile.name}</p>
+                    <p className="text-xs text-slate-400">{(selectedFile.size / (1024 * 1024)).toFixed(2)} MB</p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={handleUploadAndSave} disabled={uploadingAudio}
+                    className="px-3 py-1.5 bg-green-500 text-white text-xs font-bold rounded-lg hover:bg-green-600 disabled:opacity-50">
+                    {uploadingAudio ? <Loader2 className="w-4 h-4 animate-spin" /> : "Upload"}
+                  </button>
+                  <button onClick={() => setSelectedFile(null)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg">
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
-              <div className="flex gap-2">
-                <button onClick={handleUploadAndSave} disabled={uploadingAudio}
-                  className="px-3 py-1.5 bg-green-500 text-white text-xs font-bold rounded-lg hover:bg-green-600 disabled:opacity-50">
-                  {uploadingAudio ? <Loader2 className="w-4 h-4 animate-spin" /> : "Upload"}
-                </button>
-                <button onClick={() => setSelectedFile(null)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+              {uploadingAudio && <div className="mt-2 w-full bg-green-200 rounded-full h-1.5"><div className="bg-green-600 h-1.5 rounded-full" style={{ width: `${uploadProgress}%` }} /></div>}
             </div>
-            {uploadingAudio && <div className="mt-2 w-full bg-green-200 rounded-full h-1.5"><div className="bg-green-600 h-1.5 rounded-full" style={{ width: `${uploadProgress}%` }} /></div>}
-          </div>
-        ) : (
-          <div className="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center cursor-pointer hover:border-green-400 hover:bg-green-50/30"
-            onClick={() => document.getElementById("mod-audio-upload-listen").click()}>
-            <input id="mod-audio-upload-listen" type="file" accept="audio/*" onChange={handleFileChange} className="hidden" />
-            <Upload className="w-6 h-6 text-slate-400 mx-auto mb-1" />
-            <p className="text-sm font-semibold text-slate-600">Kéo thả hoặc nhấn để chọn file mp3</p>
-            <p className="text-xs text-slate-400 mt-1">Tối đa 50MB</p>
-          </div>
+          ) : (
+            <div className="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center cursor-pointer hover:border-green-400 hover:bg-green-50/30"
+              onClick={() => document.getElementById("mod-audio-upload-listen").click()}>
+              <input id="mod-audio-upload-listen" type="file" accept="audio/*" onChange={handleFileChange} className="hidden" />
+              <Upload className="w-6 h-6 text-slate-400 mx-auto mb-1" />
+              <p className="text-sm font-semibold text-slate-600">Kéo thả hoặc nhấn để chọn file mp3</p>
+              <p className="text-xs text-slate-400 mt-1">Tối đa 50MB</p>
+            </div>
+          )
         )}
       </div>
 
-      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+      <div className={`p-4 rounded-xl border border-slate-200 ${isReadOnly ? "bg-slate-100 opacity-60" : "bg-slate-50"}`}>
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider">Tiêu đề</h3>
-          {dirty && <span className="text-xs text-amber-500 font-medium">● Có thay đổi</span>}
+          {dirty && !isReadOnly && <span className="text-xs text-amber-500 font-medium">● Có thay đổi</span>}
         </div>
         <input type="text" value={editTitle}
           onChange={(e) => { setEditTitle(e.target.value); setDirty(true); if (onDirtyChange) onDirtyChange(true); }}
-          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-green-500/30 bg-white"
+          disabled={isReadOnly}
+          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-green-500/30 bg-white disabled:bg-slate-100 disabled:cursor-not-allowed"
           placeholder="Tiêu đề bài nghe..." />
       </div>
 
-      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+      <div className={`p-4 rounded-xl border border-slate-200 ${isReadOnly ? "bg-slate-100 opacity-60" : "bg-slate-50"}`}>
         <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider mb-2">Bản ghi tiếng Anh</h3>
         <textarea value={editTranscript}
           onChange={(e) => { setEditTranscript(e.target.value); setDirty(true); if (onDirtyChange) onDirtyChange(true); }}
           rows={5}
-          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30 resize-none bg-white"
+          disabled={isReadOnly}
+          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30 resize-none bg-white disabled:bg-slate-100 disabled:cursor-not-allowed"
           placeholder="Nhập bản ghi..." />
       </div>
 
-      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+      <div className={`p-4 rounded-xl border border-slate-200 ${isReadOnly ? "bg-slate-100 opacity-60" : "bg-slate-50"}`}>
         <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider mb-2">Bản dịch tiếng Việt</h3>
         <textarea value={editVi}
           onChange={(e) => { setEditVi(e.target.value); setDirty(true); if (onDirtyChange) onDirtyChange(true); }}
           rows={5}
-          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30 resize-none bg-white"
+          disabled={isReadOnly}
+          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30 resize-none bg-white disabled:bg-slate-100 disabled:cursor-not-allowed"
           placeholder="Nhập bản dịch..." />
       </div>
 
-      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+      <div className={`p-4 rounded-xl border border-slate-200 ${isReadOnly ? "bg-slate-100 opacity-60" : "bg-slate-50"}`}>
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider">Câu hỏi ({questions.length})</h3>
-          <button onClick={addQuestion}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-green-500 text-white text-xs font-bold hover:bg-green-600 transition-colors">
-            <Plus className="w-3.5 h-3.5" />Thêm câu hỏi
-          </button>
+          {!isReadOnly && (
+            <button onClick={addQuestion}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-green-500 text-white text-xs font-bold hover:bg-green-600 transition-colors">
+              <Plus className="w-3.5 h-3.5" />Thêm câu hỏi
+            </button>
+          )}
         </div>
         <div className="space-y-3 max-h-80 overflow-y-auto">
           {questions.length === 0 ? (
@@ -1642,12 +1665,16 @@ const ListeningTab = forwardRef(function ListeningTab({ detail, contentId, conte
                         {q.isEdited && <span className="text-xs font-bold text-amber-500">✎ Đã sửa</span>}
                       </div>
                       <div className="flex gap-1">
-                        <button onClick={() => startEditQ(q)} className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200">
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button onClick={() => deleteQ(q.id)} className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-500">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {!isReadOnly && (
+                          <>
+                            <button onClick={() => startEditQ(q)} className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200">
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={() => deleteQ(q.id)} className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-500">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                     <p className="text-sm font-semibold text-slate-800 mb-2">{q.question || "—"}</p>
