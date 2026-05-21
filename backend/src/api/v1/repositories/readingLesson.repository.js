@@ -1,17 +1,9 @@
 const { supabase } = require("../../../config/supabase");
 const { AppError } = require("../../../utils/appError");
 const { parseSortParams, buildSupabaseOrder } = require("../../../utils/sorting");
+const { buildPaginationRange } = require("../../../utils/pagination");
+const { softDeleteRecord, findByIdRecord, updateStatusRecord } = require("../../../utils/baseRepository");
 
-/**
- * Tạo mới một reading lesson.
- * @param {Object} data
- * @param {string} data.title
- * @param {string} data.content
- * @param {string|null} data.vi_translation
- * @param {string} data.status - 'private' | 'req_public' | 'public'
- * @param {string} data.created_by
- * @returns {Promise<Object>}
- */
 const create = async ({ title, content, vi_translation, status, created_by }) => {
   const { data, error } = await supabase
     .from("reading_lessons")
@@ -37,12 +29,6 @@ const create = async ({ title, content, vi_translation, status, created_by }) =>
   return data;
 };
 
-/**
- * Cập nhật reading lesson theo id.
- * @param {string} id
- * @param {Object} data
- * @returns {Promise<Object>}
- */
 const update = async (id, { title, content, vi_translation, status }) => {
   const updateData = {};
 
@@ -69,65 +55,16 @@ const update = async (id, { title, content, vi_translation, status }) => {
   return data;
 };
 
-/**
- * Xóa mềm reading lesson (cập nhật trường deleted = true).
- * @param {string} id
- * @returns {Promise<Object>}
- */
-const softDelete = async (id) => {
-  const { data, error } = await supabase
-    .from("reading_lessons")
-    .update({ deleted: true })
-    .eq("id", id)
-    .select("*")
-    .maybeSingle();
-
-  if (error) {
-    throw new AppError(error.message, 500);
-  }
-
-  if (!data) {
-    throw new AppError("Không tìm thấy bài luyện đọc", 404);
-  }
-
-  return data;
+const readingLessonSoftDelete = async (id) => {
+  return softDeleteRecord(supabase, "reading_lessons", id, "Không tìm thấy bài luyện đọc");
 };
 
-/**
- * Tìm reading lesson theo id (không bao gồm bản ghi đã xóa mềm).
- * @param {string} id
- * @returns {Promise<Object|null>}
- */
-const findById = async (id) => {
-  const { data, error } = await supabase
-    .from("reading_lessons")
-    .select("*")
-    .eq("id", id)
-    .eq("deleted", false)
-    .maybeSingle();
-
-  if (error) {
-    if (error.code === "PGRST116") return null;
-    throw new AppError(error.message, 500);
-  }
-
-  return data;
+const readingLessonFindById = async (id) => {
+  return findByIdRecord(supabase, "reading_lessons", id);
 };
 
-/**
- * Lấy danh sách reading lessons public (phân trang, tìm kiếm, sắp xếp).
- * @param {Object} options
- * @param {string} options.keyword
- * @param {number} options.page
- * @param {number} options.limit
- * @param {string} options.sortField - Trường sắp xếp: "created_at" | "title"
- * @param {string} options.sortOrder - Thứ tự sắp xếp: "asc" | "desc"
- * @returns {Promise<{data: Array, total: number}>}
- */
 const getPublicLessons = async ({ keyword, page = 1, limit = 15, sortField, sortOrder } = {}) => {
-  const safeLimit = Math.min(Math.max(1, limit), 15);
-  const from = (page - 1) * safeLimit;
-  const to = from + safeLimit - 1;
+  const { from, to } = buildPaginationRange(page, limit, 15);
 
   const { sortColumn, ascending } = parseSortParams({
     sortField,
@@ -158,21 +95,8 @@ const getPublicLessons = async ({ keyword, page = 1, limit = 15, sortField, sort
   return { data: data || [], total: count || 0 };
 };
 
-/**
- * Lấy danh sách reading lessons của một user (phân trang, tìm kiếm, sắp xếp).
- * @param {string} userId
- * @param {Object} options
- * @param {string} options.keyword
- * @param {number} options.page
- * @param {number} options.limit
- * @param {string} options.sortField - Trường sắp xếp: "created_at" | "title"
- * @param {string} options.sortOrder - Thứ tự sắp xếp: "asc" | "desc"
- * @returns {Promise<{data: Array, total: number}>}
- */
 const getMyLessons = async (userId, { keyword, page = 1, limit = 15, sortField, sortOrder } = {}) => {
-  const safeLimit = Math.min(Math.max(1, limit), 15);
-  const from = (page - 1) * safeLimit;
-  const to = from + safeLimit - 1;
+  const { from, to } = buildPaginationRange(page, limit, 15);
 
   const { sortColumn, ascending } = parseSortParams({
     sortField,
@@ -203,18 +127,8 @@ const getMyLessons = async (userId, { keyword, page = 1, limit = 15, sortField, 
   return { data: data || [], total: count || 0 };
 };
 
-/**
- * Lấy danh sách reading lessons đang chờ duyệt public (status = 'req_public').
- * @param {Object} options
- * @param {string} options.keyword
- * @param {number} options.page
- * @param {number} options.limit
- * @returns {Promise<{data: Array, total: number}>}
- */
-const getPendingPublicLessons = async ({ keyword, page = 1, limit = 15 }) => {
-  const safeLimit = Math.min(Math.max(1, limit), 15);
-  const from = (page - 1) * safeLimit;
-  const to = from + safeLimit - 1;
+const getPendingPublicLessons = async ({ keyword, page = 1, limit = 15 } = {}) => {
+  const { from, to } = buildPaginationRange(page, limit, 15);
 
   let query = supabase
     .from("reading_lessons")
@@ -237,38 +151,17 @@ const getPendingPublicLessons = async ({ keyword, page = 1, limit = 15 }) => {
   return { data: data || [], total: count || 0 };
 };
 
-/**
- * Cập nhật trạng thái reading lesson.
- * @param {string} id
- * @param {string} status
- * @returns {Promise<Object>}
- */
-const updateStatus = async (id, status) => {
-  const { data, error } = await supabase
-    .from("reading_lessons")
-    .update({ status })
-    .eq("id", id)
-    .select("*")
-    .maybeSingle();
-
-  if (error) {
-    throw new AppError(error.message, 500);
-  }
-
-  if (!data) {
-    throw new AppError("Không tìm thấy bài luyện đọc", 404);
-  }
-
-  return data;
+const readingLessonUpdateStatus = async (id, status) => {
+  return updateStatusRecord(supabase, "reading_lessons", id, status, "Không tìm thấy bài luyện đọc");
 };
 
 module.exports = {
   create,
   update,
-  softDelete,
-  findById,
+  readingLessonSoftDelete,
+  readingLessonFindById,
   getPublicLessons,
   getMyLessons,
   getPendingPublicLessons,
-  updateStatus,
+  readingLessonUpdateStatus,
 };

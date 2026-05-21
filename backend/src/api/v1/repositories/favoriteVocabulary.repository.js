@@ -1,14 +1,8 @@
 const { supabase, createAuthedClient } = require("../../../config/supabase");
 const { AppError } = require("../../../utils/appError");
 const { parseSortParams, buildSupabaseOrder } = require("../../../utils/sorting");
+const { buildPaginationRange } = require("../../../utils/pagination");
 
-/**
- * Thêm một bộ từ vựng vào danh sách yêu thích.
- * @param {string} accessToken
- * @param {string} userId
- * @param {string} setId - vocabulary_sets.id
- * @returns {Promise<void>}
- */
 const addFavorite = async (accessToken, userId, setId) => {
   const client = createAuthedClient(accessToken);
 
@@ -24,13 +18,6 @@ const addFavorite = async (accessToken, userId, setId) => {
   }
 };
 
-/**
- * Xóa một bộ từ vựng khỏi danh sách yêu thích.
- * @param {string} accessToken
- * @param {string} userId
- * @param {string} setId
- * @returns {Promise<void>}
- */
 const removeFavorite = async (accessToken, userId, setId) => {
   const client = createAuthedClient(accessToken);
 
@@ -45,26 +32,9 @@ const removeFavorite = async (accessToken, userId, setId) => {
   }
 };
 
-/**
- * Lấy danh sách bộ từ vựng yêu thích của user (phân trang).
- * Tách 2 query: favorite_vocabularies (authed) + vocabulary_sets (admin)
- * để tránh RLS join lọc sai kết quả.
- * @param {string} accessToken
- * @param {string} userId
- * @param {Object} options
- * @param {string} options.keyword
- * @param {number} options.page
- * @param {number} options.limit
- * @param {string} options.sortField - Trường sắp xếp: "created_at" | "title"
- * @param {string} options.sortOrder - Thứ tự sắp xếp: "asc" | "desc"
- * @returns {Promise<{data: Array, total: number}>}
- */
 const getFavorites = async (accessToken, userId, { keyword, page = 1, limit = 15, sortField, sortOrder } = {}) => {
-  const safeLimit = Math.min(Math.max(1, limit), 15);
-  const from = (page - 1) * safeLimit;
-  const to = from + safeLimit - 1;
+  const { from, to } = buildPaginationRange(page, limit, 15);
 
-  // Bước 1: Lấy danh sách favorite của user (dùng authed client để pass RLS)
   const client = createAuthedClient(accessToken);
   const { data: favData, error: favError, count } = await client
     .from("favorite_vocabularies")
@@ -83,7 +53,6 @@ const getFavorites = async (accessToken, userId, { keyword, page = 1, limit = 15
 
   const vocabularyIds = favData.map((f) => f.vocabulary_id);
 
-  // Bước 2: Lấy chi tiết vocabulary_sets theo IDs (dùng admin client)
   const { sortColumn, ascending } = parseSortParams({
     sortField,
     sortOrder,
@@ -108,7 +77,6 @@ const getFavorites = async (accessToken, userId, { keyword, page = 1, limit = 15
     throw new AppError(setsError.message, 500);
   }
 
-  // Bước 3: Lọc bỏ các bộ đã xóa mềm và sắp xếp theo thứ tự favorite
   const activeSets = (setsData || []).reduce((acc, s) => {
     if (!s.deleted) {
       acc[s.id] = s;

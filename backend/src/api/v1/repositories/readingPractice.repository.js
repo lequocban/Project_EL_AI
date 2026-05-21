@@ -1,16 +1,9 @@
 const { supabase } = require("../../../config/supabase");
 const { AppError } = require("../../../utils/appError");
 const { parseSortParams, buildSupabaseOrder } = require("../../../utils/sorting");
+const { buildPaginationRange } = require("../../../utils/pagination");
+const { findByIdRaw } = require("../../../utils/baseRepository");
 
-/**
- * Lưu kết quả luyện đọc vào bảng reading_practice.
- * @param {Object} data
- * @param {string} data.userId - ID người dùng
- * @param {string} data.lessonId - ID bài luyện đọc
- * @param {string} data.userAnswer - JSON string chứa đáp án của user
- * @param {number} data.score - Điểm số (0-100)
- * @returns {Promise<Object>}
- */
 const create = async ({ userId, lessonId, userAnswer, score }) => {
   const { data, error } = await supabase
     .from("reading_practice")
@@ -35,20 +28,8 @@ const create = async ({ userId, lessonId, userAnswer, score }) => {
   return data;
 };
 
-/**
- * Lấy lịch sử luyện đọc của user (phân trang, sắp xếp).
- * @param {string} userId
- * @param {Object} options
- * @param {number} options.page
- * @param {number} options.limit
- * @param {string} options.sortField - Trường sắp xếp: "created_at" | "complete_at"
- * @param {string} options.sortOrder - Thứ tự sắp xếp: "asc" | "desc"
- * @returns {Promise<{data: Array, total: number}>}
- */
 const getHistoryByUser = async (userId, { page = 1, limit = 10, sortField, sortOrder } = {}) => {
-  const safeLimit = Math.min(Math.max(1, limit), 20);
-  const from = (page - 1) * safeLimit;
-  const to = from + safeLimit - 1;
+  const { from, to } = buildPaginationRange(page, limit, 20);
 
   const { sortColumn, ascending } = parseSortParams({
     sortField,
@@ -72,12 +53,6 @@ const getHistoryByUser = async (userId, { page = 1, limit = 10, sortField, sortO
   return { data: data || [], total: count || 0 };
 };
 
-/**
- * Lấy điểm cao nhất của user cho một bài luyện đọc cụ thể.
- * @param {string} userId
- * @param {string} lessonId
- * @returns {Promise<number|null>}
- */
 const getBestScore = async (userId, lessonId) => {
   const { data, error } = await supabase
     .from("reading_practice")
@@ -95,29 +70,13 @@ const getBestScore = async (userId, lessonId) => {
   return data?.score ?? null;
 };
 
-/**
- * Tìm kết quả luyện đọc theo id.
- * @param {string} id
- * @returns {Promise<Object|null>}
- */
-const findById = async (id) => {
-  const { data, error } = await supabase
-    .from("reading_practice")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
-
-  if (error) {
-    if (error.code === "PGRST116") return null;
-    throw new AppError(error.message, 500);
-  }
-
-  return data;
+const readingPracticeFindById = async (id) => {
+  return findByIdRaw(supabase, "reading_practice", id);
 };
 
 module.exports = {
   create,
   getHistoryByUser,
   getBestScore,
-  findById,
+  readingPracticeFindById,
 };

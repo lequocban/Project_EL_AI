@@ -7,7 +7,7 @@ const { buildPaginationResponse } = require("../../../utils/paginationResponse")
  * Thêm bộ từ vựng vào yêu thích.
  */
 const addFavorite = async (accessToken, userId, setId) => {
-  const vocabularySet = await vocabularySetRepository.findById(setId);
+  const vocabularySet = await vocabularySetRepository.vocabularySetFindById(setId);
 
   if (!vocabularySet) {
     throw new AppError("Không tìm thấy bộ từ vựng", 404);

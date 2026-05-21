@@ -53,24 +53,6 @@ const findValidOtp = async (email) => {
 };
 
 /**
- * Đánh dấu OTP đã được sử dụng.
- * @param {number} otpId
- * @returns {Promise<void>}
- */
-const markOtpAsUsed = async (otpId) => {
-  const adminClient = createAdminClient();
-
-  const { error } = await adminClient
-    .from("password_otps")
-    .update({ used: true })
-    .eq("id", otpId);
-
-  if (error) {
-    throw new Error("Không thể cập nhật OTP: " + error.message);
-  }
-};
-
-/**
  * Xóa OTP sau khi đã sử dụng thành công.
  * @param {number} otpId
  * @returns {Promise<void>}
@@ -91,6 +73,5 @@ const deleteOtp = async (otpId) => {
 module.exports = {
   saveOtp,
   findValidOtp,
-  markOtpAsUsed,
   deleteOtp,
 };

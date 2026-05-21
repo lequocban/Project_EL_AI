@@ -1,16 +1,9 @@
 const { supabase } = require("../../../config/supabase");
 const { AppError } = require("../../../utils/appError");
 const { parseSortParams, buildSupabaseOrder } = require("../../../utils/sorting");
+const { buildPaginationRange } = require("../../../utils/pagination");
+const { softDeleteRecord, findByIdRecord, updateStatusRecord } = require("../../../utils/baseRepository");
 
-/**
- * Tạo mới một vocabulary set.
- * @param {Object} data
- * @param {string} data.title
- * @param {string} data.description
- * @param {string} data.status
- * @param {string} data.created_by
- * @returns {Promise<Object>}
- */
 const create = async ({ title, description, status, created_by }) => {
   const { data, error } = await supabase
     .from("vocabulary_sets")
@@ -34,15 +27,6 @@ const create = async ({ title, description, status, created_by }) => {
   return data;
 };
 
-/**
- * Cập nhật vocabulary set theo id.
- * @param {string} id
- * @param {Object} data
- * @param {string} data.title
- * @param {string} data.description
- * @param {string} data.status
- * @returns {Promise<Object>}
- */
 const update = async (id, { title, description, status }) => {
   const updateData = {};
 
@@ -68,45 +52,12 @@ const update = async (id, { title, description, status }) => {
   return data;
 };
 
-/**
- * Xóa mềm vocabulary set (cập nhật trường deleted = true).
- * @param {string} id
- * @returns {Promise<Object>}
- */
-const softDelete = async (id) => {
-  const { data, error } = await supabase
-    .from("vocabulary_sets")
-    .update({ deleted: true })
-    .eq("id", id)
-    .select("*")
-    .maybeSingle();
-
-  if (error) {
-    throw new AppError(error.message, 500);
-  }
-
-  if (!data) {
-    throw new AppError("Không tìm thấy bộ từ vựng", 404);
-  }
-
-  return data;
+const vocabularySetSoftDelete = async (id) => {
+  return softDeleteRecord(supabase, "vocabulary_sets", id, "Không tìm thấy bộ từ vựng");
 };
 
-/**
- * Lấy danh sách bộ từ vựng của một user (đã xóa mềm thì không lấy).
- * @param {string} userId
- * @param {Object} options
- * @param {string} options.keyword - Từ khóa tìm kiếm theo title
- * @param {number} options.page - Trang (bắt đầu từ 1)
- * @param {number} options.limit - Số item mỗi trang (max 15)
- * @param {string} options.sortField - Trường sắp xếp: "created_at" | "title"
- * @param {string} options.sortOrder - Thứ tự sắp xếp: "asc" | "desc"
- * @returns {Promise<{data: Array, total: number}>}
- */
 const getMySets = async (userId, { keyword, page = 1, limit = 15, sortField, sortOrder } = {}) => {
-  const safeLimit = Math.min(Math.max(1, limit), 15);
-  const from = (page - 1) * safeLimit;
-  const to = from + safeLimit - 1;
+  const { from, to } = buildPaginationRange(page, limit, 15);
 
   const { sortColumn, ascending } = parseSortParams({
     sortField,
@@ -137,20 +88,8 @@ const getMySets = async (userId, { keyword, page = 1, limit = 15, sortField, sor
   return { data: data || [], total: count || 0 };
 };
 
-/**
- * Lấy danh sách bộ từ vựng public (đã xóa mềm thì không lấy).
- * @param {Object} options
- * @param {string} options.keyword - Từ khóa tìm kiếm theo title
- * @param {number} options.page - Trang (bắt đầu từ 1)
- * @param {number} options.limit - Số item mỗi trang (max 15)
- * @param {string} options.sortField - Trường sắp xếp: "created_at" | "title"
- * @param {string} options.sortOrder - Thứ tự sắp xếp: "asc" | "desc"
- * @returns {Promise<{data: Array, total: number}>}
- */
 const getPublicSets = async ({ keyword, page = 1, limit = 15, sortField, sortOrder } = {}) => {
-  const safeLimit = Math.min(Math.max(1, limit), 15);
-  const from = (page - 1) * safeLimit;
-  const to = from + safeLimit - 1;
+  const { from, to } = buildPaginationRange(page, limit, 15);
 
   const { sortColumn, ascending } = parseSortParams({
     sortField,
@@ -181,12 +120,6 @@ const getPublicSets = async ({ keyword, page = 1, limit = 15, sortField, sortOrd
   return { data: data || [], total: count || 0 };
 };
 
-/**
- * Đếm số từ trong một bộ từ vựng.
- * Dùng select thay head mode để đảm bảo count chính xác, không bị giới hạn bởi default RLS limit.
- * @param {string} setId
- * @returns {Promise<number>}
- */
 const countWordsInSet = async (setId) => {
   const { count, error } = await supabase
     .from("vocabulary_set_words")
@@ -201,11 +134,6 @@ const countWordsInSet = async (setId) => {
   return count || 0;
 };
 
-/**
- * Tìm word theo word text (không cần accessToken, dùng supabase admin).
- * @param {string} word
- * @returns {Promise<Object|null>}
- */
 const findWordByText = async (word) => {
   const normalizedWord = word.toLowerCase().trim();
 
@@ -225,11 +153,6 @@ const findWordByText = async (word) => {
   return data;
 };
 
-/**
- * Tạo word mới.
- * @param {Object} vocabulary
- * @returns {Promise<Object>}
- */
 const createWord = async ({ word, phonetic, audioUrl, meaning }) => {
   const normalizedWord = word.toLowerCase().trim();
 
@@ -258,12 +181,6 @@ const createWord = async ({ word, phonetic, audioUrl, meaning }) => {
   return data;
 };
 
-/**
- * Thêm nhiều word vào một bộ từ vựng.
- * @param {string} setId - vocabulary_sets.id
- * @param {Array<string>} wordIds - mảng words.id
- * @returns {Promise<void>}
- */
 const addWordsToSet = async (setId, wordIds) => {
   if (!wordIds || wordIds.length === 0) return;
 
@@ -281,41 +198,12 @@ const addWordsToSet = async (setId, wordIds) => {
   }
 };
 
-/**
- * Lấy chi tiết một bộ từ vựng theo id.
- * @param {string} setId
- * @returns {Promise<Object|null>}
- */
-const findById = async (setId) => {
-  const { data, error } = await supabase
-    .from("vocabulary_sets")
-    .select("*")
-    .eq("id", setId)
-    .eq("deleted", false)
-    .single();
-
-  if (error) {
-    if (error.code === "PGRST116") return null;
-    throw new AppError(error.message, 500);
-  }
-
-  return data;
+const vocabularySetFindById = async (setId) => {
+  return findByIdRecord(supabase, "vocabulary_sets", setId);
 };
 
-/**
- * Lấy danh sách từ vựng trong một bộ từ vựng (có phân trang).
- * @param {string} setId
- * @param {Object} options
- * @param {number} options.page - Trang (bắt đầu từ 1)
- * @param {number} options.limit - Số từ mỗi trang (mặc định 15)
- * @param {string} options.sortField - Trường sắp xếp: "created_at" | "word"
- * @param {string} options.sortOrder - Thứ tự sắp xếp: "asc" | "desc"
- * @returns {Promise<{words: Array, total: number}>}
- */
 const getWordsInSet = async (setId, { page = 1, limit = 15, sortField, sortOrder } = {}) => {
-  const safeLimit = Math.min(Math.max(1, limit), 100);
-  const from = (page - 1) * safeLimit;
-  const to = from + safeLimit - 1;
+  const { from, to, safeLimit } = buildPaginationRange(page, limit, 100);
 
   const { sortColumn, ascending } = parseSortParams({
     sortField,
@@ -372,12 +260,6 @@ const getWordsInSet = async (setId, { page = 1, limit = 15, sortField, sortOrder
   return { words: rows, total };
 };
 
-/**
- * Xóa nhiều từ khỏi một bộ từ vựng.
- * @param {string} setId - vocabulary_sets.id
- * @param {Array<string>} wordIds - mảng words.id cần xóa
- * @returns {Promise<void>}
- */
 const removeWordsFromSet = async (setId, wordIds) => {
   if (!wordIds || wordIds.length === 0) return;
 
@@ -392,44 +274,12 @@ const removeWordsFromSet = async (setId, wordIds) => {
   }
 };
 
-/**
- * Cập nhật trạng thái vocabulary set.
- * @param {string} id
- * @param {string} status
- * @returns {Promise<Object>}
- */
-const updateStatus = async (id, status) => {
-  const { data, error } = await supabase
-    .from("vocabulary_sets")
-    .update({ status })
-    .eq("id", id)
-    .select("*")
-    .maybeSingle();
-
-  if (error) {
-    throw new AppError(error.message, 500);
-  }
-
-  if (!data) {
-    throw new AppError("Không tìm thấy bộ từ vựng", 404);
-  }
-
-  return data;
+const vocabularySetUpdateStatus = async (id, status) => {
+  return updateStatusRecord(supabase, "vocabulary_sets", id, status, "Không tìm thấy bộ từ vựng");
 };
 
-/**
- * Lấy danh sách bộ từ vựng đang chờ duyệt public (status = 'req_public').
- * Dùng cho admin/content_manager duyệt yêu cầu.
- * @param {Object} options
- * @param {string} options.keyword - Từ khóa tìm kiếm theo title
- * @param {number} options.page - Trang (bắt đầu từ 1)
- * @param {number} options.limit - Số item mỗi trang (max 15)
- * @returns {Promise<{data: Array, total: number}>}
- */
-const getPendingPublicSets = async ({ keyword, page = 1, limit = 15 }) => {
-  const safeLimit = Math.min(Math.max(1, limit), 15);
-  const from = (page - 1) * safeLimit;
-  const to = from + safeLimit - 1;
+const getPendingPublicSets = async ({ keyword, page = 1, limit = 15 } = {}) => {
+  const { from, to } = buildPaginationRange(page, limit, 15);
 
   let query = supabase
     .from("vocabulary_sets")
@@ -452,12 +302,6 @@ const getPendingPublicSets = async ({ keyword, page = 1, limit = 15 }) => {
   return { data: data || [], total: count || 0 };
 };
 
-/**
- * Lấy thông tin cơ bản của vocabulary set (id, title, description).
- * Dùng khi cần join với bảng khác, không cần full data.
- * @param {string} setId
- * @returns {Promise<Object|null>}
- */
 const getVocabularySetById = async (setId) => {
   const { data, error } = await supabase
     .from("vocabulary_sets")
@@ -475,8 +319,19 @@ const getVocabularySetById = async (setId) => {
 };
 
 module.exports = {
-  create, update, softDelete, getMySets, getPublicSets, countWordsInSet,
-  findWordByText, createWord, addWordsToSet, findById, getWordsInSet,
-  removeWordsFromSet, updateStatus, getPendingPublicSets,
+  create,
+  update,
+  vocabularySetSoftDelete,
+  getMySets,
+  getPublicSets,
+  countWordsInSet,
+  findWordByText,
+  createWord,
+  addWordsToSet,
+  vocabularySetFindById,
+  getWordsInSet,
+  removeWordsFromSet,
+  vocabularySetUpdateStatus,
+  getPendingPublicSets,
   getVocabularySetById,
 };

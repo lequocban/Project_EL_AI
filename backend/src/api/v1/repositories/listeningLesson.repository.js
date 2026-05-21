@@ -1,18 +1,9 @@
 const { supabase } = require("../../../config/supabase");
 const { AppError } = require("../../../utils/appError");
 const { parseSortParams, buildSupabaseOrder } = require("../../../utils/sorting");
+const { buildPaginationRange } = require("../../../utils/pagination");
+const { softDeleteRecord, findByIdRecord, updateStatusRecord } = require("../../../utils/baseRepository");
 
-/**
- * Tạo mới một listening lesson.
- * @param {Object} data
- * @param {string} data.title
- * @param {string|null} data.audio_url
- * @param {string|null} data.transcript
- * @param {string|null} data.vi_translation
- * @param {string} data.status - 'private' | 'req_public' | 'public'
- * @param {string} data.created_by
- * @returns {Promise<Object>}
- */
 const create = async ({ title, audio_url, transcript, vi_translation, status, created_by }) => {
   const { data, error } = await supabase
     .from("listening_lessons")
@@ -39,12 +30,6 @@ const create = async ({ title, audio_url, transcript, vi_translation, status, cr
   return data;
 };
 
-/**
- * Cập nhật listening lesson theo id (không cho phép cập nhật status).
- * @param {string} id
- * @param {Object} data
- * @returns {Promise<Object>}
- */
 const update = async (id, { title, audio_url, transcript, vi_translation }) => {
   const updateData = {};
 
@@ -71,65 +56,16 @@ const update = async (id, { title, audio_url, transcript, vi_translation }) => {
   return data;
 };
 
-/**
- * Xóa mềm listening lesson (cập nhật trường deleted = true).
- * @param {string} id
- * @returns {Promise<Object>}
- */
-const softDelete = async (id) => {
-  const { data, error } = await supabase
-    .from("listening_lessons")
-    .update({ deleted: true })
-    .eq("id", id)
-    .select("*")
-    .maybeSingle();
-
-  if (error) {
-    throw new AppError(error.message, 500);
-  }
-
-  if (!data) {
-    throw new AppError("Không tìm thấy bài luyện nghe", 404);
-  }
-
-  return data;
+const listeningLessonSoftDelete = async (id) => {
+  return softDeleteRecord(supabase, "listening_lessons", id, "Không tìm thấy bài luyện nghe");
 };
 
-/**
- * Tìm listening lesson theo id (không bao gồm bản ghi đã xóa mềm).
- * @param {string} id
- * @returns {Promise<Object|null>}
- */
-const findById = async (id) => {
-  const { data, error } = await supabase
-    .from("listening_lessons")
-    .select("*")
-    .eq("id", id)
-    .eq("deleted", false)
-    .maybeSingle();
-
-  if (error) {
-    if (error.code === "PGRST116") return null;
-    throw new AppError(error.message, 500);
-  }
-
-  return data;
+const listeningLessonFindById = async (id) => {
+  return findByIdRecord(supabase, "listening_lessons", id);
 };
 
-/**
- * Lấy danh sách listening lessons public (phân trang, tìm kiếm, sắp xếp).
- * @param {Object} options
- * @param {string} options.keyword
- * @param {number} options.page
- * @param {number} options.limit
- * @param {string} options.sortField - Trường sắp xếp: "created_at" | "title"
- * @param {string} options.sortOrder - Thứ tự sắp xếp: "asc" | "desc"
- * @returns {Promise<{data: Array, total: number}>}
- */
 const getPublicLessons = async ({ keyword, page = 1, limit = 15, sortField, sortOrder } = {}) => {
-  const safeLimit = Math.min(Math.max(1, limit), 15);
-  const from = (page - 1) * safeLimit;
-  const to = from + safeLimit - 1;
+  const { from, to } = buildPaginationRange(page, limit, 15);
 
   const { sortColumn, ascending } = parseSortParams({
     sortField,
@@ -160,21 +96,8 @@ const getPublicLessons = async ({ keyword, page = 1, limit = 15, sortField, sort
   return { data: data || [], total: count || 0 };
 };
 
-/**
- * Lấy danh sách listening lessons của một user (phân trang, tìm kiếm, sắp xếp).
- * @param {string} userId
- * @param {Object} options
- * @param {string} options.keyword
- * @param {number} options.page
- * @param {number} options.limit
- * @param {string} options.sortField - Trường sắp xếp: "created_at" | "title"
- * @param {string} options.sortOrder - Thứ tự sắp xếp: "asc" | "desc"
- * @returns {Promise<{data: Array, total: number}>}
- */
 const getMyLessons = async (userId, { keyword, page = 1, limit = 15, sortField, sortOrder } = {}) => {
-  const safeLimit = Math.min(Math.max(1, limit), 15);
-  const from = (page - 1) * safeLimit;
-  const to = from + safeLimit - 1;
+  const { from, to } = buildPaginationRange(page, limit, 15);
 
   const { sortColumn, ascending } = parseSortParams({
     sortField,
@@ -205,18 +128,8 @@ const getMyLessons = async (userId, { keyword, page = 1, limit = 15, sortField, 
   return { data: data || [], total: count || 0 };
 };
 
-/**
- * Lấy danh sách listening lessons đang chờ duyệt public (status = 'req_public').
- * @param {Object} options
- * @param {string} options.keyword
- * @param {number} options.page
- * @param {number} options.limit
- * @returns {Promise<{data: Array, total: number}>}
- */
-const getPendingPublicLessons = async ({ keyword, page = 1, limit = 15 }) => {
-  const safeLimit = Math.min(Math.max(1, limit), 15);
-  const from = (page - 1) * safeLimit;
-  const to = from + safeLimit - 1;
+const getPendingPublicLessons = async ({ keyword, page = 1, limit = 15 } = {}) => {
+  const { from, to } = buildPaginationRange(page, limit, 15);
 
   let query = supabase
     .from("listening_lessons")
@@ -239,38 +152,17 @@ const getPendingPublicLessons = async ({ keyword, page = 1, limit = 15 }) => {
   return { data: data || [], total: count || 0 };
 };
 
-/**
- * Cập nhật trạng thái listening lesson.
- * @param {string} id
- * @param {string} status
- * @returns {Promise<Object>}
- */
-const updateStatus = async (id, status) => {
-  const { data, error } = await supabase
-    .from("listening_lessons")
-    .update({ status })
-    .eq("id", id)
-    .select("*")
-    .maybeSingle();
-
-  if (error) {
-    throw new AppError(error.message, 500);
-  }
-
-  if (!data) {
-    throw new AppError("Không tìm thấy bài luyện nghe", 404);
-  }
-
-  return data;
+const listeningLessonUpdateStatus = async (id, status) => {
+  return updateStatusRecord(supabase, "listening_lessons", id, status, "Không tìm thấy bài luyện nghe");
 };
 
 module.exports = {
   create,
   update,
-  softDelete,
-  findById,
+  listeningLessonSoftDelete,
+  listeningLessonFindById,
   getPublicLessons,
   getMyLessons,
   getPendingPublicLessons,
-  updateStatus,
+  listeningLessonUpdateStatus,
 };
