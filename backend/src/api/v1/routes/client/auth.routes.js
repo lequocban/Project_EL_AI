@@ -8,7 +8,12 @@ const {
   changePasswordSchema,
 } = require("../../validations/auth.validation");
 const { validateBody } = require("../../validations/validate");
-const { loginLimiter, registerLimiter } = require("../../middlewares/rate-limit.middleware");
+const {
+  loginLimiter,
+  registerLimiter,
+  requestOtpLimiter,
+  resetPasswordLimiter,
+} = require("../../middlewares/rate-limit.middleware");
 const { verifyToken, requireAuth } = require("../../middlewares/auth.middleware");
 
 router.post(
@@ -31,12 +36,14 @@ router.post("/refresh-token", authController.refreshToken);
 
 router.post(
   "/request-otp",
+  requestOtpLimiter,
   validateBody(requestOtpSchema),
   authController.requestOtp
 );
 
 router.post(
   "/reset-password",
+  resetPasswordLimiter,
   validateBody(resetPasswordSchema),
   authController.resetPassword
 );
