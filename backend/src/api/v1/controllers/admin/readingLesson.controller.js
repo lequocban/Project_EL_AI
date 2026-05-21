@@ -1,4 +1,3 @@
-const router = require("express").Router();
 const readingLessonService = require("../../services/readingLesson.service");
 const { parsePagination } = require("../../../../utils/pagination");
 const { success } = require("../../../../utils/responseHandler");

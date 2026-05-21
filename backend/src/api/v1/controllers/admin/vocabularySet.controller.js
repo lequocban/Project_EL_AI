@@ -1,14 +1,6 @@
 const vocabularySetService = require("../../services/vocabularySet.service");
 const { success } = require("../../../../utils/responseHandler");
-
-/**
- * Parse pagination query params.
- */
-const parsePagination = (query) => {
-  const page = Math.max(1, parseInt(query.page, 10) || 1);
-  const limit = Math.min(15, Math.max(1, parseInt(query.limit, 10) || 15));
-  return { page, limit };
-};
+const { parsePagination } = require("../../../../utils/pagination");
 
 /**
  * GET /api/v1/admin/vocabulary-sets/pending
@@ -16,7 +8,7 @@ const parsePagination = (query) => {
  */
 const getPendingPublicSets = async (req, res, next) => {
   try {
-    const { page, limit } = parsePagination(req.query);
+    const { page, limit } = parsePagination(req.query, { defaultLimit: 15, maxLimit: 15 });
     const keyword = req.query.keyword || "";
 
     const result = await vocabularySetService.getPendingPublicSets({ keyword, page, limit });
