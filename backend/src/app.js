@@ -26,6 +26,16 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Health check endpoint (đặt trước verifyToken để không cần auth)
+app.get("/api/v1/health", (req, res) => {
+  res.status(200).json({
+    code: 200,
+    success: true,
+    message: "Backend is running",
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // Verify token cho tất cả API (để có thể dùng req.user, req.accessToken)
 app.use(verifyToken);
 
