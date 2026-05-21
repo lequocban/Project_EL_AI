@@ -58,29 +58,6 @@ const getLeaderboardBySkill = async (req, res, next) => {
   }
 };
 
-/**
- * Lấy thống kê tất cả kỹ năng của user hiện tại.
- */
-const getMySkillsStats = async (req, res, next) => {
-  try {
-    const userId = req.user?.id;
-
-    if (!userId) {
-      return res.status(401).json({
-        code: 401,
-        success: false,
-        message: "Yêu cầu xác thực",
-      });
-    }
-
-    const result = await leaderboardService.getUserAllSkillsStats(userId);
-
-    return success(res, result, "Lấy thống kê kỹ năng thành công");
-  } catch (error) {
-    return next(error);
-  }
-};
-
 module.exports = {
   getLeaderboard,
   getLeaderboardBySkill,
