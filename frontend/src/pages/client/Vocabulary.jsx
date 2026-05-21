@@ -133,6 +133,27 @@ export default function Vocabulary() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showSortDropdown]);
 
+  // Load danh sách favorites khi component mount - đảm bảo nút tim luôn hiển thị đúng
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadFavorites = async () => {
+      try {
+        const data = await vocabularyApi.getFavorites({ page: 1, limit: 1000 });
+        if (!cancelled) {
+          setFavorites(data.items || []);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error("Không thể tải danh sách yêu thích:", err);
+        }
+      }
+    };
+
+    loadFavorites();
+    return () => { cancelled = true; };
+  }, []);
+
   // Load dữ liệu - được gọi mỗi khi tab/page/search thay đổi
   useEffect(() => {
     let cancelled = false;
@@ -293,6 +314,9 @@ export default function Vocabulary() {
       } else {
         await vocabularyApi.addFavorite(id);
       }
+      // Reload lại danh sách favorites từ API để đồng bộ
+      const data = await vocabularyApi.getFavorites({ page: 1, limit: 1000 });
+      setFavorites(data.items || []);
     } catch (err) {
       // Rollback nếu lỗi
       setFavorites(prevFavorites);

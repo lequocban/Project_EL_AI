@@ -135,6 +135,9 @@ export default function ExamGame({ words, onBack, examType: initialExamType = nu
   // Đếm thời gian làm bài (giây)
   const startTimeRef = useRef(null);
   const [elapsed, setElapsed] = useState(0);
+  // Đếm ngược thời gian làm bài (10 phút)
+  const TIME_LIMIT = 600;
+  const [timeRemaining, setTimeRemaining] = useState(TIME_LIMIT);
 
   // Kích hoạt navigation guard khi đang làm bài
   useNavigationGuard(
@@ -165,6 +168,23 @@ export default function ExamGame({ words, onBack, examType: initialExamType = nu
     }
   }, [phase, submitted]);
 
+  // Đếm ngược thời gian làm bài (10 phút)
+  useEffect(() => {
+    if (phase === "doing" && !submitted && timeRemaining > 0) {
+      const interval = setInterval(() => {
+        setTimeRemaining((prev) => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            setShowExitConfirm(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [phase, submitted, timeRemaining]);
+
   // Bắt đầu bài kiểm tra với loại đã chọn
   const startExam = (type) => {
     setExamType(type);
@@ -173,6 +193,7 @@ export default function ExamGame({ words, onBack, examType: initialExamType = nu
     setScore(0);
     setPhase("doing");
     setCurrentIndex(0);
+    setTimeRemaining(TIME_LIMIT);
   };
 
   // Nộp bài kiểm tra và lưu kết quả lên backend
@@ -238,6 +259,13 @@ export default function ExamGame({ words, onBack, examType: initialExamType = nu
     return true;
   });
 
+  // Format thời gian đếm ngược thành mm:ss
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+
   // =============================================
   // Giao diện chọn loại kiểm tra
   // =============================================
@@ -296,6 +324,9 @@ export default function ExamGame({ words, onBack, examType: initialExamType = nu
           >
             <ArrowLeft className="w-4 h-4" /> Thoát
           </button>
+          <span className={`text-sm font-bold ${timeRemaining <= 60 ? "text-red-500 animate-pulse" : "text-muted-foreground"}`}>
+            {formatTime(timeRemaining)}
+          </span>
           <span className="text-sm font-bold text-muted-foreground">
             {questions.filter((q) => {
               if (q.userAnswer === null || q.userAnswer === "") return false;
@@ -310,6 +341,16 @@ export default function ExamGame({ words, onBack, examType: initialExamType = nu
         <h2 className="text-lg font-black mb-2 text-center">
           {EXAM_TYPES.find((t) => t.id === examType)?.label}
         </h2>
+
+        {/* Thanh tiến trình thời gian */}
+        <div className="w-full bg-border rounded-full h-2 mb-6 overflow-hidden">
+          <div
+            className={`h-2 rounded-full transition-all duration-1000 ease-linear ${
+              timeRemaining <= 60 ? "bg-red-500" : "bg-primary"
+            }`}
+            style={{ width: `${(timeRemaining / TIME_LIMIT) * 100}%` }}
+          />
+        </div>
 
         {/* Thanh tiến trình */}
         <div className="flex items-center gap-1 mb-6 justify-center flex-wrap">

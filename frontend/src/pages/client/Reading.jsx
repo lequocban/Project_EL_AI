@@ -1636,6 +1636,9 @@ function ReadingPlayer({ lesson, onBack }) {
   const [aiExplainingIndex, setAiExplainingIndex] = useState(null); // index của câu đang giải thích AI
   const [aiExplanation, setAiExplanation] = useState(""); // nội dung giải thích AI
   const [aiModalOpen, setAiModalOpen] = useState(false); // dialog AI đang mở
+  // Đếm ngược thời gian làm bài (10 phút)
+  const TIME_LIMIT = 600;
+  const [timeRemaining, setTimeRemaining] = useState(TIME_LIMIT);
 
   // Kích hoạt navigation guard khi đang làm bài
   useNavigationGuard(
@@ -1654,6 +1657,23 @@ function ReadingPlayer({ lesson, onBack }) {
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [submitted]);
+
+  // Đếm ngược thời gian làm bài (10 phút)
+  useEffect(() => {
+    if (!submitted && timeRemaining > 0) {
+      const interval = setInterval(() => {
+        setTimeRemaining((prev) => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            setShowExitConfirm(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [submitted, timeRemaining]);
 
   // Nộp bài luyện đọc và hiển thị kết quả
   const handleSubmit = async () => {
@@ -1735,6 +1755,13 @@ function ReadingPlayer({ lesson, onBack }) {
   const wrongCount = submitted ? questions.length - correctCount : 0;
   const percentage =
     questions.length > 0 ? Math.round((correctCount / questions.length) * 100) : 0;
+
+  // Format thời gian đếm ngược thành mm:ss
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
 
   // Trang kết quả chi tiết
   if (submitted) {
@@ -1950,6 +1977,9 @@ function ReadingPlayer({ lesson, onBack }) {
         >
           <ArrowLeft className="w-4 h-4" /> Thoát
         </button>
+        <span className={`text-sm font-bold ${timeRemaining <= 60 ? "text-red-500 animate-pulse" : "text-muted-foreground"}`}>
+          {formatTime(timeRemaining)}
+        </span>
         <span className="text-sm font-bold text-muted-foreground">
           {answeredCount}/{questions.length} đã trả lời
         </span>
@@ -1959,6 +1989,16 @@ function ReadingPlayer({ lesson, onBack }) {
         <h1 className="text-2xl font-black text-foreground mb-6">
           {lesson.title}
         </h1>
+
+        {/* Thanh tiến trình thời gian */}
+        <div className="w-full bg-border rounded-full h-2 mb-6 overflow-hidden">
+          <div
+            className={`h-2 rounded-full transition-all duration-1000 ease-linear ${
+              timeRemaining <= 60 ? "bg-orange-500" : "bg-orange-400"
+            }`}
+            style={{ width: `${(timeRemaining / TIME_LIMIT) * 100}%` }}
+          />
+        </div>
 
         {submitError && (
           <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-600">

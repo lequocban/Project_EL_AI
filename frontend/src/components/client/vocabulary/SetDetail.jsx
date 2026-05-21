@@ -105,6 +105,7 @@ export default function SetDetail({ set, onBack, favorites = [], onToggleFavorit
   // State cho việc gửi yêu cầu công khai / chuyển riêng tư
   const [isRequestingPublic, setIsRequestingPublic] = useState(false);
   const [isMakingPrivate, setIsMakingPrivate] = useState(false);
+  const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
   const [actionMessage, setActionMessage] = useState("");
   const [showModerationDialog, setShowModerationDialog] = useState(false);
 
@@ -578,36 +579,28 @@ export default function SetDetail({ set, onBack, favorites = [], onToggleFavorit
             )}
             <p className="text-sm font-semibold text-primary mt-1">{(wordsPagination.total || words.length)} từ vựng</p>
           </div>
-          {/* Các nút Yêu thích, Kiểm duyệt và Setting */}
+          {/* Các nút Yêu thích, Trạng thái và Setting */}
           <div className="flex items-center gap-2 flex-shrink-0">
-            {/* Nút yêu thích */}
+            {/* Nút yêu thích - luôn hiển thị */}
             {onToggleFavorite && (
               <button
                 onClick={() => onToggleFavorite(set.id)}
-                className={`p-2 rounded-xl transition-colors ${
-                  favorites.some((f) => String(f.id) === String(set.id))
+                disabled={isTogglingFavorite}
+                className={`p-2 rounded-xl transition-colors disabled:opacity-50 ${
+                  Array.isArray(favorites) && favorites.some((f) => String(f.id) === String(set.id))
                     ? "text-red-500 bg-red-50 hover:bg-red-100"
                     : "text-muted-foreground/60 hover:text-red-400 hover:bg-red-50"
                 }`}
-                title={favorites.some((f) => String(f.id) === String(set.id)) ? "Bỏ yêu thích" : "Yêu thích"}
+                title={Array.isArray(favorites) && favorites.some((f) => String(f.id) === String(set.id)) ? "Bỏ yêu thích" : "Yêu thích"}
               >
-                <Heart className={`w-5 h-5 ${favorites.some((f) => String(f.id) === String(set.id)) ? "fill-red-500" : ""}`} />
+                <Heart className={`w-5 h-5 ${Array.isArray(favorites) && favorites.some((f) => String(f.id) === String(set.id)) ? "fill-red-500" : ""}`} />
               </button>
             )}
             {set.is_public ? (
-              <button
-                onClick={handleMakePrivate}
-                disabled={isMakingPrivate || isRequestingPublic}
-                className="flex items-center gap-1.5 bg-orange-50 text-orange-600 px-3 py-2 rounded-xl text-sm font-bold hover:bg-orange-100 transition-all border border-orange-200 disabled:opacity-50"
-                title="Chuyển về chế độ riêng tư"
-              >
-                {isMakingPrivate ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <ShieldCheck className="w-4 h-4" />
-                )}
-                Riêng tư
-              </button>
+              <span className="flex items-center gap-1.5 bg-green-50 text-green-600 px-3 py-2 rounded-xl text-sm font-bold border border-green-200">
+                <Globe className="w-4 h-4" />
+                Công khai
+              </span>
             ) : set.is_pending ? (
               <span className="flex items-center gap-1.5 bg-amber-50 text-amber-600 px-3 py-2 rounded-xl text-sm font-bold border border-amber-200">
                 <Clock className="w-4 h-4" />

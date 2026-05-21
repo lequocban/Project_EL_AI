@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import SetDetail from "@/components/client/vocabulary/SetDetail";
 import { vocabularyApi } from "@/api/client/vocabularyApi";
@@ -15,6 +15,44 @@ export default function VocabularyDetail() {
   const [set, setSet] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [favorites, setFavorites] = useState([]);
+  const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
+
+  useEffect(() => {
+    const fetchFavorites = async () => {
+      try {
+        const data = await vocabularyApi.getFavorites({ limit: 100 });
+        setFavorites(data?.items || []);
+      } catch (err) {
+        console.error("Không thể tải danh sách yêu thích:", err);
+      }
+    };
+    fetchFavorites();
+  }, []);
+
+  const toggleFavorite = useCallback(async (setId) => {
+    if (isTogglingFavorite) return;
+    const isFav = favorites.some((f) => String(f.id) === String(setId));
+    const prevFavorites = [...favorites];
+
+    try {
+      setIsTogglingFavorite(true);
+      if (isFav) {
+        setFavorites((prev) => prev.filter((f) => String(f.id) !== String(setId)));
+        await vocabularyApi.removeFavorite(setId);
+      } else {
+        if (set) {
+          setFavorites((prev) => [...prev, set]);
+        }
+        await vocabularyApi.addFavorite(setId);
+      }
+    } catch (err) {
+      setFavorites(prevFavorites);
+      console.error("Không thể cập nhật yêu thích:", err);
+    } finally {
+      setIsTogglingFavorite(false);
+    }
+  }, [favorites, isTogglingFavorite, set]);
 
   useEffect(() => {
     const fetchSet = async () => {
@@ -62,8 +100,8 @@ export default function VocabularyDetail() {
     <SetDetail
       set={normalizedSet}
       onBack={() => navigate("/vocabulary")}
-      favorites={[]}
-      onToggleFavorite={null}
+      favorites={favorites}
+      onToggleFavorite={toggleFavorite}
     />
   );
 }
