@@ -119,7 +119,7 @@ export default function Home() {
 
       {/* Thống kê nhanh & Mẹo học tập */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-        <div className="bg-gradient-to-br from-orange-400 to-amber-500 rounded-2xl p-6 text-white shadow-lg flex flex-col justify-center items-start">
+        <div className="bg-gradient-to-br from-orange-400 to-amber-500 rounded-2xl p-6 text-white shadow-lg flex flex-col justify-center items-center text-center">
           <p className="text-orange-100 font-semibold text-sm mb-3">Thống kê của bạn</p>
           <div className="flex gap-6">
             <div className="text-center">
