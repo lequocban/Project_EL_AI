@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Zap, Flame, ArrowRight } from "lucide-react";
+import Footer from "@/components/layouts/Footer";
 
 const FEATURES = [
   {
@@ -249,18 +250,7 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-white border-t border-border px-6 py-6 text-center">
-        <div className="flex items-center justify-center gap-2 mb-2">
-          <div className="w-7 h-7 gradient-primary rounded-lg flex items-center justify-center">
-            <Zap className="w-4 h-4 text-white" />
-          </div>
-          <span className="font-black text-foreground">EnglishUp</span>
-        </div>
-        <p className="text-muted-foreground text-sm font-medium">
-          © 2026 EnglishUp. Học tiếng Anh hiệu quả mỗi ngày.
-        </p>
-      </footer>
+      <Footer />
     </div>
   );
 }

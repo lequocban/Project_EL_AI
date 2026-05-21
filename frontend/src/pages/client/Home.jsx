@@ -12,6 +12,7 @@ import {
 import { vocabularyApi } from "@/api/client/vocabularyApi";
 import { listeningApi } from "@/api/client/listeningApi";
 import { readingApi } from "@/api/client/readingApi";
+import Footer from "@/components/layouts/Footer";
 
 const MODULE_COLORS = {
   vocabulary: "from-violet-500 to-indigo-500",
@@ -27,6 +28,18 @@ export default function Home() {
   const [mySets, setMySets] = useState([]);
   const [listeningLessons, setListeningLessons] = useState([]);
   const [readingLessons, setReadingLessons] = useState([]);
+
+  // Danh sách mẹo học tập hiển thị ngẫu nhiên
+  const learningTips = [
+    "Mỗi ngày học 10 từ mới sẽ giúp bạn nhớ lâu hơn!",
+    "Nghe đi nghe lại nhiều lần là chìa khóa để cải thiện kỹ năng nghe.",
+    "Đọc to giúp bạn luyện phát âm và ghi nhớ từ vựng tốt hơn.",
+    "Học ngữ pháp qua ví dụ thực tế sẽ dễ hiểu hơn là học thuộc lòng.",
+    "Dành 15 phút mỗi ngày ôn lại từ cũ trước khi học từ mới.",
+    "Ghi chú bằng hình ảnh giúp não bộ ghi nhớ thông tin nhanh hơn.",
+    "Luyện nghe kết hợp đọc phụ đề để tăng vốn từ và kỹ năng nghe.",
+    "Đặt câu với từ mới giúp bạn nhớ nghĩa và cách dùng từ.",
+  ];
 
   useEffect(() => {
     loadData();
@@ -104,15 +117,28 @@ export default function Home() {
         </p>
       </div>
 
-      {/* Streak & XP: no backend API yet */}
+      {/* Thống kê nhanh & Mẹo học tập */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
         <div className="bg-gradient-to-br from-orange-400 to-amber-500 rounded-2xl p-6 text-white shadow-lg flex flex-col justify-center items-start">
-          <p className="text-orange-100 font-semibold text-sm mb-1">Chuỗi học</p>
-          <p className="text-2xl font-black">Chưa có dữ liệu</p>
+          <p className="text-orange-100 font-semibold text-sm mb-3">Thống kê của bạn</p>
+          <div className="flex gap-6">
+            <div className="text-center">
+              <p className="text-2xl font-black">{mySets.length}</p>
+              <p className="text-xs text-orange-100 font-medium">Bộ từ</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-black">{listeningLessons.length}</p>
+              <p className="text-xs text-orange-100 font-medium">Bài nghe</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-black">{readingLessons.length}</p>
+              <p className="text-xs text-orange-100 font-medium">Bài đọc</p>
+            </div>
+          </div>
         </div>
         <div className="bg-gradient-to-br from-violet-500 to-indigo-600 rounded-2xl p-6 text-white shadow-lg flex flex-col justify-center items-start">
-          <p className="text-violet-200 font-semibold text-sm mb-1">Tổng XP</p>
-          <p className="text-2xl font-black">Chưa có dữ liệu</p>
+          <p className="text-violet-200 font-semibold text-sm mb-2">Mẹo học tập</p>
+          <p className="text-base font-bold leading-relaxed">{learningTips[Math.floor(Math.random() * learningTips.length)]}</p>
         </div>
       </div>
 
@@ -246,6 +272,8 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      <Footer />
     </div>
   );
 }

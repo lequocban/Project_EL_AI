@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigationGuard } from "@/lib/navigationGuard";
 import {
   ArrowLeft,
   CheckCircle,
@@ -135,6 +136,24 @@ export default function ExamGame({ words, onBack, examType: initialExamType = nu
   const startTimeRef = useRef(null);
   const [elapsed, setElapsed] = useState(0);
 
+  // Kích hoạt navigation guard khi đang làm bài
+  useNavigationGuard(
+    phase === "doing" && !submitted,
+    () => onBack()
+  );
+
+  // Chặn đóng tab/reload trang khi đang làm bài
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (phase === "doing" && !submitted) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [phase, submitted]);
+
   // Timer đếm thời gian khi đang làm bài
   useEffect(() => {
     if (phase === "doing" && !submitted) {
@@ -218,39 +237,6 @@ export default function ExamGame({ words, onBack, examType: initialExamType = nu
     if (typeof q.userAnswer === "string" && !q.userAnswer.trim()) return false;
     return true;
   });
-
-  // Modal xác nhận thoát — ưu tiên hiển thị trước mọi phase
-  if (showExitConfirm) {
-    return (
-      <div className="min-h-screen bg-background p-6 lg:p-8 flex items-center justify-center">
-        <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-xl">
-          <div className="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
-            <AlertTriangle className="w-7 h-7 text-amber-500" />
-          </div>
-          <h2 className="text-xl font-black text-foreground mb-2">
-            Xác nhận thoát
-          </h2>
-          <p className="text-sm text-muted-foreground mb-6">
-            Bạn có chắc muốn thoát? Tiến trình hiện tại sẽ không được lưu.
-          </p>
-          <div className="flex gap-3">
-            <button
-              onClick={() => setShowExitConfirm(false)}
-              className="flex-1 border border-border py-2.5 rounded-xl font-bold text-sm hover:bg-muted transition-all"
-            >
-              Hủy
-            </button>
-            <button
-              onClick={onBack}
-              className="flex-1 bg-red-500 text-white py-2.5 rounded-xl font-bold text-sm hover:bg-red-600 transition-all"
-            >
-              Xác nhận
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   // =============================================
   // Giao diện chọn loại kiểm tra
@@ -417,6 +403,37 @@ export default function ExamGame({ words, onBack, examType: initialExamType = nu
             </p>
           )}
         </div>
+
+        {/* Modal xác nhận thoát - Overlay */}
+        {showExitConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6">
+            <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-xl">
+              <div className="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
+                <AlertTriangle className="w-7 h-7 text-amber-500" />
+              </div>
+              <h2 className="text-xl font-black text-foreground mb-2">
+                Xác nhận thoát
+              </h2>
+              <p className="text-sm text-muted-foreground mb-6">
+                Bạn có chắc muốn thoát? Tiến trình hiện tại sẽ không được lưu.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowExitConfirm(false)}
+                  className="flex-1 border border-border py-2.5 rounded-xl font-bold text-sm hover:bg-muted transition-all"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={onBack}
+                  className="flex-1 bg-red-500 text-white py-2.5 rounded-xl font-bold text-sm hover:bg-red-600 transition-all"
+                >
+                  Xác nhận
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
