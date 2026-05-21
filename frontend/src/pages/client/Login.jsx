@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Zap, Eye, EyeOff } from "lucide-react";
 import { authApi } from "@/api/authApi";
@@ -13,17 +13,110 @@ export default function Login() {
     newPassword: "",
     confirmPassword: "",
   });
+  const [otpDigits, setOtpDigits] = useState(["", "", "", "", "", ""]);
+  const otpRefs = useRef([]);
   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [otpSentTime, setOtpSentTime] = useState(null);
+  const [timeRemaining, setTimeRemaining] = useState(0);
+  const [isResending, setIsResending] = useState(false);
 
   // Xóa thông báo lỗi và thành công
   const resetMessages = () => {
     setError("");
     setSuccessMsg("");
+  };
+
+  // Đếm ngược 3 phút khi vào step nhập OTP
+  useEffect(() => {
+    if (step === "reset" && otpSentTime) {
+      const interval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - otpSentTime) / 1000);
+        const remaining = 180 - elapsed;
+        if (remaining <= 0) {
+          setTimeRemaining(0);
+          clearInterval(interval);
+        } else {
+          setTimeRemaining(remaining);
+        }
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [step, otpSentTime]);
+
+  // Tự động focus ô đầu tiên khi vào step reset
+  useEffect(() => {
+    if (step === "reset" && otpRefs.current[0]) {
+      otpRefs.current[0].focus();
+    }
+  }, [step]);
+
+  // Xử lý nhập từng ô OTP
+  const handleOtpChange = (index, value) => {
+    // Chỉ cho phép nhập số
+    if (value && !/^\d$/.test(value)) return;
+
+    const newDigits = [...otpDigits];
+    newDigits[index] = value;
+    setOtpDigits(newDigits);
+
+    // Cập nhật otp vào form
+    const otpValue = newDigits.join("");
+    setForm((prev) => ({ ...prev, otp: otpValue }));
+
+    // Tự động chuyển sang ô tiếp theo
+    if (value && index < 5 && otpRefs.current[index + 1]) {
+      otpRefs.current[index + 1].focus();
+    }
+  };
+
+  // Xử lý phím Backspace và các phím điều hướng
+  const handleOtpKeyDown = (index, e) => {
+    if (e.key === "Backspace") {
+      e.preventDefault();
+      const newDigits = [...otpDigits];
+      if (newDigits[index]) {
+        newDigits[index] = "";
+        setOtpDigits(newDigits);
+        setForm((prev) => ({ ...prev, otp: newDigits.join("") }));
+      } else if (index > 0 && otpRefs.current[index - 1]) {
+        otpRefs.current[index - 1].focus();
+        newDigits[index - 1] = "";
+        setOtpDigits(newDigits);
+        setForm((prev) => ({ ...prev, otp: newDigits.join("") }));
+      }
+    } else if (e.key === "ArrowLeft" && index > 0) {
+      e.preventDefault();
+      otpRefs.current[index - 1].focus();
+    } else if (e.key === "ArrowRight" && index < 5) {
+      e.preventDefault();
+      otpRefs.current[index + 1].focus();
+    }
+  };
+
+  // Xử lý dán (paste) mã OTP
+  const handleOtpPaste = (e) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData("text").trim();
+    if (/^\d{6}$/.test(pasted)) {
+      const digits = pasted.split("");
+      setOtpDigits(digits);
+      setForm((prev) => ({ ...prev, otp: pasted }));
+      otpRefs.current[5].focus();
+    }
+  };
+
+  // Xóa OTP khi gửi lại
+  const clearOtpInputs = () => {
+    setOtpDigits(["", "", "", "", "", ""]);
+    setForm((prev) => ({ ...prev, otp: "" }));
+    if (otpRefs.current[0]) {
+      otpRefs.current[0].focus();
+    }
   };
 
   // Xử lý đăng nhập với email và mật khẩu
@@ -51,12 +144,39 @@ export default function Login() {
     try {
       await authApi.requestOtp(form.email);
       setSuccessMsg("Mã OTP đã được gửi đến email của bạn");
+      setOtpSentTime(Date.now());
+      setTimeRemaining(180);
       setStep("reset");
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Gửi lại mã OTP
+  const handleResendOtp = async () => {
+    resetMessages();
+    setIsResending(true);
+
+    try {
+      await authApi.requestOtp(form.email);
+      setSuccessMsg("Mã OTP mới đã được gửi đến email của bạn");
+      setOtpSentTime(Date.now());
+      setTimeRemaining(180);
+      clearOtpInputs();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsResending(false);
+    }
+  };
+
+  // Format thời gian còn lại thành mm:ss
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
   // Xử lý đặt lại mật khẩu với OTP và mật khẩu mới
@@ -75,10 +195,12 @@ export default function Login() {
       await authApi.resetPassword(form.email, form.otp, form.newPassword);
       setSuccessMsg("Đổi mật khẩu thành công! Vui lòng đăng nhập lại.");
       setStep("login");
+      setOtpSentTime(null);
+      setTimeRemaining(0);
+      clearOtpInputs();
       setForm((prev) => ({
         ...prev,
         password: "",
-        otp: "",
         newPassword: "",
         confirmPassword: "",
       }));
@@ -240,19 +362,50 @@ export default function Login() {
           {step === "reset" && (
             <form onSubmit={handleResetPassword} className="space-y-4">
               <div>
-                <label className="text-sm font-bold text-foreground mb-1.5 block">
+                <label className="text-sm font-bold text-foreground mb-3 block text-center">
                   Mã OTP
                 </label>
-                <input
-                  type="text"
-                  value={form.otp}
-                  onChange={(e) => setForm({ ...form, otp: e.target.value })}
-                  placeholder="Nhập 6 chữ số"
-                  required
-                  maxLength={6}
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
-                />
+                <div className="flex justify-center gap-2" onPaste={handleOtpPaste}>
+                  {otpDigits.map((digit, index) => (
+                    <input
+                      key={index}
+                      ref={(el) => (otpRefs.current[index] = el)}
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={1}
+                      value={digit}
+                      onChange={(e) => handleOtpChange(index, e.target.value)}
+                      onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                      className="w-12 h-14 text-center text-xl font-bold rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+                    />
+                  ))}
+                </div>
               </div>
+
+              {timeRemaining > 0 ? (
+                <div className="text-center text-sm font-medium text-muted-foreground">
+                  Mã OTP sẽ hết hạn sau{" "}
+                  <span className="text-primary font-bold">
+                    {formatTime(timeRemaining)}
+                  </span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  disabled={isResending}
+                  className="w-full bg-primary/10 text-primary py-3 rounded-xl font-bold hover:bg-primary/20 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isResending ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                      Đang gửi lại...
+                    </>
+                  ) : (
+                    "Gửi lại mã OTP"
+                  )}
+                </button>
+              )}
 
               <div>
                 <label className="text-sm font-bold text-foreground mb-1.5 block">
@@ -331,6 +484,9 @@ export default function Login() {
                 onClick={() => {
                   setStep("login");
                   resetMessages();
+                  setOtpSentTime(null);
+                  setTimeRemaining(0);
+                  clearOtpInputs();
                 }}
                 className="w-full bg-muted text-foreground py-3 rounded-xl font-bold hover:bg-muted/80 transition-all"
               >
