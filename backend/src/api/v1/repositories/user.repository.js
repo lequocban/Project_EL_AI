@@ -64,7 +64,6 @@ const getAllUsers = async ({
     roles: [],
   }));
 
-  // Lọc theo role bằng cách join với user_roles và roles
   if (role && ["user", "content_manager", "admin"].includes(role)) {
     const roleIdMap = { user: 1, content_manager: 2, admin: 3 };
     const targetRoleId = roleIdMap[role];
@@ -80,7 +79,6 @@ const getAllUsers = async ({
     }
   }
 
-  // Lấy thông tin role cho toàn bộ user
   if (users.length > 0) {
     const userIds = users.map((u) => u.id);
 
@@ -112,25 +110,6 @@ const getAllUsers = async ({
   }
 
   return { users, total: count || 0 };
-};
-
-/**
- * Đếm tổng số user có role_id = 1.
- */
-const countUsersByRole = async (roleId = 1) => {
-  const client = createAdminClient();
-
-  const { count, error } = await client
-    .from("user_roles")
-    .select("*", { count: "exact", head: true })
-    .eq("role_id", roleId);
-
-  if (error) {
-    console.error("[user.model] countUsersByRole error:", error);
-    throw new AppError("Không thể đếm số người dùng", 500);
-  }
-
-  return count || 0;
 };
 
 /**
@@ -189,7 +168,6 @@ const getUserById = async (userId) => {
 const deleteUserPermanently = async (userId) => {
   const client = createAdminClient();
 
-  // Xóa user khỏi Supabase Auth
   const { error: authError } = await client.auth.admin.deleteUser(userId);
 
   if (authError) {
@@ -236,28 +214,10 @@ const updateUserRole = async (userId, roleId, action) => {
   throw new AppError("Hành động không hợp lệ. Chỉ chấp nhận 'grant' hoặc 'revoke'", 400);
 };
 
-/**
- * Lấy danh sách roles có trong hệ thống.
- */
-const getAllRoles = async () => {
-  const client = createAdminClient();
-
-  const { data, error } = await client.from("roles").select("id, name");
-
-  if (error) {
-    console.error("[user.model] getAllRoles error:", error);
-    throw new AppError("Không thể lấy danh sách vai trò", 500);
-  }
-
-  return data || [];
-};
-
 module.exports = {
   getAllUsers,
-  countUsersByRole,
   updateUsersStatus,
   getUserById,
   deleteUserPermanently,
   updateUserRole,
-  getAllRoles,
 };

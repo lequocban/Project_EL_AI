@@ -149,7 +149,7 @@ const createLesson = async ({ title, content, vi_translation, status, createdBy 
  * Chỉ chủ sở hữu mới được cập nhật.
  */
 const updateLesson = async (id, userId, { title, content, vi_translation, status }) => {
-  const lesson = await readingLessonRepository.findById(id);
+  const lesson = await readingLessonRepository.readingLessonFindById(id);
 
   if (!lesson) {
     throw new AppError("Không tìm thấy bài luyện đọc", 404);
@@ -195,7 +195,7 @@ const updateLesson = async (id, userId, { title, content, vi_translation, status
  * Chỉ chủ sở hữu mới được xóa.
  */
 const deleteLesson = async (id, userId) => {
-  const lesson = await readingLessonRepository.findById(id);
+  const lesson = await readingLessonRepository.readingLessonFindById(id);
 
   if (!lesson) {
     throw new AppError("Không tìm thấy bài luyện đọc", 404);
@@ -205,7 +205,7 @@ const deleteLesson = async (id, userId) => {
     throw new AppError("Bạn không có quyền xóa bài luyện đọc này", 403);
   }
 
-  const deleted = await readingLessonRepository.softDelete(id);
+  const deleted = await readingLessonRepository.readingLessonSoftDelete(id);
   return formatLesson(deleted);
 };
 
@@ -215,7 +215,7 @@ const deleteLesson = async (id, userId) => {
  * Bài private / req_public: chỉ chủ sở hữu xem được.
  */
 const getDetail = async (id, userId) => {
-  const lesson = await readingLessonRepository.findById(id);
+  const lesson = await readingLessonRepository.readingLessonFindById(id);
 
   if (!lesson) {
     throw new AppError("Không tìm thấy bài luyện đọc", 404);
@@ -255,7 +255,7 @@ const getMyLessons = async (userId, { keyword, page, limit, sortField, sortOrder
  * Chỉ bài ở trạng thái 'private' mới được yêu cầu.
  */
 const requestPublic = async (id, userId) => {
-  const lesson = await readingLessonRepository.findById(id);
+  const lesson = await readingLessonRepository.readingLessonFindById(id);
 
   if (!lesson) {
     throw new AppError("Không tìm thấy bài luyện đọc", 404);
@@ -269,7 +269,7 @@ const requestPublic = async (id, userId) => {
     throw new AppError("Chỉ bài luyện đọc ở trạng thái private mới có thể yêu cầu public", 400);
   }
 
-  const updated = await readingLessonRepository.updateStatus(id, "req_public");
+  const updated = await readingLessonRepository.readingLessonUpdateStatus(id, "req_public");
   return formatLesson(updated);
 };
 
@@ -279,7 +279,7 @@ const requestPublic = async (id, userId) => {
  * Chỉ chủ sở hữu mới thực hiện được.
  */
 const makePrivate = async (id, userId) => {
-  const lesson = await readingLessonRepository.findById(id);
+  const lesson = await readingLessonRepository.readingLessonFindById(id);
 
   if (!lesson) {
     throw new AppError("Không tìm thấy bài luyện đọc", 404);
@@ -293,7 +293,7 @@ const makePrivate = async (id, userId) => {
     throw new AppError("Bài luyện đọc đã ở chế độ riêng tư", 400);
   }
 
-  const updated = await readingLessonRepository.updateStatus(id, "private");
+  const updated = await readingLessonRepository.readingLessonUpdateStatus(id, "private");
   return formatLesson(updated);
 };
 
@@ -311,7 +311,7 @@ const getPendingPublicLessons = async ({ keyword, page, limit }) => {
  * Duyệt public bài luyện đọc (content_manager/admin).
  */
 const approvePublic = async (id) => {
-  const lesson = await readingLessonRepository.findById(id);
+  const lesson = await readingLessonRepository.readingLessonFindById(id);
 
   if (!lesson) {
     throw new AppError("Không tìm thấy bài luyện đọc", 404);
@@ -321,7 +321,7 @@ const approvePublic = async (id) => {
     throw new AppError("Bài luyện đọc không ở trạng thái chờ duyệt", 400);
   }
 
-  const updated = await readingLessonRepository.updateStatus(id, "public");
+  const updated = await readingLessonRepository.readingLessonUpdateStatus(id, "public");
   return formatLesson(updated);
 };
 
@@ -329,7 +329,7 @@ const approvePublic = async (id) => {
  * Từ chối duyệt public bài luyện đọc (content_manager/admin).
  */
 const rejectPublic = async (id) => {
-  const lesson = await readingLessonRepository.findById(id);
+  const lesson = await readingLessonRepository.readingLessonFindById(id);
 
   if (!lesson) {
     throw new AppError("Không tìm thấy bài luyện đọc", 404);
@@ -339,7 +339,7 @@ const rejectPublic = async (id) => {
     throw new AppError("Bài luyện đọc không ở trạng thái chờ duyệt", 400);
   }
 
-  const updated = await readingLessonRepository.updateStatus(id, "private");
+  const updated = await readingLessonRepository.readingLessonUpdateStatus(id, "private");
   return formatLesson(updated);
 };
 
@@ -354,7 +354,7 @@ const setStatus = async (id, userId, newStatus) => {
     throw new AppError("Trạng thái không hợp lệ. Chỉ chấp nhận: private, public", 400);
   }
 
-  const lesson = await readingLessonRepository.findById(id);
+  const lesson = await readingLessonRepository.readingLessonFindById(id);
 
   if (!lesson) {
     throw new AppError("Không tìm thấy bài luyện đọc", 404);
@@ -368,7 +368,7 @@ const setStatus = async (id, userId, newStatus) => {
     throw new AppError("Bài luyện đọc đã ở trạng thái này", 400);
   }
 
-  const updated = await readingLessonRepository.updateStatus(id, newStatus);
+  const updated = await readingLessonRepository.readingLessonUpdateStatus(id, newStatus);
   return formatLesson(updated);
 };
 

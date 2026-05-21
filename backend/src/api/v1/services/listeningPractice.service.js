@@ -39,7 +39,7 @@ const gradeAnswer = (userAnswer, correctAnswer) => {
  * 5. Lưu kết quả vào bảng listening_practice
  */
 const submitListeningPractice = async (userId, lessonId, answers) => {
-  const lesson = await listeningLessonRepository.findById(lessonId);
+  const lesson = await listeningLessonRepository.listeningLessonFindById(lessonId);
   if (!lesson) {
     throw new AppError("Không tìm thấy bài luyện nghe", 404);
   }
@@ -117,7 +117,7 @@ const getPracticeHistory = async (userId, { page = 1, limit = 10, sortField, sor
     data.map(async (item) => {
       let lessonTitle = null;
       if (item.lesson_id) {
-        const lesson = await listeningLessonRepository.findById(item.lesson_id);
+        const lesson = await listeningLessonRepository.listeningLessonFindById(item.lesson_id);
         lessonTitle = lesson?.title || null;
       }
       return {
@@ -138,7 +138,7 @@ const getPracticeHistory = async (userId, { page = 1, limit = 10, sortField, sor
  * Chỉ chủ nhân mới được xem chi tiết bài làm của mình.
  */
 const getPracticeDetail = async (practiceId, userId) => {
-  const practice = await listeningPracticeRepository.findById(practiceId);
+  const practice = await listeningPracticeRepository.listeningPracticeFindById(practiceId);
   if (!practice) {
     throw new AppError("Không tìm thấy kết quả luyện nghe", 404);
   }
@@ -147,7 +147,7 @@ const getPracticeDetail = async (practiceId, userId) => {
     throw new AppError("Bạn không có quyền xem kết quả này", 403);
   }
 
-  const lesson = await listeningLessonRepository.findById(practice.lesson_id);
+  const lesson = await listeningLessonRepository.listeningLessonFindById(practice.lesson_id);
   const questions = await listeningQuestionRepository.findByLessonId(practice.lesson_id);
 
   let userAnswers = [];

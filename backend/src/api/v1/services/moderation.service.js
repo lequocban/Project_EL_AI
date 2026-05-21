@@ -132,7 +132,7 @@ const verifyContentOwnership = async (contentType, contentId, userId) => {
 };
 
 const verifyVocabularySetOwnership = async (setId, userId) => {
-  const set = await vocabularySetRepository.findById(setId);
+  const set = await vocabularySetRepository.vocabularySetFindById(setId);
   if (!set) {
     return { exists: false, isOwner: false, isPrivate: false, currentStatus: null, content: null };
   }
@@ -149,7 +149,7 @@ const verifyReadingLessonOwnership = async (lessonId, userId) => {
   if (!readingLessonRepository) {
     return { exists: false, isOwner: false, isPrivate: false, currentStatus: null, content: null };
   }
-  const lesson = await readingLessonRepository.findById(lessonId);
+  const lesson = await readingLessonRepository.readingLessonFindById(lessonId);
   if (!lesson) {
     return { exists: false, isOwner: false, isPrivate: false, currentStatus: null, content: null };
   }
@@ -166,7 +166,7 @@ const verifyListeningLessonOwnership = async (lessonId, userId) => {
   if (!listeningLessonRepository) {
     return { exists: false, isOwner: false, isPrivate: false, currentStatus: null, content: null };
   }
-  const lesson = await listeningLessonRepository.findById(lessonId);
+  const lesson = await listeningLessonRepository.listeningLessonFindById(lessonId);
   if (!lesson) {
     return { exists: false, isOwner: false, isPrivate: false, currentStatus: null, content: null };
   }
@@ -191,13 +191,13 @@ const getContentInfo = async (contentType, contentId) => {
     }
     case "reading_lesson": {
       if (!readingLessonRepository) return null;
-      const lesson = await readingLessonRepository.findById(contentId);
+      const lesson = await readingLessonRepository.readingLessonFindById(contentId);
       if (!lesson) return null;
       return { id: lesson.id, title: lesson.title };
     }
     case "listening_lesson": {
       if (!listeningLessonRepository) return null;
-      const lesson = await listeningLessonRepository.findById(contentId);
+      const lesson = await listeningLessonRepository.listeningLessonFindById(contentId);
       if (!lesson) return null;
       return { id: lesson.id, title: lesson.title };
     }

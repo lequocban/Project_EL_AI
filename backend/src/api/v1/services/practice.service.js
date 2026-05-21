@@ -48,7 +48,7 @@ const gradeTextAnswer = (userAnswer, correctAnswer) => {
  * - listen_write: Nghe audio → nhập từ tiếng Anh
  */
 const submitPractice = async (userId, setId, type, timeSpent, answers) => {
-  const vocabularySet = await vocabularySetRepository.findById(setId);
+  const vocabularySet = await vocabularySetRepository.vocabularySetFindById(setId);
   if (!vocabularySet) {
     throw new AppError("Không tìm thấy bộ từ vựng", 404);
   }
