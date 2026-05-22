@@ -107,7 +107,7 @@ export default function Home() {
   const recentReading = [...readingLessons].reverse().slice(0, cols);
 
   return (
-    <div className="min-h-screen bg-background p-6 lg:p-8">
+    <div className="min-h-screen bg-background p-6 lg:p-8 flex flex-col">
       <div className="mb-8">
         <h1 className="text-2xl lg:text-3xl font-black text-foreground">
           Chào {user?.full_name?.split(" ").slice(-1)[0] || "bạn"}
@@ -119,26 +119,41 @@ export default function Home() {
 
       {/* Thống kê nhanh & Mẹo học tập */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-        <div className="bg-gradient-to-br from-orange-400 to-amber-500 rounded-2xl p-6 text-white shadow-lg flex flex-col justify-center items-center text-center">
-          <p className="text-orange-100 font-semibold text-sm mb-3">Thống kê của bạn</p>
-          <div className="flex gap-6">
-            <div className="text-center">
-              <p className="text-2xl font-black">{mySets.length}</p>
-              <p className="text-xs text-orange-100 font-medium">Bộ từ</p>
-            </div>
-            <div className="text-center">
-              <p className="text-2xl font-black">{listeningLessons.length}</p>
-              <p className="text-xs text-orange-100 font-medium">Bài nghe</p>
-            </div>
-            <div className="text-center">
-              <p className="text-2xl font-black">{readingLessons.length}</p>
-              <p className="text-xs text-orange-100 font-medium">Bài đọc</p>
+        <div className="relative overflow-hidden bg-gradient-to-br from-rose-500 via-pink-500 to-purple-600 rounded-2xl p-6 text-white shadow-xl">
+          <div className="absolute -top-6 -right-6 w-32 h-32 bg-pink-300/20 rounded-full blur-2xl" />
+          <div className="absolute -bottom-8 -left-8 w-40 h-40 bg-purple-300/20 rounded-full blur-2xl" />
+          <div className="absolute top-1/2 right-12 w-16 h-16 bg-white/5 rounded-full blur-xl" />
+          <div className="relative z-10 flex flex-col items-center text-center">
+            <p className="text-pink-100 font-semibold text-sm mb-4">📊 Thống kê của bạn</p>
+            <div className="flex gap-6 items-center">
+              <div className="text-center">
+                <p className="text-3xl font-black drop-shadow-lg">{mySets.length}</p>
+                <p className="text-xs text-pink-200 font-medium mt-1">📚 Bộ từ</p>
+              </div>
+              <div className="w-px h-10 bg-white/20" />
+              <div className="text-center">
+                <p className="text-3xl font-black drop-shadow-lg">{listeningLessons.length}</p>
+                <p className="text-xs text-pink-200 font-medium mt-1">🎧 Bài nghe</p>
+              </div>
+              <div className="w-px h-10 bg-white/20" />
+              <div className="text-center">
+                <p className="text-3xl font-black drop-shadow-lg">{readingLessons.length}</p>
+                <p className="text-xs text-pink-200 font-medium mt-1">📖 Bài đọc</p>
+              </div>
             </div>
           </div>
         </div>
-        <div className="bg-gradient-to-br from-violet-500 to-indigo-600 rounded-2xl p-6 text-white shadow-lg flex flex-col justify-center items-start">
-          <p className="text-violet-200 font-semibold text-sm mb-2">Mẹo học tập</p>
-          <p className="text-base font-bold leading-relaxed">{learningTips[Math.floor(Math.random() * learningTips.length)]}</p>
+        <div className="relative overflow-hidden bg-gradient-to-br from-emerald-400 via-teal-500 to-cyan-600 rounded-2xl p-6 text-white shadow-xl">
+          <div className="absolute -top-6 -right-6 w-32 h-32 bg-emerald-300/20 rounded-full blur-2xl" />
+          <div className="absolute -bottom-8 -left-8 w-40 h-40 bg-cyan-300/20 rounded-full blur-2xl" />
+          <div className="relative z-10 flex flex-col items-start">
+            <p className="text-emerald-100 font-semibold text-sm mb-3">💡 Mẹo học tập</p>
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20 w-full">
+              <p className="text-base font-bold leading-relaxed">
+                {learningTips[Math.floor(Math.random() * learningTips.length)]}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -273,7 +288,7 @@ export default function Home() {
         </div>
       )}
 
-      <Footer />
+      <Footer className="mt-auto bg-muted" />
     </div>
   );
 }

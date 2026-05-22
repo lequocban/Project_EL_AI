@@ -1,20 +1,22 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { authApi } from "@/api/authApi";
 import { useAuth } from "@/lib/AuthContext";
+import { statsApi } from "@/api/client/statsApi";
+import { moderationApi } from "@/api/client/moderationApi";
 import {
   BookOpen,
+  BookText,
   Calendar,
   Eye,
   EyeOff,
-  Flame,
+  Headphones,
   KeyRound,
   LogOut,
   Mail,
   Pencil,
-  Star,
+  ShieldCheck,
   User,
   X,
-  Zap,
 } from "lucide-react";
 
 // Chuyển đổi ngày tháng từ API sang định dạng input date
@@ -60,6 +62,27 @@ export default function Profile() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [stats, setStats] = useState(null);
+  const [moderationTotal, setModerationTotal] = useState(0);
+  const [loadingStats, setLoadingStats] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [learningStats, modData] = await Promise.all([
+          statsApi.getLearningStats(),
+          moderationApi.getMyRequests({ limit: 1 }),
+        ]);
+        setStats(learningStats);
+        setModerationTotal(modData.total || 0);
+      } catch {
+        // fallback
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   if (!authUser) return null;
 
@@ -144,7 +167,7 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen bg-background p-6 lg:p-8">
-      <div className="max-w-lg mx-auto">
+      <div className="max-w-2xl mx-auto">
         <h1 className="text-2xl font-black text-foreground mb-6">👤 Hồ sơ</h1>
 
         {/* Avatar & Name */}
@@ -167,36 +190,50 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* Stats */}
+        {/* Learning Stats */}
         <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="bg-gradient-to-br from-orange-400 to-amber-500 rounded-2xl p-4 text-white shadow-md">
-            <Flame className="w-6 h-6 mb-2" />
-            <p className="text-3xl font-black">0</p>
-            <p className="text-orange-100 text-sm font-semibold">
-              Chuỗi hiện tại (Chưa có dữ liệu)
+          <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-4 text-white shadow-md hover:shadow-lg transition-shadow">
+            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center mb-3">
+              <BookOpen className="w-5 h-5" />
+            </div>
+            <p className="text-3xl font-black">
+              {loadingStats ? "..." : (stats?.vocabulary?.ownedCount ?? 0)}
+            </p>
+            <p className="text-violet-200 text-sm font-semibold">
+              Bộ từ vựng
             </p>
           </div>
-          <div className="bg-gradient-to-br from-violet-500 to-indigo-600 rounded-2xl p-4 text-white shadow-md">
-            <Zap className="w-6 h-6 text-yellow-300 mb-2" />
-            <p className="text-3xl font-black">0</p>
-            <p className="text-violet-200 text-sm font-semibold">Tổng XP (Chưa có dữ liệu)</p>
-          </div>
-          <div className="bg-white rounded-2xl border border-border p-4">
-            <BookOpen className="w-6 h-6 text-primary mb-2" />
-            <p className="text-3xl font-black text-foreground">
-              0
+          <div className="bg-gradient-to-br from-emerald-400 to-teal-500 rounded-2xl p-4 text-white shadow-md hover:shadow-lg transition-shadow">
+            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center mb-3">
+              <Headphones className="w-5 h-5" />
+            </div>
+            <p className="text-3xl font-black">
+              {loadingStats ? "..." : (stats?.listening?.ownedCount ?? 0)}
             </p>
-            <p className="text-muted-foreground text-sm font-semibold">
-              Bộ từ vựng (Chưa có dữ liệu)
+            <p className="text-emerald-100 text-sm font-semibold">
+              Bài nghe
             </p>
           </div>
-          <div className="bg-white rounded-2xl border border-border p-4">
-            <Star className="w-6 h-6 text-yellow-500 mb-2" />
-            <p className="text-3xl font-black text-foreground">
-              0
+          <div className="bg-gradient-to-br from-sky-400 to-blue-500 rounded-2xl p-4 text-white shadow-md hover:shadow-lg transition-shadow">
+            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center mb-3">
+              <BookText className="w-5 h-5" />
+            </div>
+            <p className="text-3xl font-black">
+              {loadingStats ? "..." : (stats?.reading?.ownedCount ?? 0)}
             </p>
-            <p className="text-muted-foreground text-sm font-semibold">
-              Streak dài nhất (Chưa có dữ liệu)
+            <p className="text-sky-100 text-sm font-semibold">
+              Bài đọc
+            </p>
+          </div>
+          <div className="bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl p-4 text-white shadow-md hover:shadow-lg transition-shadow">
+            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center mb-3">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <p className="text-3xl font-black">
+              {loadingStats ? "..." : moderationTotal}
+            </p>
+            <p className="text-amber-100 text-sm font-semibold">
+              Yêu cầu kiểm duyệt
             </p>
           </div>
         </div>

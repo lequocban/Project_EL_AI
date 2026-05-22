@@ -71,7 +71,7 @@ const gradientText = {
 // Trang giới thiệu sản phẩm cho người dùng chưa đăng nhập
 export default function Landing() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Navbar */}
       <nav className="bg-white border-b border-border px-6 py-4 flex items-center justify-between sticky top-0 z-10 shadow-sm">
         <div className="flex items-center gap-2">
@@ -250,7 +250,7 @@ export default function Landing() {
         </div>
       </section>
 
-      <Footer />
+      <Footer className="mt-auto bg-muted" />
     </div>
   );
 }
