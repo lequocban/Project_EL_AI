@@ -264,7 +264,7 @@ export default function ExamGame({ words, onBack, examType: initialExamType = nu
         });
         const detailsKey = "vocab_practice_details";
         const existing = JSON.parse(localStorage.getItem(detailsKey) || "{}");
-        existing[result.practiceId] = {
+        existing[result.id ?? result.practiceId] = {
           score: result.score ?? 0,
           totalQuestions: totalFromApi,
           correctAnswers:

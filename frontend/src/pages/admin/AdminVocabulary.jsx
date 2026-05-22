@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
 import {
   BookOpen,
-  Plus,
+
   Search,
   Loader2,
   Eye,
-  Edit2,
-  Trash2,
+  Lock,
   CheckCircle,
   XCircle,
   ChevronLeft,
@@ -16,6 +15,17 @@ import {
   Globe,
   FileText,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { adminApi } from "@/api/admin";
 import { vocabularyApi } from "@/api/client/vocabularyApi";
 
@@ -100,16 +110,15 @@ export default function AdminVocabulary() {
     }
   };
 
-  // Xóa bộ từ vựng
-  const handleDelete = async (id) => {
-    if (!window.confirm("Bạn có chắc muốn xóa bộ từ vựng này?")) return;
+  // Khoá bộ từ vựng (chuyển từ công khai về riêng tư)
+  const handleLock = async (id) => {
     setActionLoading(id);
     try {
-      await adminApi.deleteVocabSet(id);
+      await vocabularyApi.makePrivate(id);
       setAllSets((prev) => prev.filter((s) => s.id !== id));
       setAllTotal((prev) => prev - 1);
     } catch (err) {
-      setError(err.message || "Xóa thất bại");
+      setError(err.message || "Không thể chuyển bộ từ về riêng tư");
     } finally {
       setActionLoading(null);
     }
@@ -155,13 +164,7 @@ export default function AdminVocabulary() {
           </h1>
           <p className="text-slate-500 mt-1 font-medium">Duyệt và quản lý bộ từ vựng</p>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-md hover:opacity-90 transition-all"
-        >
-          <Plus className="w-4 h-4" />
-          Thêm bộ từ
-        </button>
+
       </div>
 
       {/* Tabs */}
@@ -327,24 +330,29 @@ export default function AdminVocabulary() {
                       >
                         <Eye className="w-4 h-4" />
                       </button>
-                      <button
-                        onClick={() => {
-                          setEditingSet(set);
-                          setShowEditModal(true);
-                        }}
-                        className="p-2 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
-                        title="Sửa"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(set.id)}
-                        disabled={actionLoading === set.id}
-                        className="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors disabled:opacity-50"
-                        title="Xóa"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <button
+                            disabled={actionLoading === set.id}
+                            className="p-2 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors disabled:opacity-50"
+                            title="Khoá"
+                          >
+                            <Lock className="w-4 h-4" />
+                          </button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Chuyển về Riêng tư</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Bạn có chắc chắn muốn chuyển bộ từ vựng này về chế độ Riêng tư không?
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Hủy</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleLock(set.id)}>Xác nhận</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </td>
                 </tr>

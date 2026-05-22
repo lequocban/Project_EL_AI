@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import {
   Headphones,
-  Plus,
   Search,
   Loader2,
   Eye,
@@ -159,13 +158,6 @@ export default function AdminListening() {
           </h1>
           <p className="text-slate-500 mt-1 font-medium">Duyệt và quản lý bài luyện nghe</p>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-teal-500 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-md hover:opacity-90 transition-all"
-        >
-          <Plus className="w-4 h-4" />
-          Thêm bài nghe
-        </button>
       </div>
 
       {/* Tabs */}
@@ -252,11 +244,6 @@ export default function AdminListening() {
                   <tr key={lesson.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
                     <td className="px-5 py-4">
                       <div className="font-bold text-slate-900">{lesson.title}</div>
-                      {lesson.audioUrl && (
-                        <div className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
-                          <FileAudio className="w-3 h-3" /> {lesson.audioUrl}
-                        </div>
-                      )}
                     </td>
                     <td className="px-5 py-4">
                       <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-amber-50 text-amber-600 border border-amber-200">
@@ -312,11 +299,6 @@ export default function AdminListening() {
                 <tr key={lesson.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
                   <td className="px-5 py-4">
                     <div className="font-bold text-slate-900">{lesson.title}</div>
-                    {lesson.audioUrl && (
-                      <div className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
-                        <FileAudio className="w-3 h-3" /> {lesson.audioUrl}
-                      </div>
-                    )}
                   </td>
                   <td className="px-5 py-4">
                     <span className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full ${
