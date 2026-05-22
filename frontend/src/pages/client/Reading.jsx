@@ -677,6 +677,7 @@ export function ReadingStarter({ lesson, onBack }) {
   const [isMakingPrivate, setIsMakingPrivate] = useState(false);
   const [actionMessage, setActionMessage] = useState("");
   const [showModerationDialog, setShowModerationDialog] = useState(false);
+  const [moderationStatus, setModerationStatus] = useState(null);
 
   // State cho dialog Setting
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
@@ -696,11 +697,30 @@ export function ReadingStarter({ lesson, onBack }) {
       setActionMessage("");
       await readingApi.requestModeration(lesson.id);
       setActionMessage("Đã gửi yêu cầu kiểm duyệt! Admin sẽ xem xét và phản hồi.");
+      setModerationStatus("pending");
     } catch (err) {
       setActionMessage(`Lỗi: ${err.message || "Không thể gửi yêu cầu kiểm duyệt"}`);
       setIsRequestingPublic(false);
     }
   };
+
+  // Fetch moderation status khi component mount
+  useEffect(() => {
+    const fetchModerationStatus = async () => {
+      try {
+        const modData = await readingApi.getMyModerationRequests({ limit: 50 });
+        const relatedRequest = modData.items.find(
+          (req) => String(req.contentId) === String(lesson.id)
+        );
+        if (relatedRequest) {
+          setModerationStatus(relatedRequest.status);
+        }
+      } catch (err) {
+        console.error("Không thể tải trạng thái kiểm duyệt:", err);
+      }
+    };
+    fetchModerationStatus();
+  }, [lesson.id]);
 
   // Chuyển bài luyện đọc về chế độ riêng tư
   const handleMakePrivate = async () => {
@@ -1002,11 +1022,49 @@ export function ReadingStarter({ lesson, onBack }) {
                   )}
                   Riêng tư
                 </button>
-              ) : lesson.is_pending ? (
+              ) : moderationStatus === "pending" ? (
                 <span className="flex items-center gap-1.5 bg-amber-50 text-amber-600 px-3 py-1.5 rounded-lg text-xs font-bold border border-amber-200">
                   <Clock className="w-3.5 h-3.5" />
                   Chờ duyệt
                 </span>
+              ) : (moderationStatus === "approved" || moderationStatus === "rejected") ? (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <button
+                      disabled={isMakingPrivate || isRequestingPublic}
+                      className="flex items-center gap-1.5 bg-violet-50 text-violet-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-violet-100 transition-all border border-violet-200 disabled:opacity-50"
+                      title="Gửi lại yêu cầu kiểm duyệt"
+                    >
+                      {isRequestingPublic ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Eye className="w-3.5 h-3.5" />
+                      )}
+                      Gửi lại yêu cầu
+                    </button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Xác nhận gửi lại yêu cầu kiểm duyệt</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Bạn có muốn gửi lại yêu cầu kiểm duyệt cho bài luyện đọc này không? Yêu cầu mới sẽ được hiển thị trên trang Kiểm duyệt của admin.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Hủy</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleConfirmModeration} disabled={isRequestingPublic}>
+                        {isRequestingPublic ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                            Đang gửi...
+                          </>
+                        ) : (
+                          "Gửi lại yêu cầu"
+                        )}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               ) : (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>

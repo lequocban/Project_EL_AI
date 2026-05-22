@@ -11,6 +11,7 @@ import {
   BarChart2,
   User,
   TrendingUp,
+  ShieldCheck,
 } from "lucide-react";
 import { useState } from "react";
 import { isNavigationPrevented, triggerNavigationConfirm, resetNavigating, useNavigationGuardListener } from "@/lib/navigationGuard";
@@ -45,6 +46,12 @@ const navItems = [
     label: "Luyện đọc",
     icon: FileText,
     activeClass: "from-orange-500 to-amber-500",
+  },
+  {
+    path: "/moderation",
+    label: "Kiểm duyệt",
+    icon: ShieldCheck,
+    activeClass: "from-violet-500 to-purple-500",
   },
   {
     path: "/stats",

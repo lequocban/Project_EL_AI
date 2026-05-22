@@ -17,6 +17,7 @@ export default function VocabularyDetail() {
   const [error, setError] = useState("");
   const [favorites, setFavorites] = useState([]);
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
+  const [moderationStatus, setModerationStatus] = useState(null);
 
   useEffect(() => {
     const fetchFavorites = async () => {
@@ -61,6 +62,20 @@ export default function VocabularyDetail() {
       try {
         const data = await vocabularyApi.getSetById(id);
         setSet(data);
+
+        // Fetch moderation requests để lấy trạng thái kiểm duyệt mới nhất
+        try {
+          const modData = await vocabularyApi.getMyModerationRequests({ limit: 50 });
+          // Tìm request liên quan đến bộ từ vựng này
+          const relatedRequest = modData.items.find(
+            (req) => String(req.contentId) === String(id)
+          );
+          if (relatedRequest) {
+            setModerationStatus(relatedRequest.status);
+          }
+        } catch (err) {
+          console.error("Không thể tải trạng thái kiểm duyệt:", err);
+        }
       } catch (err) {
         setError(err.message || "Không thể tải bộ từ vựng");
       } finally {
@@ -102,6 +117,8 @@ export default function VocabularyDetail() {
       onBack={() => navigate("/vocabulary")}
       favorites={favorites}
       onToggleFavorite={toggleFavorite}
+      moderationStatus={moderationStatus}
+      onModerationStatusChange={setModerationStatus}
     />
   );
 }

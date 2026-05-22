@@ -16,7 +16,6 @@ import {
   ChevronDown,
   SortAsc,
   Search,
-  ShieldCheck,
   Globe,
   Loader2,
   Eye,
@@ -78,7 +77,7 @@ const MODES = [
 ];
 
 // Component chi tiết bộ từ vựng với các chế độ học tập và quản lý từ
-export default function SetDetail({ set, onBack, favorites = [], onToggleFavorite }) {
+export default function SetDetail({ set, onBack, favorites = [], onToggleFavorite, moderationStatus = null, onModerationStatusChange }) {
   const [allWords, setAllWords] = useState([]);
   const [words, setWords] = useState([]);
   const [showAddWord, setShowAddWord] = useState(false);
@@ -403,6 +402,10 @@ export default function SetDetail({ set, onBack, favorites = [], onToggleFavorit
       setActionMessage("");
       await vocabularyApi.requestModeration(set.id);
       setActionMessage("Đã gửi yêu cầu kiểm duyệt! Admin sẽ xem xét và phản hồi.");
+      // Cập nhật trạng thái thành pending
+      if (typeof onModerationStatusChange === "function") {
+        onModerationStatusChange("pending");
+      }
     } catch (err) {
       setActionMessage(`Lỗi: ${err.message || "Không thể gửi yêu cầu kiểm duyệt"}`);
       setIsRequestingPublic(false);
@@ -601,11 +604,49 @@ export default function SetDetail({ set, onBack, favorites = [], onToggleFavorit
                 <Globe className="w-4 h-4" />
                 Công khai
               </span>
-            ) : set.is_pending ? (
+            ) : moderationStatus === "pending" ? (
               <span className="flex items-center gap-1.5 bg-amber-50 text-amber-600 px-3 py-2 rounded-xl text-sm font-bold border border-amber-200">
                 <Clock className="w-4 h-4" />
                 Chờ duyệt
               </span>
+            ) : (moderationStatus === "approved" || moderationStatus === "rejected") ? (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <button
+                    disabled={isMakingPrivate || isRequestingPublic}
+                    className="flex items-center gap-1.5 bg-violet-50 text-violet-600 px-3 py-2 rounded-xl text-sm font-bold hover:bg-violet-100 transition-all border border-violet-200 disabled:opacity-50"
+                    title="Gửi lại yêu cầu kiểm duyệt"
+                  >
+                    {isRequestingPublic ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                    Gửi lại yêu cầu
+                  </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Xác nhận gửi lại yêu cầu kiểm duyệt</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Bạn có muốn gửi lại yêu cầu kiểm duyệt cho bộ từ vựng này không? Yêu cầu mới sẽ được hiển thị trên trang Kiểm duyệt của admin.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Hủy</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleConfirmModeration} disabled={isRequestingPublic}>
+                      {isRequestingPublic ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                          Đang gửi...
+                        </>
+                      ) : (
+                        "Gửi lại yêu cầu"
+                      )}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             ) : (
               <AlertDialog>
                 <AlertDialogTrigger asChild>

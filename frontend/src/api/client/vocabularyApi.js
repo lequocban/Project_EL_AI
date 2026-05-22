@@ -243,6 +243,24 @@ export const vocabularyApi = {
     });
   },
 
+  // Lấy danh sách yêu cầu kiểm duyệt của user hiện tại
+  getMyModerationRequests: async ({ page = 1, limit = 50, contentType = "vocabulary_set" } = {}) => {
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+    });
+    const response = await fetchWithAuth(`/api/v1/moderation-requests/my?${params}`, {
+      method: "GET",
+    });
+    const data = response.data || {};
+    return {
+      items: data.data || [],
+      total: data.total || 0,
+      page: data.page || page,
+      limit: data.limit || limit,
+    };
+  },
+
   // Chuyển bộ từ vựng về chế độ riêng tư
   makePrivate: async (setId) => {
     return fetchWithAuth(`${VOCABULARY_SET_URL}/${setId}/make-private`, {

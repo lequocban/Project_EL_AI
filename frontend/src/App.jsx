@@ -19,6 +19,7 @@ import ReadingDetail from "@/pages/client/ReadingDetail";
 import Stats from "@/pages/client/Stats";
 import Leaderboard from "@/pages/client/Leaderboard";
 import Profile from "@/pages/client/Profile";
+import Moderation from "@/pages/client/Moderation";
 import Landing from "@/pages/client/Landing";
 import Register from "@/pages/client/Register";
 import Login from "@/pages/client/Login";
@@ -112,9 +113,11 @@ const AuthenticatedApp = () => {
         <Route path="/stats" element={<Stats />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/moderation" element={<Moderation />} />
       </Route>
 
       {/* Admin routes - không yêu cầu client auth */}
+      <Route path="/admin" element={<Navigate to="/admin/login" replace />} />
       <Route path="/admin/login" element={<AdminLogin />} />
       <Route element={<AdminProtectedRoute />}>
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
