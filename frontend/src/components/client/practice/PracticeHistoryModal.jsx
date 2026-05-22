@@ -16,21 +16,35 @@ const VOCAB_TYPE_LABELS = {
   listen_write: "Listen write",
 };
 
+// Tính tổng số câu và số câu đúng từ wrongWords + score (khi API không trả về)
+const deriveStats = (wrongWords, score) => {
+  if (!Array.isArray(wrongWords)) return { totalQuestions: null, correctAnswers: null };
+  const wrongCount = wrongWords.length;
+  if (wrongCount === 0) return { totalQuestions: null, correctAnswers: null };
+  const total = score > 0 ? Math.round(wrongCount / (1 - score / 100)) : wrongCount;
+  return { totalQuestions: total, correctAnswers: total - wrongCount };
+};
+
 // Chuyển đổi dữ liệu lịch sử từ API theo loại bài tập
 const mapHistoryItem = (item, type) => {
   switch (type) {
     case "vocabulary":
+      const apiTotal = item.totalQuestions ?? item.total_questions ?? null;
+      const apiCorrect = item.correctAnswers ?? item.correct_answers ?? null;
+      const wrongWords = item.wrongWords ?? item.wrong_words ?? [];
+      const score = item.score ?? 0;
+      const derived = apiTotal != null ? {} : deriveStats(wrongWords, score);
       return {
         id: item.id,
-        score: item.score ?? 0,
+        score,
         type: item.type,
         timeSpent: item.timeSpent ?? item.time_spent ?? 0,
-        wrongWords: item.wrongWords ?? item.wrong_words ?? [],
+        wrongWords,
         completedAt: item.completedAt ?? item.complete_at ?? item.createdAt ?? item.created_at,
         // Backend trả về setTitle, map sang vocabularySetTitle để hiển thị
         title: item.vocabularySetTitle ?? item.setTitle ?? item.set_title ?? "Bài luyện tập",
-        totalQuestions: item.totalQuestions ?? item.total_questions ?? null,
-        correctAnswers: item.correctAnswers ?? item.correct_answers ?? null,
+        totalQuestions: apiTotal ?? derived.totalQuestions ?? null,
+        correctAnswers: apiCorrect ?? derived.correctAnswers ?? null,
       };
     case "listening":
     case "reading":
@@ -56,13 +70,20 @@ const mapPracticeDetail = (detail, type) => {
   if (!detail) return null;
   switch (type) {
     case "vocabulary":
+      const apiTotal = detail.totalQuestions ?? detail.total_questions ?? null;
+      const apiCorrect = detail.correctAnswers ?? detail.correct_answers ?? null;
+      const wrongWords = detail.wrongWords ?? detail.wrong_words ?? [];
+      const score = detail.score ?? 0;
+      const derived = apiTotal != null ? {} : deriveStats(wrongWords, score);
+      const totalQuestions = apiTotal ?? derived.totalQuestions ?? null;
+      const correctAnswers = apiCorrect ?? derived.correctAnswers ?? null;
       return {
-        score: detail.score ?? 0,
-        totalQuestions: detail.totalQuestions ?? detail.total_questions ?? 0,
-        correctAnswers: detail.correctAnswers ?? detail.correct_answers ?? 0,
-        wrongCount: detail.wrongCount ?? detail.wrong_count ?? detail.wrongAnswers ?? (detail.totalQuestions ?? 0) - (detail.correctAnswers ?? 0),
+        score,
+        totalQuestions,
+        correctAnswers,
+        wrongCount: detail.wrongCount ?? detail.wrong_count ?? detail.wrongAnswers ?? (totalQuestions != null && correctAnswers != null ? totalQuestions - correctAnswers : 0),
         timeSpent: detail.timeSpent ?? detail.time_spent ?? 0,
-        wrongWords: (detail.wrongWords ?? detail.wrong_words ?? []).map((w) => {
+        wrongWords: wrongWords.map((w) => {
           // Hỗ trợ cấu trúc từ localStorage (ExamGame)
           if (w.word !== undefined || w.correctAnswer !== undefined) {
             return {
@@ -158,9 +179,19 @@ export default function PracticeHistoryModal({ type, onClose, getHistory, getDet
           return;
         }
       } catch {}
-      // Fallback: dùng dữ liệu có sẵn trong history item
-      const mapped = mapPracticeDetail({ ...item }, type);
-      setDetail(mapped);
+      // Fallback: gọi API getDetail để lấy thông tin đầy đủ
+      try {
+        setDetailLoading(true);
+        const data = await getDetail(item.id);
+        const mappedDetail = mapPracticeDetail(data, type);
+        setDetail(mappedDetail);
+      } catch (err) {
+        // Nếu API lỗi, dùng dữ liệu có sẵn trong history item
+        const mapped = mapPracticeDetail({ ...item }, type);
+        setDetail(mapped);
+      } finally {
+        setDetailLoading(false);
+      }
       return;
     }
     // Listening/Reading: gọi API lấy chi tiết
@@ -177,7 +208,7 @@ export default function PracticeHistoryModal({ type, onClose, getHistory, getDet
     }
   };
 
-  // Định dạng ngày tháng theo kiểu Việt Nam
+  // Định dạng ngày tháng theo giờ Việt Nam (UTC+7)
   const formatDate = (dateStr) => {
     if (!dateStr) return "";
     const date = new Date(dateStr);
@@ -187,6 +218,7 @@ export default function PracticeHistoryModal({ type, onClose, getHistory, getDet
       year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
+      timeZone: "Asia/Ho_Chi_Minh",
     });
   };
 
@@ -249,14 +281,22 @@ export default function PracticeHistoryModal({ type, onClose, getHistory, getDet
                   <div className={`text-4xl font-black ${getScoreColor(detail.score || selectedItem.score)}`}>
                     {detail.score ?? selectedItem.score}%
                   </div>
-                  {detail.totalQuestions != null ? (
+                  {detail.totalQuestions != null && detail.totalQuestions > 0 ? (
                     <p className="text-xs text-muted-foreground">
                       {detail.correctAnswers ?? 0}/{detail.totalQuestions} đúng
                     </p>
-                  ) : detail.wrongWords != null ? (
+                  ) : detail.wrongWords?.length > 0 ? (
                     <p className="text-xs text-muted-foreground">
-                      {(detail.totalQuestions ?? detail.wrongWords?.length ?? 0) - (detail.wrongWords?.length ?? 0)}/
-                      {detail.totalQuestions ?? detail.wrongWords?.length ?? 0} đúng
+                      {(detail.totalQuestions ?? detail.wrongWords.length) - detail.wrongWords.length}/
+                      {detail.totalQuestions ?? detail.wrongWords.length} đúng
+                    </p>
+                  ) : detail.correctAnswers != null && !detail.wrongWords?.length ? (
+                    <p className="text-xs text-muted-foreground">
+                      {detail.correctAnswers}/{detail.correctAnswers} đúng
+                    </p>
+                  ) : (detail.score ?? selectedItem.score) === 100 && !detail.wrongWords?.length ? (
+                    <p className="text-xs text-muted-foreground">
+                      Tất cả đều đúng
                     </p>
                   ) : null}
                 </div>
@@ -270,14 +310,14 @@ export default function PracticeHistoryModal({ type, onClose, getHistory, getDet
             </div>
           )}
 
-          {/* Chi tiết câu hỏi (cho reading/listening) */}
           {detailLoading && (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
             </div>
           )}
 
-          {detail && !detailLoading && detail.questions && detail.questions.length > 0 && (
+          {/* Chi tiết từng câu (cho reading/listening) */}
+          {detail && !detailLoading && type !== "vocabulary" && detail.questions && detail.questions.length > 0 && (
             <div className="space-y-3">
               <h3 className="font-black text-sm text-foreground">Chi tiết từng câu</h3>
               {detail.questions.map((q, idx) => {
@@ -317,40 +357,8 @@ export default function PracticeHistoryModal({ type, onClose, getHistory, getDet
             </div>
           )}
 
-          {/* Chi tiết từ sai (cho vocabulary) */}
-          {detail && !detailLoading && detail.wrongWords && detail.wrongWords.length > 0 && (
-            <div className="space-y-3">
-              <h3 className="font-black text-sm text-foreground">Từ sai</h3>
-              {detail.wrongWords.map((w, idx) => (
-                <div
-                  key={w.wordId || w.word_id || idx}
-                  className="rounded-xl p-3 bg-red-50 border border-red-200"
-                >
-                  <div className="flex items-start gap-2">
-                    <XCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
-                    <div className="flex-1">
-                      <p className="text-sm font-bold text-foreground">
-                        {w.word || w.word_text || `Từ ${idx + 1}`}
-                      </p>
-                      {w.correctAnswer && (
-                        <p className="text-xs text-green-600 mt-1">
-                          Đáp án đúng: <span className="font-semibold">{w.correctAnswer}</span>
-                        </p>
-                      )}
-                      {(w.yourAnswer !== undefined || w.user_answer !== undefined || w.userAnswer !== undefined) && (
-                        <p className="text-xs text-red-500 mt-0.5">
-                          Bạn đã trả lời: <span className="font-semibold">{w.yourAnswer ?? w.user_answer ?? w.userAnswer}</span>
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Chi tiết từ sai từ questions (cấu trúc mới từ localStorage) */}
-          {detail && !detailLoading && detail.questions && detail.questions.length > 0 && (
+          {/* Chi tiết tất cả câu hỏi (cả đúng và sai) cho vocabulary */}
+          {detail && !detailLoading && type === "vocabulary" && detail.questions && detail.questions.length > 0 && (
             <div className="space-y-3">
               <h3 className="font-black text-sm text-foreground">Chi tiết bài làm</h3>
               {detail.questions.map((q, idx) => {
@@ -390,6 +398,38 @@ export default function PracticeHistoryModal({ type, onClose, getHistory, getDet
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* Chi tiết từ sai (chỉ hiển thị khi không có questions để tránh trùng lặp) */}
+          {detail && !detailLoading && detail.wrongWords && detail.wrongWords.length > 0 && !detail.questions?.length && (
+            <div className="space-y-3">
+              <h3 className="font-black text-sm text-foreground">Từ sai</h3>
+              {detail.wrongWords.map((w, idx) => (
+                <div
+                  key={w.wordId || w.word_id || idx}
+                  className="rounded-xl p-3 bg-red-50 border border-red-200"
+                >
+                  <div className="flex items-start gap-2">
+                    <XCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-foreground">
+                        {w.word || w.word_text || `Từ ${idx + 1}`}
+                      </p>
+                      {w.correctAnswer && (
+                        <p className="text-xs text-green-600 mt-1">
+                          Đáp án đúng: <span className="font-semibold">{w.correctAnswer}</span>
+                        </p>
+                      )}
+                      {(w.yourAnswer !== undefined || w.user_answer !== undefined || w.userAnswer !== undefined) && (
+                        <p className="text-xs text-red-500 mt-0.5">
+                          Bạn đã trả lời: <span className="font-semibold">{w.yourAnswer ?? w.user_answer ?? w.userAnswer}</span>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
@@ -478,9 +518,17 @@ export default function PracticeHistoryModal({ type, onClose, getHistory, getDet
                               )}
                             </p>
                           )}
-                          {item.timeSpent != null && item.totalQuestions == null && (
+                          {item.totalQuestions == null && item.timeSpent != null && (
                             <p className="text-xs text-muted-foreground mt-0.5">
-                              {Math.floor((item.timeSpent || 0) / 60)}p {(item.timeSpent || 0) % 60}gi
+                              {item.score === 100 ? "Tất cả đều đúng" : `${item.score}%`}
+                              <span className="ml-2">
+                                • {Math.floor((item.timeSpent || 0) / 60)}p {(item.timeSpent || 0) % 60}gi
+                              </span>
+                            </p>
+                          )}
+                          {item.totalQuestions == null && item.timeSpent == null && item.score === 100 && (
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              Tất cả đều đúng
                             </p>
                           )}
                         </div>

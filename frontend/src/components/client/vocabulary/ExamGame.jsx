@@ -246,6 +246,42 @@ export default function ExamGame({ words, onBack, examType: initialExamType = nu
       setScore(correctFromApi);
       setSubmitted(true);
       setPhase("results");
+
+      // Lưu kết quả chi tiết vào localStorage để PracticeHistoryModal hiển thị
+      try {
+        const questionsForStorage = updated.map((q) => {
+          const correctAnswer = !q.isCorrect && q.wrongInfo
+            ? q.wrongInfo.correct_answer
+            : q.correct;
+          return {
+            wordId: q.wordId,
+            word: q.word,
+            isCorrect: q.isCorrect,
+            userAnswer: q.userAnswer,
+            correctAnswer,
+            meaning: q.meaning,
+          };
+        });
+        const detailsKey = "vocab_practice_details";
+        const existing = JSON.parse(localStorage.getItem(detailsKey) || "{}");
+        existing[result.practiceId] = {
+          score: result.score ?? 0,
+          totalQuestions: totalFromApi,
+          correctAnswers:
+            result.correctCount ??
+            result.correct_count ??
+            result.correctAnswers ??
+            result.correct_answers ??
+            updated.filter((q) => q.isCorrect).length,
+          wrongWords: wrongWordsList,
+          timeSpent: elapsed,
+          completedAt: new Date().toISOString(),
+          questions: questionsForStorage,
+        };
+        localStorage.setItem(detailsKey, JSON.stringify(existing));
+      } catch (e) {
+        /* localStorage không khả dụng */
+      }
     } catch (err) {
       setSubmitError("Không thể nộp bài. Vui lòng thử lại.");
     } finally {

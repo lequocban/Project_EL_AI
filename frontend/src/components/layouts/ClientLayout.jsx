@@ -51,7 +51,7 @@ const navItems = [
     path: "/moderation",
     label: "Kiểm duyệt",
     icon: ShieldCheck,
-    activeClass: "from-violet-500 to-purple-500",
+    activeClass: "from-fuchsia-500 to-purple-600",
   },
   {
     path: "/stats",
