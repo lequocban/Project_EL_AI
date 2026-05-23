@@ -4,3 +4,4 @@ docs
 *.md
 
 !api-documentation.md
+.env
