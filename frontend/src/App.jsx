@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/toaster";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClientInstance } from "@/lib/query-client";
-import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from "react-router-dom";
 import PageNotFound from "@/lib/PageNotFound";
 import { AuthProvider, useAuth } from "@/lib/AuthContext";
 import { AdminAuthProvider, useAdminAuth } from "@/lib/AdminAuthContext";
@@ -62,7 +62,8 @@ const ProtectedRoute = () => {
 
 // Route bảo vệ yêu cầu xác thực admin
 const AdminProtectedRoute = () => {
-  const { isAuthenticated, isLoading } = useAdminAuth();
+  const { isAuthenticated, isLoading, admin } = useAdminAuth();
+  const location = useLocation();
 
   if (isLoading) {
     return <AdminLoadingScreen />;
@@ -70,6 +71,13 @@ const AdminProtectedRoute = () => {
 
   if (!isAuthenticated) {
     return <Navigate to="/admin/login" replace />;
+  }
+
+  // content_manager không được vào Tổng quan và Người dùng
+  const adminRoles = admin?.user?.roles || [];
+  const hasAdminRole = adminRoles.includes(3);
+  if (!hasAdminRole && (location.pathname === "/admin/dashboard" || location.pathname === "/admin/users")) {
+    return <Navigate to="/admin/vocabulary" replace />;
   }
 
   return <AdminLayout />;

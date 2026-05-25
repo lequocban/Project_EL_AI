@@ -90,10 +90,14 @@ export const AdminAuthProvider = ({ children }) => {
       }
       // Backend sẽ validate role bằng requireManagerOrAdmin
       const response = await adminApi.getMe();
-      const profile = response.data;
+      const { user } = response.data || {};
       setAdmin({
-        ...profile,
-        full_name: profile.userName,
+        ...response.data,
+        user: {
+          ...user,
+          roles: user?.roles || [],
+        },
+        full_name: user?.userName,
       });
       setIsAuthenticated(true);
       setError("");
@@ -114,15 +118,36 @@ export const AdminAuthProvider = ({ children }) => {
     setError("");
     try {
       const response = await adminApi.login(email, password);
+      const loginUser = response.data?.user;
       if (response.data?.accessToken) {
         localStorage.setItem(ADMIN_ACCESS_TOKEN_KEY, response.data.accessToken);
         if (response.data.expiresAt) {
           localStorage.setItem(ADMIN_TOKEN_EXPIRES_AT_KEY, String(response.data.expiresAt));
         }
       }
-      // Backend đã validate role bằng requireManagerOrAdmin
-      // Nếu role không phải admin/content_manager sẽ throw error
-      await checkAdminAuth();
+      // Set admin state NGAY từ login response (có sẵn roles)
+      setAdmin({
+        user: {
+          ...loginUser,
+          roles: loginUser?.roles || [],
+        },
+      });
+      setIsAuthenticated(true);
+      setError("");
+      // Fetch full profile ở background để cập nhật thêm chi tiết
+      adminApi.getMe().then((res) => {
+        const { user: fullUser } = res.data || {};
+        if (fullUser) {
+          setAdmin({
+            ...res.data,
+            user: {
+              ...fullUser,
+              roles: fullUser.roles || [],
+            },
+            full_name: fullUser.userName,
+          });
+        }
+      }).catch(() => {});
       return response;
     } catch (err) {
       clearAdminSession();

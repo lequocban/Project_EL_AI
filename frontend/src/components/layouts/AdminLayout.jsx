@@ -60,6 +60,15 @@ export default function AdminLayout() {
   const { admin, logout } = useAdminAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  // content_manager chỉ thấy 4 mục: Từ vựng, Luyện đọc, Luyện nghe, Kiểm duyệt
+  const adminRoles = admin?.user?.roles || [];
+  const hasAdminRole = adminRoles.includes(3);
+  const navItems = hasAdminRole
+    ? adminNavItems
+    : adminNavItems.filter(
+        item => item.path !== "/admin/dashboard" && item.path !== "/admin/users"
+      );
+
   // Xử lý đăng xuất admin và chuyển hướng về trang đăng nhập
   const handleLogout = async () => {
     await logout();
@@ -71,24 +80,25 @@ export default function AdminLayout() {
       {/* Sidebar Desktop */}
       <aside className="hidden lg:flex flex-col w-64 bg-white text-slate-900 fixed h-full z-20 shadow-lg shadow-slate-200/50 border-r border-slate-200">
         <div className="p-6 border-b border-slate-200">
-          <Link to="/admin/dashboard" className="flex items-center gap-2">
+          <Link to={hasAdminRole ? "/admin/dashboard" : "/admin/vocabulary"} className="flex items-center gap-2">
             <div className="w-9 h-9 bg-gradient-to-br from-violet-500 to-indigo-500 rounded-xl flex items-center justify-center">
               <Shield className="w-5 h-5 text-white" />
             </div>
             <div>
               <span className="text-xl font-black text-slate-900">Admin</span>
               <div className="text-xs text-slate-500 font-medium">
-                {admin?.role === "admin" ? "Quản trị viên" : "Quản lý nội dung"}
+                {hasAdminRole ? "Quản trị viên" : "Quản lý nội dung"}
               </div>
             </div>
           </Link>
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {adminNavItems.map(({ path, label, icon: Icon, gradient }) => {
+          {navItems.map(({ path, label, icon: Icon, gradient }) => {
+            const firstPath = navItems[0]?.path || "/admin/vocabulary";
             const active =
               location.pathname === path ||
-              (path !== "/admin/dashboard" && location.pathname.startsWith(path));
+              (path !== firstPath && location.pathname.startsWith(path));
             return (
               <Link
                 key={path}
@@ -125,7 +135,7 @@ export default function AdminLayout() {
 
       {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-white text-slate-900 border-b border-slate-200 px-4 py-3 flex items-center justify-between shadow-sm">
-        <Link to="/admin/dashboard" className="flex items-center gap-2">
+        <Link to={hasAdminRole ? "/admin/dashboard" : "/admin/vocabulary"} className="flex items-center gap-2">
           <div className="w-8 h-8 bg-gradient-to-br from-violet-500 to-indigo-500 rounded-xl flex items-center justify-center">
             <Shield className="w-4 h-4 text-white" />
           </div>
@@ -149,10 +159,11 @@ export default function AdminLayout() {
             className="bg-white text-slate-900 w-72 h-full p-4 pt-16 space-y-1 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            {adminNavItems.map(({ path, label, icon: Icon, gradient }) => {
+            {navItems.map(({ path, label, icon: Icon, gradient }) => {
+              const firstPath = navItems[0]?.path || "/admin/vocabulary";
               const active =
                 location.pathname === path ||
-                (path !== "/admin/dashboard" && location.pathname.startsWith(path));
+                (path !== firstPath && location.pathname.startsWith(path));
               return (
                 <Link
                   key={path}

@@ -1,17 +1,21 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { Shield, Mail, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { useAdminAuth } from "@/lib/AdminAuthContext";
 
 // Trang đăng nhập cho admin
 export default function AdminLogin() {
-  const navigate = useNavigate();
-  const { login } = useAdminAuth();
+  const { login, isAuthenticated } = useAdminAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Redirect ngay khi isAuthenticated chuyển sang true (sau khi state đã settled)
+  if (isAuthenticated) {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
 
   // Xử lý đăng nhập admin
   const handleSubmit = async (e) => {
@@ -20,7 +24,6 @@ export default function AdminLogin() {
     setIsLoading(true);
     try {
       await login(email, password);
-      navigate("/admin/dashboard");
     } catch (err) {
       setError(err.message || "Email hoặc mật khẩu không đúng");
     } finally {
