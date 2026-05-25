@@ -22,18 +22,19 @@ const SUPPORTED_CONTENT_TYPES = ["vocabulary_set", "reading_lesson", "listening_
 /**
  * Định dạng yêu cầu kiểm duyệt từ DB row.
  */
-const formatModerationRequest = (request, contentInfo = null) => ({
+const formatModerationRequest = (request, contentInfo = null, reviewerInfo = null) => ({
   id: request.id,
   contentType: request.content_type,
   contentId: request.content_id,
+  contentTitle: contentInfo?.title || null,
   status: request.status,
   requestedBy: request.requested_by,
   reviewedBy: request.reviewed_by || null,
+  reviewedByName: reviewerInfo?.user_name || reviewerInfo?.name || null,
   reviewedAt: request.reviewed_at || null,
   reason: request.reason || null,
   notes: request.notes || null,
   createdAt: request.created_at,
-  content: contentInfo || null,
 });
 
 /**
@@ -84,7 +85,7 @@ const createModerationRequest = async (accessToken, userId, { contentType, conte
     requestedBy: userId,
   });
 
-  return formatModerationRequest(request, contentOwnership.content);
+  return formatModerationRequest(request, contentOwnership.content, null);
 };
 
 /**
@@ -103,15 +104,24 @@ const getMyRequests = async (accessToken, userId, { keyword, status, page, limit
   const enrichedData = await Promise.all(
     (data || []).map(async (req) => {
       const contentInfo = await getContentInfo(req.content_type, req.content_id);
-      return formatModerationRequest(req, contentInfo);
+      let reviewerInfo = null;
+      if (req.reviewed_by) {
+        reviewerInfo = await moderationRepository.getUserProfileById(req.reviewed_by);
+      }
+      return formatModerationRequest(req, contentInfo, reviewerInfo);
     })
   );
 
+  const currentPage = page || 1;
+  const currentLimit = limit || 15;
+  const totalPages = Math.ceil((total || 0) / currentLimit);
+
   return {
-    data: enrichedData,
-    total,
-    page: page || 1,
-    limit: limit || 15,
+    items: enrichedData,
+    total: total || 0,
+    page: currentPage,
+    limit: currentLimit,
+    totalPages,
   };
 };
 

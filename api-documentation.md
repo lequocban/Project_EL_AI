@@ -2703,8 +2703,26 @@ GET /api/v1/moderation-requests/my?keyword=vocabulary_set&status=approved
         "contentType": "vocabulary_set",
         "contentId": "uuid",
         "contentTitle": "IELTS Vocabulary - Environment",
-        "status": "pending",
+        "status": "approved",
+        "reviewedBy": "uuid-của-người-duyệt",
+        "reviewedByName": "Nguyễn Văn Admin",
+        "reviewedAt": "2026-05-16T10:00:00Z",
+        "reason": null,
+        "notes": "Bổ sung thêm ví dụ cho một số từ",
         "createdAt": "2026-05-15T00:00:00Z"
+      },
+      {
+        "id": "uuid-2",
+        "contentType": "vocabulary_set",
+        "contentId": "uuid-2",
+        "contentTitle": "Business English - Meeting",
+        "status": "pending",
+        "reviewedBy": null,
+        "reviewedByName": null,
+        "reviewedAt": null,
+        "reason": null,
+        "notes": null,
+        "createdAt": "2026-05-17T00:00:00Z"
       }
     ],
     "total": 10,
@@ -2714,6 +2732,22 @@ GET /api/v1/moderation-requests/my?keyword=vocabulary_set&status=approved
   }
 }
 ```
+
+**Chi tiết trường phản hồi:**
+
+| Trường | Kiểu | Mô tả |
+|--------|------|--------|
+| `id` | uuid | ID yêu cầu kiểm duyệt |
+| `contentType` | string | Loại nội dung: `vocabulary_set`, `reading_lesson`, `listening_lesson` |
+| `contentId` | uuid | ID nội dung |
+| `contentTitle` | string | Tiêu đề nội dung (nếu có) |
+| `status` | string | Trạng thái: `pending` (đang chờ), `approved` (đã duyệt), `rejected` (đã từ chối) |
+| `reviewedBy` | uuid \| null | ID người duyệt |
+| `reviewedByName` | string \| null | Tên người duyệt (null nếu chưa được duyệt) |
+| `reviewedAt` | string \| null | Thời gian duyệt (ISO 8601) |
+| `reason` | string \| null | Lý do từ chối (nếu có) |
+| `notes` | string \| null | Ghi chú từ người duyệt |
+| `createdAt` | string | Thời gian tạo yêu cầu (ISO 8601) |
 
 ---
 

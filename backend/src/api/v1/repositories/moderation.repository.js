@@ -3,6 +3,23 @@ const { AppError } = require("../../../utils/appError");
 const { parseSortParams, buildSupabaseOrder } = require("../../../utils/sorting");
 const { buildPaginationRange } = require("../../../utils/pagination");
 
+// Lấy thông tin user profile từ Supabase (dùng admin client để không bị RLS giới hạn)
+const getUserProfileById = async (userId) => {
+  const client = createAdminClient();
+
+  const { data, error } = await client
+    .from("profiles")
+    .select("id, user_name, email")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) {
+    throw new AppError(error.message, 500);
+  }
+
+  return data;
+};
+
 const createModerationRequest = async (accessToken, { contentType, contentId, requestedBy }) => {
   const client = createAuthedClient(accessToken);
 
@@ -201,4 +218,5 @@ module.exports = {
   existsPendingRequest,
   checkPendingModeration,
   updateModerationRequest,
+  getUserProfileById,
 };
