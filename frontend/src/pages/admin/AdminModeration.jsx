@@ -401,7 +401,7 @@ function ModerationDetailModal({ item, tab, onClose, onReviewed }) {
         contentId: moderationReq.contentId,
         createdAt: moderationReq.createdAt || moderationReq.created_at,
         submitter: moderationReq.submitter || moderationReq.requester || moderationReq.requestedBy,
-        moderator: moderationReq.moderator || moderationReq.reviewer,
+        reviewer: moderationReq.reviewer || null,
         reason: moderationReq.reason || moderationReq.reviewNote || "",
         notes: moderationReq.notes || "",
         ...mergedContent,
@@ -1618,7 +1618,6 @@ const ListeningTab = forwardRef(function ListeningTab({ detail, contentId, conte
             </button>
             <div>
               <p className="font-bold">{isPlaying ? "Đang phát..." : "Nhấn để nghe"}</p>
-              <p className="text-green-100 text-xs">{editAudioUrl.split("/").pop()}</p>
             </div>
           </div>
         </div>

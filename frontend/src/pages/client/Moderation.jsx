@@ -459,12 +459,12 @@ function ModerationDetailModal({ item, onClose }) {
                 <p className="text-sm font-bold text-foreground">{formatDate(item.reviewedAt)}</p>
               </div>
             )}
-            {(item.reviewer || item.reviewedBy) && (
+            {item.reviewedBy && (
               <div className="p-3 rounded-xl bg-muted border border-border">
                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">Người duyệt</p>
                 <p className="text-sm font-bold text-foreground flex items-center gap-1">
                   <User className="w-3.5 h-3.5 text-muted-foreground" />
-                  {item.reviewer?.userName || item.reviewer?.email || "—"}
+                  {item.reviewedByName || "—"}
                 </p>
               </div>
             )}

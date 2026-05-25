@@ -434,24 +434,15 @@ export default function SetDetail({ set, onBack, favorites = [], onToggleFavorit
     }
   };
 
-  // Xử lý thay đổi visibility trong dialog Setting
+  // Xử lý thay đổi visibility trong dialog Setting (chỉ cho req_public)
   const handleVisibilitySubmit = async () => {
     setSettingsError("");
     setSettingsSuccess("");
     try {
       if (visibilityMode === "req_public") {
-        // Gửi yêu cầu công khai
         setIsRequestingPublic(true);
         await vocabularyApi.requestPublic(set.id);
         setSettingsSuccess("Đã gửi yêu cầu công khai! Nội dung sẽ được kiểm duyệt.");
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
-      } else if (visibilityMode === "private" && set.status === "public") {
-        // Chuyển về riêng tư
-        setIsMakingPrivate(true);
-        await vocabularyApi.makePrivate(set.id);
-        setSettingsSuccess("Đã chuyển về chế độ riêng tư.");
         setTimeout(() => {
           window.location.reload();
         }, 1500);
@@ -460,6 +451,35 @@ export default function SetDetail({ set, onBack, favorites = [], onToggleFavorit
       setSettingsError(err.message || "Không thể thực hiện thao tác");
     } finally {
       setIsRequestingPublic(false);
+    }
+  };
+
+  // Xác nhận chuyển về riêng tư (từ public hoặc req_public)
+  const handleConfirmPrivate = async () => {
+    setSettingsError("");
+    setSettingsSuccess("");
+    try {
+      setIsMakingPrivate(true);
+      await vocabularyApi.makePrivate(set.id);
+      // Xoá yêu cầu kiểm duyệt đang chờ (nếu có)
+      try {
+        const modData = await vocabularyApi.getMyModerationRequests({ limit: 50 });
+        const relatedRequest = modData.items.find(
+          (req) => String(req.contentId) === String(set.id)
+        );
+        if (relatedRequest) {
+          await vocabularyApi.deleteModerationRequest(relatedRequest.id);
+        }
+      } catch {
+        // Không sao nếu không xoá được moderation request
+      }
+      setSettingsSuccess("Đã chuyển về chế độ riêng tư.");
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (err) {
+      setSettingsError(err.message || "Không thể chuyển về chế độ riêng tư");
+    } finally {
       setIsMakingPrivate(false);
     }
   };
@@ -1254,23 +1274,38 @@ export default function SetDetail({ set, onBack, favorites = [], onToggleFavorit
                     >
                       Huỷ
                     </button>
-                    {(visibilityMode === "req_public" || (visibilityMode === "private" && set.status === "public")) && (
-                      <button
-                        onClick={handleVisibilitySubmit}
-                        disabled={isRequestingPublic || isMakingPrivate}
-                        className="flex-1 gradient-primary text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-md hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
-                      >
-                        {isRequestingPublic || isMakingPrivate ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            Đang xử lý...
-                          </>
-                        ) : visibilityMode === "req_public" ? (
-                          "Gửi yêu cầu"
-                        ) : (
-                          "Chuyển về riêng tư"
-                        )}
-                      </button>
+                    {(visibilityMode === "req_public" || (visibilityMode === "private" && (set.status === "public" || set.status === "req_public" || moderationStatus === "pending"))) && (
+                      visibilityMode === "req_public" ? (
+                        <button
+                          onClick={handleVisibilitySubmit}
+                          disabled={isRequestingPublic}
+                          className="flex-1 gradient-primary text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-md hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                        >
+                          {isRequestingPublic ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Đang xử lý...
+                            </>
+                          ) : (
+                            "Gửi yêu cầu"
+                          )}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={handleConfirmPrivate}
+                          disabled={isMakingPrivate}
+                          className="flex-1 gradient-primary text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-md hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                        >
+                          {isMakingPrivate ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Đang xử lý...
+                            </>
+                          ) : (
+                            "Xác nhận"
+                          )}
+                        </button>
+                      )
                     )}
                   </div>
                 </div>

@@ -261,6 +261,13 @@ export const vocabularyApi = {
     };
   },
 
+  // Xoá yêu cầu kiểm duyệt theo ID
+  deleteModerationRequest: async (requestId) => {
+    return fetchWithAuth(`/api/v1/moderation-requests/${requestId}`, {
+      method: "DELETE",
+    });
+  },
+
   // Chuyển bộ từ vựng về chế độ riêng tư
   makePrivate: async (setId) => {
     return fetchWithAuth(`${VOCABULARY_SET_URL}/${setId}/make-private`, {

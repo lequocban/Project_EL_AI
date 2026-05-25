@@ -266,6 +266,13 @@ export const readingApi = {
     };
   },
 
+  // Xoá yêu cầu kiểm duyệt theo ID
+  deleteModerationRequest: async (requestId) => {
+    return fetchWithAuth(`/api/v1/moderation-requests/${requestId}`, {
+      method: "DELETE",
+    });
+  },
+
   // Chuyển bài luyện đọc về chế độ riêng tư
   makePrivate: async (lessonId) => {
     return fetchWithAuth(`${READING_LESSON_URL}/${lessonId}/make-private`, {

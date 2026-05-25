@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Headphones,
   Search,
@@ -12,7 +12,6 @@ import {
   Clock,
   Globe,
   Lock,
-  FileAudio,
   Play,
   Pause,
   Upload,
@@ -421,6 +420,18 @@ export default function AdminListening() {
 // Modal hiển thị chi tiết bài luyện nghe
 function LessonDetailModal({ lesson, onClose }) {
   const [data, setData] = useState(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef(null);
+
+  const handlePlay = () => {
+    if (!audioRef.current) return;
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play();
+    }
+    setIsPlaying(!isPlaying);
+  };
 
   useEffect(() => {
     if (lesson?.id) {
@@ -452,12 +463,15 @@ function LessonDetailModal({ lesson, onClose }) {
         </div>
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
           {data?.audioUrl && (
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                <FileAudio className="w-3 h-3 inline mr-1" /> Đường dẫn audio
-              </label>
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm text-blue-600 font-mono break-all">
-                {data.audioUrl}
+            <div className="p-4 rounded-xl bg-gradient-to-r from-green-500 to-teal-500 text-white">
+              <div className="flex items-center gap-4">
+                <audio ref={audioRef} src={data.audioUrl} onEnded={() => setIsPlaying(false)} className="hidden" />
+                <button onClick={handlePlay} className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30">
+                  {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+                </button>
+                <div>
+                  <p className="font-bold">{isPlaying ? "Đang phát..." : "Nhấn để nghe"}</p>
+                </div>
               </div>
             </div>
           )}

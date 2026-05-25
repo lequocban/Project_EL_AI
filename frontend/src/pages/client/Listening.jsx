@@ -23,7 +23,6 @@ import {
   Wand2,
   Clock,
   Upload,
-  ShieldCheck,
   Eye,
   SortAsc,
   Settings,
@@ -989,7 +988,7 @@ export function LessonStarter({ lesson, onBack }) {
     });
   };
 
-  // Xử lý thay đổi visibility trong dialog Setting
+  // Xử lý thay đổi visibility trong dialog Setting (chỉ cho req_public)
   const handleVisibilitySubmit = async () => {
     setSettingsError("");
     setSettingsSuccess("");
@@ -1001,18 +1000,40 @@ export function LessonStarter({ lesson, onBack }) {
         setTimeout(() => {
           window.location.reload();
         }, 1500);
-      } else if (visibilityMode === "private" && lesson.status === "public") {
-        setIsMakingPrivate(true);
-        await listeningApi.makePrivate(lesson.id);
-        setSettingsSuccess("Đã chuyển về chế độ riêng tư.");
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
       }
     } catch (err) {
       setSettingsError(err.message || "Không thể thực hiện thao tác");
     } finally {
       setIsRequestingPublic(false);
+    }
+  };
+
+  // Xác nhận chuyển về riêng tư (từ public hoặc req_public)
+  const handleConfirmPrivate = async () => {
+    setSettingsError("");
+    setSettingsSuccess("");
+    try {
+      setIsMakingPrivate(true);
+      await listeningApi.makePrivate(lesson.id);
+      // Xoá yêu cầu kiểm duyệt đang chờ (nếu có)
+      try {
+        const modData = await listeningApi.getMyModerationRequests({ limit: 50 });
+        const relatedRequest = modData.items.find(
+          (req) => String(req.contentId) === String(lesson.id)
+        );
+        if (relatedRequest) {
+          await listeningApi.deleteModerationRequest(relatedRequest.id);
+        }
+      } catch {
+        // Không sao nếu không xoá được moderation request
+      }
+      setSettingsSuccess("Đã chuyển về chế độ riêng tư.");
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (err) {
+      setSettingsError(err.message || "Không thể chuyển về chế độ riêng tư");
+    } finally {
       setIsMakingPrivate(false);
     }
   };
@@ -1247,22 +1268,13 @@ export function LessonStarter({ lesson, onBack }) {
             {/* Các nút Kiểm duyệt và Setting */}
             <div className="flex items-center gap-2">
               {lesson.is_public ? (
-                <button
-                  onClick={handleMakePrivate}
-                  disabled={isMakingPrivate || isRequestingPublic}
-                  className="flex items-center gap-1.5 bg-orange-50 text-orange-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-orange-100 transition-all border border-orange-200 disabled:opacity-50"
-                  title="Chuyển về chế độ riêng tư"
-                >
-                  {isMakingPrivate ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <ShieldCheck className="w-3.5 h-3.5" />
-                  )}
-                  Riêng tư
-                </button>
+                <span className="flex items-center gap-1.5 bg-green-50 text-green-600 px-3 py-2 rounded-xl text-sm font-bold border border-green-200">
+                  <Globe className="w-4 h-4" />
+                  Công khai
+                </span>
               ) : moderationStatus === "pending" ? (
-                <span className="flex items-center gap-1.5 bg-amber-50 text-amber-600 px-3 py-1.5 rounded-lg text-xs font-bold border border-amber-200">
-                  <Clock className="w-3.5 h-3.5" />
+                <span className="flex items-center gap-1.5 bg-amber-50 text-amber-600 px-3 py-2 rounded-xl text-sm font-bold border border-amber-200">
+                  <Clock className="w-4 h-4" />
                   Chờ duyệt
                 </span>
               ) : (moderationStatus === "approved" || moderationStatus === "rejected") ? (
@@ -1270,13 +1282,13 @@ export function LessonStarter({ lesson, onBack }) {
                   <AlertDialogTrigger asChild>
                     <button
                       disabled={isMakingPrivate || isRequestingPublic}
-                      className="flex items-center gap-1.5 bg-violet-50 text-violet-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-violet-100 transition-all border border-violet-200 disabled:opacity-50"
+                      className="flex items-center gap-1.5 bg-violet-50 text-violet-600 px-3 py-2 rounded-xl text-sm font-bold hover:bg-violet-100 transition-all border border-violet-200 disabled:opacity-50"
                       title="Gửi lại yêu cầu kiểm duyệt"
                     >
                       {isRequestingPublic ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <Loader2 className="w-4 h-4 animate-spin" />
                       ) : (
-                        <Eye className="w-3.5 h-3.5" />
+                        <Eye className="w-4 h-4" />
                       )}
                       Gửi lại yêu cầu
                     </button>
@@ -1308,13 +1320,13 @@ export function LessonStarter({ lesson, onBack }) {
                   <AlertDialogTrigger asChild>
                     <button
                       disabled={isMakingPrivate || isRequestingPublic}
-                      className="flex items-center gap-1.5 bg-violet-50 text-violet-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-violet-100 transition-all border border-violet-200 disabled:opacity-50"
+                      className="flex items-center gap-1.5 bg-violet-50 text-violet-600 px-3 py-2 rounded-xl text-sm font-bold hover:bg-violet-100 transition-all border border-violet-200 disabled:opacity-50"
                       title="Gửi yêu cầu kiểm duyệt"
                     >
                       {isRequestingPublic ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <Loader2 className="w-4 h-4 animate-spin" />
                       ) : (
-                        <Eye className="w-3.5 h-3.5" />
+                        <Eye className="w-4 h-4" />
                       )}
                       Kiểm duyệt
                     </button>
@@ -1344,18 +1356,18 @@ export function LessonStarter({ lesson, onBack }) {
               )}
               <button
                 onClick={openSettingsDialog}
-                className="flex items-center gap-1 bg-gray-100 text-gray-700 px-2 py-1.5 rounded-lg text-xs font-bold hover:bg-gray-200 transition-all border border-gray-200"
+                className="flex items-center gap-1.5 bg-gray-100 text-gray-700 px-3 py-2 rounded-xl text-sm font-bold hover:bg-gray-200 transition-all border border-gray-200"
                 title="Cài đặt bài nghe"
               >
-                <Settings className="w-3.5 h-3.5" />
+                <Settings className="w-4 h-4" />
                 Setting
               </button>
               {!isEditing && !lesson.is_public && (
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="flex items-center gap-1 bg-gradient-to-r from-green-500 to-teal-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm hover:opacity-90 transition-all"
+                  className="flex items-center gap-1.5 bg-gradient-to-r from-green-500 to-teal-600 text-white px-3 py-2 rounded-xl text-sm font-bold shadow-sm hover:opacity-90 transition-all"
                 >
-                  <Edit3 className="w-3.5 h-3.5" />
+                  <Edit3 className="w-4 h-4" />
                   Chỉnh sửa
                 </button>
               )}
@@ -1827,23 +1839,38 @@ export function LessonStarter({ lesson, onBack }) {
                     >
                       Huỷ
                     </button>
-                    {(visibilityMode === "req_public" || (visibilityMode === "private" && lesson.status === "public")) && (
-                      <button
-                        onClick={handleVisibilitySubmit}
-                        disabled={isRequestingPublic || isMakingPrivate}
-                        className="flex-1 gradient-green text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-md hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
-                      >
-                        {isRequestingPublic || isMakingPrivate ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            Đang xử lý...
-                          </>
-                        ) : visibilityMode === "req_public" ? (
-                          "Gửi yêu cầu"
-                        ) : (
-                          "Chuyển về riêng tư"
-                        )}
-                      </button>
+                    {(visibilityMode === "req_public" || (visibilityMode === "private" && (lesson.status === "public" || lesson.status === "req_public" || moderationStatus === "pending"))) && (
+                      visibilityMode === "req_public" ? (
+                        <button
+                          onClick={handleVisibilitySubmit}
+                          disabled={isRequestingPublic}
+                          className="flex-1 gradient-green text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-md hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                        >
+                          {isRequestingPublic ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Đang xử lý...
+                            </>
+                          ) : (
+                            "Gửi yêu cầu"
+                          )}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={handleConfirmPrivate}
+                          disabled={isMakingPrivate}
+                          className="flex-1 gradient-green text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-md hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                        >
+                          {isMakingPrivate ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Đang xử lý...
+                            </>
+                          ) : (
+                            "Xác nhận"
+                          )}
+                        </button>
+                      )
                     )}
                   </div>
                 </div>
