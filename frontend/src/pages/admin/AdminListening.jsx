@@ -4,8 +4,6 @@ import {
   Search,
   Loader2,
   Eye,
-  Edit2,
-  Trash2,
   CheckCircle,
   XCircle,
   ChevronLeft,
@@ -20,6 +18,17 @@ import {
   Upload,
   FileUp,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { adminApi } from "@/api/admin";
 import { listeningApi } from "@/api/client/listeningApi";
 
@@ -103,16 +112,15 @@ export default function AdminListening() {
     }
   };
 
-  // Xóa bài luyện nghe
-  const handleDelete = async (id) => {
-    if (!window.confirm("Bạn có chắc muốn xóa bài luyện nghe này?")) return;
+  // Khoá bài luyện nghe (chuyển từ công khai về riêng tư)
+  const handleLock = async (id) => {
     setActionLoading(id);
     try {
-      await adminApi.deleteListeningLesson(id);
+      await listeningApi.makePrivate(id);
       setAllLessons((prev) => prev.filter((l) => l.id !== id));
       setAllTotal((prev) => prev - 1);
     } catch (err) {
-      setError(err.message || "Xóa thất bại");
+      setError(err.message || "Không thể chuyển bài luyện nghe về riêng tư");
     } finally {
       setActionLoading(null);
     }
@@ -324,24 +332,29 @@ export default function AdminListening() {
                       >
                         <Eye className="w-4 h-4" />
                       </button>
-                      <button
-                        onClick={() => {
-                          setEditingLesson(lesson);
-                          setShowEditModal(true);
-                        }}
-                        className="p-2 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
-                        title="Sửa"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(lesson.id)}
-                        disabled={actionLoading === lesson.id}
-                        className="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors disabled:opacity-50"
-                        title="Xóa"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <button
+                            disabled={actionLoading === lesson.id}
+                            className="p-2 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors disabled:opacity-50"
+                            title="Khoá"
+                          >
+                            <Lock className="w-4 h-4" />
+                          </button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Chuyển về Riêng tư</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Bạn có chắc chắn muốn chuyển bài luyện nghe này về chế độ Riêng tư không?
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Hủy</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleLock(lesson.id)}>Xác nhận</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </td>
                 </tr>

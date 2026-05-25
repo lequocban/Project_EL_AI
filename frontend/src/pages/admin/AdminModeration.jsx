@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useImperativeHandle, forwardR
 import {
   ShieldCheck, BookOpen, BookText, Headphones,
   Loader2, Eye, CheckCircle, XCircle,
-  ChevronLeft, ChevronRight, AlertTriangle, Clock,
+  ChevronLeft, ChevronRight, ChevronDown, AlertTriangle, Clock,
   X, Filter, Plus, Trash2,
   ArrowUpDown, User, Calendar, Volume2, Play, Pause, Upload,
   Edit2,
@@ -94,6 +94,8 @@ export default function AdminModeration() {
   const [error, setError] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [sortOrder, setSortOrder] = useState("desc");
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [actionLoading, setActionLoading] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -128,6 +130,26 @@ export default function AdminModeration() {
   }, [activeTab, pagination.page, sortOrder, statusFilter]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Đóng dropdown khi click ra ngoài
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (showStatusDropdown && !e.target.closest(".mod-status-dropdown")) setShowStatusDropdown(false);
+      if (showSortDropdown && !e.target.closest(".mod-sort-dropdown")) setShowSortDropdown(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showStatusDropdown, showSortDropdown]);
+
+  // Helper lấy label hiển thị cho dropdown
+  const getStatusLabel = (value) => {
+    const map = { "": "Tất cả trạng thái", pending: "Chờ duyệt", approved: "Đã duyệt", rejected: "Đã từ chối" };
+    return map[value] || "Tất cả trạng thái";
+  };
+  const getSortLabel = (value) => {
+    const map = { desc: "Mới nhất", asc: "Cũ nhất" };
+    return map[value] || "Sắp xếp";
+  };
 
   // Chuyển đến trang phân trang mới
   const handlePageChange = (newPage) => {
@@ -180,23 +202,55 @@ export default function AdminModeration() {
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3 mb-6">
-        <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-slate-400" />
-          <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPagination((p) => ({ ...p, page: 1 })); }}
-            className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-violet-500/30">
-            <option value="">Tất cả trạng thái</option>
-            <option value="pending">Chờ duyệt</option>
-            <option value="approved">Đã duyệt</option>
-            <option value="rejected">Đã từ chối</option>
-          </select>
+        <div className="relative mod-status-dropdown">
+          <button onClick={() => setShowStatusDropdown(!showStatusDropdown)}
+            className="flex items-center gap-2 bg-white border border-slate-200 px-3 py-2 rounded-xl font-bold text-sm hover:bg-slate-50 transition-all">
+            <Filter className="w-4 h-4 text-slate-400" />
+            <span className="text-slate-900">{getStatusLabel(statusFilter)}</span>
+            <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showStatusDropdown ? "rotate-180" : ""}`} />
+          </button>
+          {showStatusDropdown && (
+            <div className="absolute left-0 mt-2 w-44 bg-white border border-slate-200 rounded-xl shadow-lg z-20 overflow-hidden">
+              {[
+                { value: "", label: "Tất cả trạng thái" },
+                { value: "pending", label: "Chờ duyệt" },
+                { value: "approved", label: "Đã duyệt" },
+                { value: "rejected", label: "Đã từ chối" },
+              ].map((opt) => (
+                <button key={opt.value} onClick={() => { setStatusFilter(opt.value); setPagination((p) => ({ ...p, page: 1 })); setShowStatusDropdown(false); }}
+                  className={`w-full text-left px-4 py-2.5 text-sm font-medium hover:bg-slate-50 transition-colors flex items-center gap-2 ${
+                    statusFilter === opt.value ? "text-violet-600 bg-violet-50" : "text-slate-700"
+                  }`}>
+                  {opt.label}
+                  {statusFilter === opt.value && <span className="ml-auto text-violet-600">✓</span>}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-        <div className="flex items-center gap-2">
-          <ArrowUpDown className="w-4 h-4 text-slate-400" />
-          <select value={sortOrder} onChange={(e) => { setSortOrder(e.target.value); setPagination((p) => ({ ...p, page: 1 })); }}
-            className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-violet-500/30">
-            <option value="desc">Mới nhất</option>
-            <option value="asc">Cũ nhất</option>
-          </select>
+        <div className="relative mod-sort-dropdown">
+          <button onClick={() => setShowSortDropdown(!showSortDropdown)}
+            className="flex items-center gap-2 bg-white border border-slate-200 px-3 py-2 rounded-xl font-bold text-sm hover:bg-slate-50 transition-all">
+            <ArrowUpDown className="w-4 h-4 text-slate-400" />
+            <span className="text-slate-900">{getSortLabel(sortOrder)}</span>
+            <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showSortDropdown ? "rotate-180" : ""}`} />
+          </button>
+          {showSortDropdown && (
+            <div className="absolute left-0 mt-2 w-36 bg-white border border-slate-200 rounded-xl shadow-lg z-20 overflow-hidden">
+              {[
+                { value: "desc", label: "Mới nhất" },
+                { value: "asc", label: "Cũ nhất" },
+              ].map((opt) => (
+                <button key={opt.value} onClick={() => { setSortOrder(opt.value); setPagination((p) => ({ ...p, page: 1 })); setShowSortDropdown(false); }}
+                  className={`w-full text-left px-4 py-2.5 text-sm font-medium hover:bg-slate-50 transition-colors flex items-center gap-2 ${
+                    sortOrder === opt.value ? "text-violet-600 bg-violet-50" : "text-slate-700"
+                  }`}>
+                  {opt.label}
+                  {sortOrder === opt.value && <span className="ml-auto text-violet-600">✓</span>}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         {error && (
           <div className="ml-auto rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-600 flex items-center gap-2">
@@ -922,6 +976,15 @@ const ReadingTab = forwardRef(function ReadingTab({ detail, contentId, contentDa
   const [editQData, setEditQData] = useState({
     question: "", optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A", explanation: "",
   });
+  const [showCorrectDropdown, setShowCorrectDropdown] = useState(false);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (showCorrectDropdown && !e.target.closest(".mod-reading-correct")) setShowCorrectDropdown(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showCorrectDropdown]);
 
   useEffect(() => {
     if (!contentData) {
@@ -1003,6 +1066,7 @@ const ReadingTab = forwardRef(function ReadingTab({ detail, contentId, contentDa
 
   // Bắt đầu sửa câu hỏi
   const startEditQ = (q) => {
+    setShowCorrectDropdown(false);
     setEditQId(q.id);
     setEditQData({
       question: q.question,
@@ -1038,6 +1102,7 @@ const ReadingTab = forwardRef(function ReadingTab({ detail, contentId, contentDa
       })
     );
     setEditQId(null);
+    setShowCorrectDropdown(false);
     setEditQData({ question: "", optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A", explanation: "" });
     setDirty(true);
     if (onDirtyChange) onDirtyChange(true);
@@ -1046,6 +1111,7 @@ const ReadingTab = forwardRef(function ReadingTab({ detail, contentId, contentDa
   // Hủy sửa câu hỏi
   const cancelEditQ = () => {
     setEditQId(null);
+    setShowCorrectDropdown(false);
     setEditQData({ question: "", optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A", explanation: "" });
   };
 
@@ -1208,12 +1274,25 @@ const ReadingTab = forwardRef(function ReadingTab({ detail, contentId, contentDa
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-medium text-slate-500">Đáp án đúng:</span>
-                      <select
-                        value={editQData.correctAnswer}
-                        onChange={(e) => setEditQData((p) => ({ ...p, correctAnswer: e.target.value }))}
-                        className="px-2 py-1 rounded-lg border border-slate-200 text-xs">
-                        {["A", "B", "C", "D"].map((k) => <option key={k} value={k}>{k}</option>)}
-                      </select>
+                      <div className="relative mod-reading-correct">
+                        <button onClick={() => setShowCorrectDropdown(!showCorrectDropdown)}
+                          className="flex items-center gap-1 px-2 py-1 rounded-lg border border-slate-200 text-xs font-bold bg-white hover:bg-slate-50 transition-all">
+                          {editQData.correctAnswer}
+                          <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${showCorrectDropdown ? "rotate-180" : ""}`} />
+                        </button>
+                        {showCorrectDropdown && (
+                          <div className="absolute left-0 mt-1 w-14 bg-white border border-slate-200 rounded-lg shadow-lg z-20 overflow-hidden">
+                            {["A", "B", "C", "D"].map((k) => (
+                              <button key={k} onClick={() => { setEditQData((p) => ({ ...p, correctAnswer: k })); setShowCorrectDropdown(false); }}
+                                className={`w-full text-left px-3 py-1.5 text-xs font-medium hover:bg-slate-50 transition-colors ${
+                                  editQData.correctAnswer === k ? "text-orange-600 bg-orange-50" : "text-slate-700"
+                                }`}>
+                                {k}{editQData.correctAnswer === k && <span className="ml-1 text-orange-600">✓</span>}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                       <input
                         type="text"
                         value={editQData.explanation}
@@ -1300,9 +1379,18 @@ const ListeningTab = forwardRef(function ListeningTab({ detail, contentId, conte
     question: "", optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A", explanation: "",
   });
   const [uploadingAudio, setUploadingAudio] = useState(false);
+  const [showCorrectDropdown, setShowCorrectDropdown] = useState(false);
 
   const audioRef = useRef(null);
   const newQCounter = useRef(0);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (showCorrectDropdown && !e.target.closest(".mod-listening-correct")) setShowCorrectDropdown(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showCorrectDropdown]);
 
   useEffect(() => {
     if (!contentData) {
@@ -1425,6 +1513,7 @@ const ListeningTab = forwardRef(function ListeningTab({ detail, contentId, conte
 
   // Bắt đầu sửa câu hỏi
   const startEditQ = (q) => {
+    setShowCorrectDropdown(false);
     setEditQId(q.id);
     setEditQData({
       question: q.question,
@@ -1460,6 +1549,7 @@ const ListeningTab = forwardRef(function ListeningTab({ detail, contentId, conte
       })
     );
     setEditQId(null);
+    setShowCorrectDropdown(false);
     setEditQData({ question: "", optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A", explanation: "" });
     setDirty(true);
     if (onDirtyChange) onDirtyChange(true);
@@ -1468,6 +1558,7 @@ const ListeningTab = forwardRef(function ListeningTab({ detail, contentId, conte
   // Hủy sửa câu hỏi
   const cancelEditQ = () => {
     setEditQId(null);
+    setShowCorrectDropdown(false);
     setEditQData({ question: "", optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A", explanation: "" });
   };
 
@@ -1641,11 +1732,25 @@ const ListeningTab = forwardRef(function ListeningTab({ detail, contentId, conte
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-medium text-slate-500">Đúng:</span>
-                      <select value={editQData.correctAnswer}
-                        onChange={(e) => setEditQData((p) => ({ ...p, correctAnswer: e.target.value }))}
-                        className="px-2 py-1 rounded-lg border border-slate-200 text-xs">
-                        {["A", "B", "C", "D"].map((k) => <option key={k} value={k}>{k}</option>)}
-                      </select>
+                      <div className="relative mod-listening-correct">
+                        <button onClick={() => setShowCorrectDropdown(!showCorrectDropdown)}
+                          className="flex items-center gap-1 px-2 py-1 rounded-lg border border-slate-200 text-xs font-bold bg-white hover:bg-slate-50 transition-all">
+                          {editQData.correctAnswer}
+                          <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${showCorrectDropdown ? "rotate-180" : ""}`} />
+                        </button>
+                        {showCorrectDropdown && (
+                          <div className="absolute left-0 mt-1 w-14 bg-white border border-slate-200 rounded-lg shadow-lg z-20 overflow-hidden">
+                            {["A", "B", "C", "D"].map((k) => (
+                              <button key={k} onClick={() => { setEditQData((p) => ({ ...p, correctAnswer: k })); setShowCorrectDropdown(false); }}
+                                className={`w-full text-left px-3 py-1.5 text-xs font-medium hover:bg-slate-50 transition-colors ${
+                                  editQData.correctAnswer === k ? "text-green-600 bg-green-50" : "text-slate-700"
+                                }`}>
+                                {k}{editQData.correctAnswer === k && <span className="ml-1 text-green-600">✓</span>}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                       <input type="text" value={editQData.explanation}
                         onChange={(e) => setEditQData((p) => ({ ...p, explanation: e.target.value }))}
                         className="flex-1 px-2 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-green-400/50 bg-white"
