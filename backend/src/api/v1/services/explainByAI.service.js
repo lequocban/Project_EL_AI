@@ -4,7 +4,7 @@ const { AppError } = require("../../../utils/appError");
 const AI_MODELS = [
   "google/gemma-3-4b-it",
   "google/gemma-4-31b-it:free",
-  "deepseek/deepseek-chat-v3:free",
+  "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
 ];
 
 /**
