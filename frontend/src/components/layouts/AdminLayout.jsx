@@ -12,7 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { useState } from "react";
-import { useAdminAuth } from "@/lib/AdminAuthContext";
+import { useAdminAuth, ADMIN_ROLES_KEY } from "@/lib/AdminAuthContext";
 
 const adminNavItems = [
   {
@@ -60,9 +60,24 @@ export default function AdminLayout() {
   const { admin, logout } = useAdminAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // content_manager chỉ thấy 4 mục: Từ vựng, Luyện đọc, Luyện nghe, Kiểm duyệt
-  const adminRoles = admin?.user?.roles || [];
-  const hasAdminRole = adminRoles.includes(3);
+  // Đọc roles: ưu tiên từ localStorage (luôn có sẵn ngay sau khi đăng nhập),
+  // fallback sang admin state (từ context) phòng trường hợp localStorage chưa được set.
+  const cachedRoles = (() => {
+    try {
+      const raw = localStorage.getItem(ADMIN_ROLES_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  })();
+  const roles = (admin?.user?.roles ?? cachedRoles ?? []).map(Number);
+  console.log('[DEBUG AdminLayout] admin:', admin);
+  console.log('[DEBUG AdminLayout] admin?.user?.roles:', admin?.user?.roles);
+  console.log('[DEBUG AdminLayout] cachedRoles:', cachedRoles);
+  console.log('[DEBUG AdminLayout] final roles:', roles, 'hasAdminRole:', roles.includes(3));
+
+  // Có role admin (3) thì hiển thị đủ 6 trang, chỉ có content_manager thì ẩn Tổng quan và Người dùng.
+  const hasAdminRole = roles.includes(3);
   const navItems = hasAdminRole
     ? adminNavItems
     : adminNavItems.filter(

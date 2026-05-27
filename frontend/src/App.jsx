@@ -74,8 +74,9 @@ const AdminProtectedRoute = () => {
   }
 
   // content_manager không được vào Tổng quan và Người dùng
-  const adminRoles = admin?.user?.roles || [];
+  const adminRoles = (admin?.user?.roles || []).map(Number);
   const hasAdminRole = adminRoles.includes(3);
+  console.log('[DEBUG AdminProtectedRoute] path:', location.pathname, 'isLoading:', isLoading, 'isAuthenticated:', isAuthenticated, 'adminRoles:', adminRoles, 'hasAdminRole:', hasAdminRole);
   if (!hasAdminRole && (location.pathname === "/admin/dashboard" || location.pathname === "/admin/users")) {
     return <Navigate to="/admin/vocabulary" replace />;
   }

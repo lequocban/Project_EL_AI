@@ -4,6 +4,9 @@ import { adminApi, refreshAdminToken, clearAdminSession, getTokenExpiresAt } fro
 const AdminAuthContext = createContext();
 const ADMIN_ACCESS_TOKEN_KEY = "englishup_admin_token";
 const ADMIN_TOKEN_EXPIRES_AT_KEY = "englishup_admin_token_expires_at";
+const ADMIN_ROLES_KEY = "englishup_admin_roles";
+
+export { ADMIN_ACCESS_TOKEN_KEY, ADMIN_TOKEN_EXPIRES_AT_KEY, ADMIN_ROLES_KEY };
 const REFRESH_BUFFER_SECONDS = 300;
 
 // Provider xác thực admin với tự động refresh token
@@ -91,14 +94,16 @@ export const AdminAuthProvider = ({ children }) => {
       // Backend sẽ validate role bằng requireManagerOrAdmin
       const response = await adminApi.getMe();
       const { user } = response.data || {};
+      const roles = (user?.roles || []).map(Number);
       setAdmin({
         ...response.data,
         user: {
           ...user,
-          roles: user?.roles || [],
+          roles,
         },
         full_name: user?.userName,
       });
+      localStorage.setItem(ADMIN_ROLES_KEY, JSON.stringify(roles));
       setIsAuthenticated(true);
       setError("");
 
@@ -115,6 +120,7 @@ export const AdminAuthProvider = ({ children }) => {
 
   // Đăng nhập admin và lưu session
   const login = async (email, password) => {
+    setIsLoading(true);
     setError("");
     try {
       const response = await adminApi.login(email, password);
@@ -125,29 +131,22 @@ export const AdminAuthProvider = ({ children }) => {
           localStorage.setItem(ADMIN_TOKEN_EXPIRES_AT_KEY, String(response.data.expiresAt));
         }
       }
-      // Set admin state NGAY từ login response (có sẵn roles)
+      const roles = (loginUser?.roles || []).map(Number);
+      console.log('[DEBUG login] response.data:', response.data);
+      console.log('[DEBUG login] loginUser:', loginUser);
+      console.log('[DEBUG login] roles after map(Number):', roles);
       setAdmin({
+        ...response.data,
         user: {
           ...loginUser,
-          roles: loginUser?.roles || [],
+          roles,
         },
+        full_name: loginUser?.userName,
       });
+      localStorage.setItem(ADMIN_ROLES_KEY, JSON.stringify(roles));
       setIsAuthenticated(true);
       setError("");
-      // Fetch full profile ở background để cập nhật thêm chi tiết
-      adminApi.getMe().then((res) => {
-        const { user: fullUser } = res.data || {};
-        if (fullUser) {
-          setAdmin({
-            ...res.data,
-            user: {
-              ...fullUser,
-              roles: fullUser.roles || [],
-            },
-            full_name: fullUser.userName,
-          });
-        }
-      }).catch(() => {});
+      setupProactiveRefresh();
       return response;
     } catch (err) {
       clearAdminSession();
@@ -156,6 +155,8 @@ export const AdminAuthProvider = ({ children }) => {
       const msg = err.message || "Đăng nhập thất bại";
       setError(msg);
       throw err;
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -176,6 +177,7 @@ export const AdminAuthProvider = ({ children }) => {
       // Bỏ qua lỗi khi logout
     }
     clearAdminSession();
+    localStorage.removeItem(ADMIN_ROLES_KEY);
     setAdmin(null);
     setIsAuthenticated(false);
     window.location.href = "/admin/login";
