@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/toaster";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClientInstance } from "@/lib/query-client";
-import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom";
 import PageNotFound from "@/lib/PageNotFound";
 import { AuthProvider, useAuth } from "@/lib/AuthContext";
 import { AdminAuthProvider, useAdminAuth } from "@/lib/AdminAuthContext";
@@ -30,6 +30,7 @@ import AdminReading from "@/pages/admin/AdminReading";
 import AdminListening from "@/pages/admin/AdminListening";
 import AdminUsers from "@/pages/admin/AdminUsers";
 import AdminModeration from "@/pages/admin/AdminModeration";
+import AdminProfile from "@/pages/admin/AdminProfile";
 
 // Component hiển thị spinner loading toàn màn hình
 const LoadingScreen = () => (
@@ -61,9 +62,9 @@ const ProtectedRoute = () => {
 };
 
 // Route bảo vệ yêu cầu xác thực admin
+// Chỉ kiểm tra isAuthenticated - quyền truy cập route cụ thể do backend xử lý
 const AdminProtectedRoute = () => {
-  const { isAuthenticated, isLoading, admin } = useAdminAuth();
-  const location = useLocation();
+  const { isAuthenticated, isLoading } = useAdminAuth();
 
   if (isLoading) {
     return <AdminLoadingScreen />;
@@ -71,14 +72,6 @@ const AdminProtectedRoute = () => {
 
   if (!isAuthenticated) {
     return <Navigate to="/admin/login" replace />;
-  }
-
-  // content_manager không được vào Tổng quan và Người dùng
-  const adminRoles = (admin?.user?.roles || []).map(Number);
-  const hasAdminRole = adminRoles.includes(3);
-  console.log('[DEBUG AdminProtectedRoute] path:', location.pathname, 'isLoading:', isLoading, 'isAuthenticated:', isAuthenticated, 'adminRoles:', adminRoles, 'hasAdminRole:', hasAdminRole);
-  if (!hasAdminRole && (location.pathname === "/admin/dashboard" || location.pathname === "/admin/users")) {
-    return <Navigate to="/admin/vocabulary" replace />;
   }
 
   return <AdminLayout />;
@@ -135,6 +128,7 @@ const AuthenticatedApp = () => {
         <Route path="/admin/listening" element={<AdminListening />} />
         <Route path="/admin/moderation" element={<AdminModeration />} />
         <Route path="/admin/users" element={<AdminUsers />} />
+        <Route path="/admin/profile" element={<AdminProfile />} />
       </Route>
 
       <Route path="*" element={<PageNotFound />} />

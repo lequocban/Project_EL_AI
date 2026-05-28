@@ -5,15 +5,15 @@ import { useAdminAuth } from "@/lib/AdminAuthContext";
 
 // Trang đăng nhập cho admin
 export default function AdminLogin() {
-  const { login, isAuthenticated } = useAdminAuth();
+  const { login, isAuthenticated, isLoading } = useAdminAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  // Redirect ngay khi isAuthenticated chuyển sang true (sau khi state đã settled)
-  if (isAuthenticated) {
+  // Chỉ redirect khi đã authenticate và KHÔNG còn loading (tránh redirect giữa chừng)
+  if (!isLoading && isAuthenticated) {
     return <Navigate to="/admin/dashboard" replace />;
   }
 
@@ -21,13 +21,13 @@ export default function AdminLogin() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    setIsLoading(true);
+    setIsSubmitting(true);
     try {
       await login(email, password);
     } catch (err) {
       setError(err.message || "Email hoặc mật khẩu không đúng");
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -92,10 +92,10 @@ export default function AdminLogin() {
 
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isSubmitting}
               className="w-full py-3 bg-gradient-to-r from-violet-500 to-indigo-500 text-white font-bold rounded-xl hover:opacity-90 transition-all shadow-lg shadow-violet-500/30 disabled:opacity-50 disabled:cursor-not-allowed mt-6"
             >
-              {isLoading ? "Đang đăng nhập..." : "Đăng nhập"}
+              {isSubmitting ? "Đang đăng nhập..." : "Đăng nhập"}
             </button>
           </div>
         </form>

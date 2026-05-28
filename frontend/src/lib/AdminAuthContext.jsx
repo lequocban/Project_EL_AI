@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, useRef } from "react";
-import { adminApi, refreshAdminToken, clearAdminSession, getTokenExpiresAt } from "@/api/admin";
+import { adminApi, refreshAdminToken, clearAdminSession, getTokenExpiresAt, consumeAdminRedirect } from "@/api/admin";
 
 const AdminAuthContext = createContext();
 const ADMIN_ACCESS_TOKEN_KEY = "englishup_admin_token";
@@ -72,17 +72,20 @@ export const AdminAuthProvider = ({ children }) => {
     checkAdminAuth();
 
     return () => {
+      // Chỉ clear interval, KHÔNG clearTimeout vì setTimeout được gán vào cùng ref
       if (refreshIntervalRef.current) {
-        clearInterval(refreshIntervalRef.current);
-        if (typeof refreshIntervalRef.current === "number") {
-          clearTimeout(refreshIntervalRef.current);
-        }
+        clearTimeout(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Kiểm tra và khôi phục phiên đăng nhập admin khi khởi động
   const checkAdminAuth = async () => {
+    // Xóa redirect flag từ lần trước (nếu có)
+    const hadPendingRedirect = consumeAdminRedirect();
+
     try {
       setIsLoading(true);
       const token = localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY);
@@ -93,7 +96,8 @@ export const AdminAuthProvider = ({ children }) => {
       }
       // Backend sẽ validate role bằng requireManagerOrAdmin
       const response = await adminApi.getMe();
-      const { user } = response.data || {};
+      // Endpoint getMe trả về user trực tiếp trong response.data (không có nested user)
+      const user = response.data;
       const roles = (user?.roles || []).map(Number);
       setAdmin({
         ...response.data,
@@ -113,6 +117,11 @@ export const AdminAuthProvider = ({ children }) => {
       clearAdminSession();
       setAdmin(null);
       setIsAuthenticated(false);
+      // Nếu có lỗi từ fetchAdminWithAuth (token hết hạn, unauthorized),
+      // chuyển hướng sau khi state đã settle
+      if (hadPendingRedirect || err.shouldRedirect) {
+        window.location.href = "/admin/login";
+      }
     } finally {
       setIsLoading(false);
     }
@@ -132,9 +141,8 @@ export const AdminAuthProvider = ({ children }) => {
         }
       }
       const roles = (loginUser?.roles || []).map(Number);
-      console.log('[DEBUG login] response.data:', response.data);
-      console.log('[DEBUG login] loginUser:', loginUser);
-      console.log('[DEBUG login] roles after map(Number):', roles);
+      // Lưu roles vào localStorage ĐỒNG BỘ để AdminProtectedRoute/AdminLayout đọc được ngay
+      localStorage.setItem(ADMIN_ROLES_KEY, JSON.stringify(roles));
       setAdmin({
         ...response.data,
         user: {
@@ -143,7 +151,6 @@ export const AdminAuthProvider = ({ children }) => {
         },
         full_name: loginUser?.userName,
       });
-      localStorage.setItem(ADMIN_ROLES_KEY, JSON.stringify(roles));
       setIsAuthenticated(true);
       setError("");
       setupProactiveRefresh();
@@ -162,12 +169,9 @@ export const AdminAuthProvider = ({ children }) => {
 
   // Đăng xuất admin và xóa session
   const logout = async () => {
-    // Dừng interval refresh
+    // Dừng interval/timeout refresh
     if (refreshIntervalRef.current) {
-      clearInterval(refreshIntervalRef.current);
-      if (typeof refreshIntervalRef.current === "number") {
-        clearTimeout(refreshIntervalRef.current);
-      }
+      clearTimeout(refreshIntervalRef.current);
       refreshIntervalRef.current = null;
     }
 

@@ -1,6 +1,7 @@
 // Hằng số và biến cho token management
 const ADMIN_ACCESS_TOKEN_KEY = "englishup_admin_token";
 const ADMIN_TOKEN_EXPIRES_AT_KEY = "englishup_admin_token_expires_at";
+const ADMIN_REDIRECT_KEY = "englishup_admin_redirect_pending";
 const REFRESH_BUFFER_SECONDS = 300;
 
 let isRefreshing = false;
@@ -45,27 +46,29 @@ const saveAdminSession = (session) => {
 const clearAdminSession = () => {
   localStorage.removeItem(ADMIN_ACCESS_TOKEN_KEY);
   localStorage.removeItem(ADMIN_TOKEN_EXPIRES_AT_KEY);
+  localStorage.removeItem(ADMIN_REDIRECT_KEY);
 };
 
 // Refresh token cho admin (dùng chung endpoint refresh-token)
+// KHÔNG gọi window.location.href bên trong - chỉ throw error
 const refreshAdminToken = async () => {
   const res = await fetch("/api/v1/auth/refresh-token", {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
   });
+  const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     clearAdminSession();
-    window.location.href = "/admin/login";
-    throw new Error("Refresh token failed");
+    localStorage.setItem(ADMIN_REDIRECT_KEY, "1");
+    throw Object.assign(new Error(data.message || "Refresh token failed"), { shouldRedirect: true });
   }
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.message || "Có lỗi xảy ra");
   saveAdminSession(data.data);
   return data;
 };
 
 // Hàm gửi request cho admin - dùng token key riêng, có xử lý refresh token
+// KHÔNG gọi window.location.href bên trong - chỉ throw error
 const fetchAdminWithAuth = async (url, options = {}) => {
   const handleResponse = async (res) => {
     const data = await res.json().catch(() => ({}));
@@ -84,8 +87,8 @@ const fetchAdminWithAuth = async (url, options = {}) => {
 
   const token = localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY);
   if (!token) {
-    window.location.href = "/admin/login";
-    throw new Error("Chưa đăng nhập admin");
+    localStorage.setItem(ADMIN_REDIRECT_KEY, "1");
+    throw Object.assign(new Error("Chưa đăng nhập admin"), { shouldRedirect: true });
   }
 
   let res = await fetch(url, {
@@ -105,8 +108,10 @@ const fetchAdminWithAuth = async (url, options = {}) => {
       } catch (err) {
         isRefreshing = false;
         clearAdminSession();
-        window.location.href = "/admin/login";
-        throw new Error("Unauthorized");
+        if (err.shouldRedirect) {
+          localStorage.setItem(ADMIN_REDIRECT_KEY, "1");
+        }
+        throw err;
       }
     } else {
       return new Promise((resolve, reject) => {
@@ -143,6 +148,13 @@ const handleResponse = async (res) => {
   return data;
 };
 
+// Kiểm tra và xóa redirect flag (gọi từ AdminAuthContext sau khi mount)
+const consumeAdminRedirect = () => {
+  const pending = localStorage.getItem(ADMIN_REDIRECT_KEY);
+  localStorage.removeItem(ADMIN_REDIRECT_KEY);
+  return pending === "1";
+};
+
 export {
   ADMIN_ACCESS_TOKEN_KEY,
   ADMIN_TOKEN_EXPIRES_AT_KEY,
@@ -153,4 +165,5 @@ export {
   saveAdminSession,
   clearAdminSession,
   refreshAdminToken,
+  consumeAdminRedirect,
 };

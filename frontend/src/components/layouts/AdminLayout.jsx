@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   Menu,
   X,
+  UserCircle,
 } from "lucide-react";
 import { useState } from "react";
 import { useAdminAuth, ADMIN_ROLES_KEY } from "@/lib/AdminAuthContext";
@@ -51,38 +52,41 @@ const adminNavItems = [
     icon: Users,
     gradient: "from-pink-500 to-rose-500",
   },
+  {
+    path: "/admin/profile",
+    label: "Hồ sơ",
+    icon: UserCircle,
+    gradient: "from-violet-500 to-purple-500",
+  },
 ];
 
 // Component bố cục trang admin với sidebar điều hướng và menu mobile
 export default function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { admin, logout } = useAdminAuth();
+  const { admin, isAuthenticated, logout } = useAdminAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // Đọc roles: ưu tiên từ localStorage (luôn có sẵn ngay sau khi đăng nhập),
-  // fallback sang admin state (từ context) phòng trường hợp localStorage chưa được set.
-  const cachedRoles = (() => {
+  // Lấy roles từ localStorage (viết đồng bộ ngay khi login, đáng tin cậy hơn React state bất đồng bộ)
+  const getCachedRoles = () => {
     try {
       const raw = localStorage.getItem(ADMIN_ROLES_KEY);
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
-  })();
-  const roles = (admin?.user?.roles ?? cachedRoles ?? []).map(Number);
-  console.log('[DEBUG AdminLayout] admin:', admin);
-  console.log('[DEBUG AdminLayout] admin?.user?.roles:', admin?.user?.roles);
-  console.log('[DEBUG AdminLayout] cachedRoles:', cachedRoles);
-  console.log('[DEBUG AdminLayout] final roles:', roles, 'hasAdminRole:', roles.includes(3));
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed.map(Number);
+      }
+    } catch { /* ignore */ }
+    return [];
+  };
+  const cachedRoles = getCachedRoles();
 
-  // Có role admin (3) thì hiển thị đủ 6 trang, chỉ có content_manager thì ẩn Tổng quan và Người dùng.
+  // Ưu tiên roles từ admin context (đã được sync đồng bộ sau login),
+  // fallback sang localStorage nếu context chưa kịp set
+  const roles = (admin?.user?.roles ?? cachedRoles).map(Number);
   const hasAdminRole = roles.includes(3);
-  const navItems = hasAdminRole
-    ? adminNavItems
-    : adminNavItems.filter(
-        item => item.path !== "/admin/dashboard" && item.path !== "/admin/users"
-      );
+
+  // Sidebar luôn hiển thị đầy đủ 7 trang; việc chặn route đã xử lý ở AdminProtectedRoute (App.jsx)
+  const navItems = adminNavItems;
 
   // Xử lý đăng xuất admin và chuyển hướng về trang đăng nhập
   const handleLogout = async () => {

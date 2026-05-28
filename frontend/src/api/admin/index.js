@@ -9,6 +9,7 @@ export {
   saveAdminSession,
   clearAdminSession,
   refreshAdminToken,
+  consumeAdminRedirect,
 } from "./auth";
 
 // Auth API

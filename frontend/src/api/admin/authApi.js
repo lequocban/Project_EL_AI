@@ -25,4 +25,32 @@ export const authApi = {
   logout: async () => {
     return fetchAdminWithAuth(ADMIN_AUTH_URL + "/logout", { method: "POST" });
   },
+
+  // Cập nhật hồ sơ cá nhân (gọi endpoint profile/me)
+  updateProfile: async ({ userName, dayOfBirth }) => {
+    const res = await fetch("/api/v1/profile/me", {
+      method: "PATCH",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("englishup_admin_token")}`,
+      },
+      body: JSON.stringify({ userName, dayOfBirth }),
+    });
+    return handleResponse(res);
+  },
+
+  // Đổi mật khẩu (gọi endpoint profile/change-password)
+  changePassword: async (currentPassword, newPassword) => {
+    const res = await fetch("/api/v1/profile/change-password", {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("englishup_admin_token")}`,
+      },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    return handleResponse(res);
+  },
 };
