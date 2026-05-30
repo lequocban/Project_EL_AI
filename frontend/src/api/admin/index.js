@@ -123,6 +123,7 @@ export const adminApi = {
   // Auth
   login: authApi.login,
   getMe: authApi.getMe,
+  getProfileMe: authApi.getProfileMe,
   logout: authApi.logout,
 
   // Stats

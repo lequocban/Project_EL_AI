@@ -73,9 +73,11 @@ export default function AdminProfile() {
 
   const [profileOpen, setProfileOpen] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
+  const [profileData, setProfileData] = useState(null);
   const [profileForm, setProfileForm] = useState({
-    userName: admin?.user?.username || admin?.user?.userName || admin?.full_name || "",
-    dayOfBirth: toInputDate(admin?.user?.dayOfBirth),
+    userName: admin?.username || "",
+    dayOfBirth: "",
+    email: admin?.email || "",
   });
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "",
@@ -92,12 +94,26 @@ export default function AdminProfile() {
   const [stats, setStats] = useState(null);
   const [loadingStats, setLoadingStats] = useState(true);
 
+  // Fetch hồ sơ từ API backend khi mount
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await adminApi.getProfileMe();
+        setProfileData(res.data);
+      } catch {
+        // fallback
+      }
+    };
+    fetchProfile();
+  }, []);
+
   // Sync profileForm khi admin được set (fix trường hợp admin null lúc mount)
   useEffect(() => {
     if (admin) {
       setProfileForm({
-        userName: admin?.user?.username || admin?.user?.userName || admin?.full_name || "",
-        dayOfBirth: toInputDate(admin?.user?.dayOfBirth),
+        userName: admin?.username || "",
+        dayOfBirth: "",
+        email: admin?.email || "",
       });
     }
   }, [admin]);
@@ -128,13 +144,24 @@ export default function AdminProfile() {
   // Lấy danh sách roles từ admin context
   const roles = (admin?.user?.roles || []).map(Number);
 
-  // Mở modal cập nhật hồ sơ với dữ liệu hiện tại
-  const openProfileModal = () => {
-    setProfileForm({
-      userName: admin?.user?.username || admin?.user?.userName || admin?.full_name || "",
-      dayOfBirth: toInputDate(admin?.user?.dayOfBirth),
-    });
+  // Mở modal cập nhật hồ sơ với dữ liệu từ API backend
+  const openProfileModal = async () => {
     setProfileStatus({ type: "", message: "" });
+    try {
+      const response = await adminApi.getProfileMe();
+      const data = response.data;
+      setProfileForm({
+        userName: data.userName || "",
+        dayOfBirth: toInputDate(data.dayOfBirth),
+        email: data.email || "",
+      });
+    } catch {
+      setProfileForm({
+        userName: admin?.username || "",
+        dayOfBirth: "",
+        email: admin?.email || "",
+      });
+    }
     setProfileOpen(true);
   };
 
@@ -164,13 +191,13 @@ export default function AdminProfile() {
     try {
       setSavingProfile(true);
       setProfileStatus({ type: "", message: "" });
-      await adminApi.updateProfile({
+      const response = await adminApi.updateProfile({
         userName,
         dayOfBirth: toApiDate(profileForm.dayOfBirth),
       });
-      // Tải lại thông tin admin
-      const response = await adminApi.getMe();
-      // Cập nhật lại admin trong context thông qua reload
+      setProfileData(response.data);
+      setProfileStatus({ type: "success", message: "Cập nhật hồ sơ thành công." });
+      setProfileOpen(false);
       window.location.reload();
     } catch (error) {
       setProfileStatus({ type: "error", message: error.message || "Cập nhật hồ sơ thất bại." });
@@ -216,14 +243,14 @@ export default function AdminProfile() {
         {/* Avatar, Name & Roles */}
         <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-4 flex items-start gap-5">
           <div className="w-16 h-16 bg-gradient-to-br from-violet-500 to-indigo-500 rounded-2xl flex items-center justify-center text-white text-2xl font-black shadow-md uppercase flex-shrink-0">
-            {(admin?.user?.username || admin?.user?.userName || admin?.full_name || admin?.email || "?")?.charAt(0)}
+            {(profileData?.userName || admin?.username || profileData?.email || admin?.email || "?")?.charAt(0)}
           </div>
           <div className="flex-1 min-w-0">
             <h2 className="text-xl font-black text-slate-900">
-              {admin?.user?.username || admin?.user?.userName || admin?.full_name || "Chưa cập nhật tên"}
+              {profileData?.userName || admin?.username || profileData?.email || admin?.email || "Chưa cập nhật tên"}
             </h2>
             <p className="text-slate-500 text-sm font-medium truncate">
-              {admin?.email}
+              {profileData?.email || admin?.email}
             </p>
             {/* Hiển thị toàn bộ roles */}
             <div className="flex flex-wrap gap-2 mt-2">
@@ -360,7 +387,7 @@ export default function AdminProfile() {
                   Email
                 </span>
                 <input
-                  value={admin?.email || ""}
+                  value={profileForm.email || ""}
                   readOnly
                   disabled
                   className="w-full cursor-not-allowed rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 font-semibold text-slate-400"

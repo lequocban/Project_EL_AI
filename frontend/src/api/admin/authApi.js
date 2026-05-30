@@ -26,6 +26,19 @@ export const authApi = {
     return fetchAdminWithAuth(ADMIN_AUTH_URL + "/logout", { method: "POST" });
   },
 
+  // Lấy thông tin hồ sơ cá nhân (gọi endpoint profile/me)
+  getProfileMe: async () => {
+    const res = await fetch("/api/v1/profile/me", {
+      method: "GET",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("englishup_admin_token")}`,
+      },
+    });
+    return handleResponse(res);
+  },
+
   // Cập nhật hồ sơ cá nhân (gọi endpoint profile/me)
   updateProfile: async ({ userName, dayOfBirth }) => {
     const res = await fetch("/api/v1/profile/me", {
