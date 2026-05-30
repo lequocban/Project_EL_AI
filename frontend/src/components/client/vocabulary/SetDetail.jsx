@@ -619,92 +619,102 @@ export default function SetDetail({ set, onBack, favorites = [], onToggleFavorit
                 <Heart className={`w-5 h-5 ${Array.isArray(favorites) && favorites.some((f) => String(f.id) === String(set.id)) ? "fill-red-500" : ""}`} />
               </button>
             )}
-            {set.is_public ? (
+            {/* Trạng thái - luôn hiển thị */}
+            {set.status === "public" ? (
               <span className="flex items-center gap-1.5 bg-green-50 text-green-600 px-3 py-2 rounded-xl text-sm font-bold border border-green-200">
                 <Globe className="w-4 h-4" />
                 Công khai
               </span>
-            ) : moderationStatus === "pending" ? (
+            ) : set.status === "req_public" ? (
               <span className="flex items-center gap-1.5 bg-amber-50 text-amber-600 px-3 py-2 rounded-xl text-sm font-bold border border-amber-200">
                 <Clock className="w-4 h-4" />
                 Chờ duyệt
               </span>
-            ) : (moderationStatus === "approved" || moderationStatus === "rejected") ? (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <button
-                    disabled={isMakingPrivate || isRequestingPublic}
-                    className="flex items-center gap-1.5 bg-violet-50 text-violet-600 px-3 py-2 rounded-xl text-sm font-bold hover:bg-violet-100 transition-all border border-violet-200 disabled:opacity-50"
-                    title="Gửi lại yêu cầu kiểm duyệt"
-                  >
-                    {isRequestingPublic ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Eye className="w-4 h-4" />
-                    )}
-                    Gửi lại yêu cầu
-                  </button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Xác nhận gửi lại yêu cầu kiểm duyệt</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Bạn có muốn gửi lại yêu cầu kiểm duyệt cho bộ từ vựng này không? Yêu cầu mới sẽ được hiển thị trên trang Kiểm duyệt của admin.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Hủy</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleConfirmModeration} disabled={isRequestingPublic}>
-                      {isRequestingPublic ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                          Đang gửi...
-                        </>
-                      ) : (
-                        "Gửi lại yêu cầu"
-                      )}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
             ) : (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <button
-                    disabled={isMakingPrivate || isRequestingPublic}
-                    className="flex items-center gap-1.5 bg-violet-50 text-violet-600 px-3 py-2 rounded-xl text-sm font-bold hover:bg-violet-100 transition-all border border-violet-200 disabled:opacity-50"
-                    title="Gửi yêu cầu kiểm duyệt"
-                  >
-                    {isRequestingPublic ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Eye className="w-4 h-4" />
-                    )}
-                    Kiểm duyệt
-                  </button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Xác nhận gửi yêu cầu kiểm duyệt</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Bạn có muốn gửi yêu cầu kiểm duyệt cho bộ từ vựng này không? Yêu cầu sẽ được hiển thị trên trang Kiểm duyệt của admin.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Hủy</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleConfirmModeration} disabled={isRequestingPublic}>
+              <span className="flex items-center gap-1.5 bg-gray-50 text-gray-500 px-3 py-2 rounded-xl text-sm font-bold border border-gray-200">
+                <Lock className="w-4 h-4" />
+                Riêng tư
+              </span>
+            )}
+            {/* Nút kiểm duyệt */}
+            {!set.is_public && (
+              (moderationStatus === "approved" || moderationStatus === "rejected") ? (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <button
+                      disabled={isMakingPrivate || isRequestingPublic}
+                      className="flex items-center gap-1.5 bg-violet-50 text-violet-600 px-3 py-2 rounded-xl text-sm font-bold hover:bg-violet-100 transition-all border border-violet-200 disabled:opacity-50"
+                      title="Gửi lại yêu cầu kiểm duyệt"
+                    >
                       {isRequestingPublic ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                          Đang gửi...
-                        </>
+                        <Loader2 className="w-4 h-4 animate-spin" />
                       ) : (
-                        "Gửi yêu cầu"
+                        <Eye className="w-4 h-4" />
                       )}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+                      Gửi lại yêu cầu
+                    </button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Xác nhận gửi lại yêu cầu kiểm duyệt</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Bạn có muốn gửi lại yêu cầu kiểm duyệt cho bộ từ vựng này không? Yêu cầu mới sẽ được hiển thị trên trang Kiểm duyệt của admin.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Hủy</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleConfirmModeration} disabled={isRequestingPublic}>
+                        {isRequestingPublic ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                            Đang gửi...
+                          </>
+                        ) : (
+                          "Gửi lại yêu cầu"
+                        )}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              ) : moderationStatus !== "pending" ? (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <button
+                      disabled={isMakingPrivate || isRequestingPublic}
+                      className="flex items-center gap-1.5 bg-violet-50 text-violet-600 px-3 py-2 rounded-xl text-sm font-bold hover:bg-violet-100 transition-all border border-violet-200 disabled:opacity-50"
+                      title="Gửi yêu cầu kiểm duyệt"
+                    >
+                      {isRequestingPublic ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                      Kiểm duyệt
+                    </button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Xác nhận gửi yêu cầu kiểm duyệt</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Bạn có muốn gửi yêu cầu kiểm duyệt cho bộ từ vựng này không? Yêu cầu sẽ được hiển thị trên trang Kiểm duyệt của admin.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Hủy</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleConfirmModeration} disabled={isRequestingPublic}>
+                        {isRequestingPublic ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                            Đang gửi...
+                          </>
+                        ) : (
+                          "Gửi yêu cầu"
+                        )}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              ) : null
             )}
             <button
               onClick={openSettingsDialog}
