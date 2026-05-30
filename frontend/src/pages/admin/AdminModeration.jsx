@@ -56,7 +56,7 @@ const TAB_CONFIG = [
   { key: "listening", label: "Bài nghe", icon: Headphones, gradient: "from-green-500 to-teal-500" },
 ];
 
-const PAGE_SIZE = 15;
+const PAGE_SIZE = 6;
 
 // Định dạng ngày tháng theo locale Việt Nam
 const formatDate = (dateStr) => {
@@ -322,14 +322,47 @@ export default function AdminModeration() {
 
       {/* Pagination */}
       {!isLoading && items.length > 0 && pagination.totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 mt-6">
-          <button onClick={() => handlePageChange(pagination.page - 1)} disabled={pagination.page <= 1}
-            className="p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed">
+        <div className="flex items-center justify-center gap-1 mt-6">
+          <button
+            onClick={() => handlePageChange(pagination.page - 1)}
+            disabled={pagination.page <= 1}
+            className="w-9 h-9 rounded-lg border border-border text-sm font-medium hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center"
+          >
             <ChevronLeft className="w-4 h-4" />
           </button>
-          <span className="px-4 py-1.5 text-sm font-bold text-slate-600">Trang {pagination.page} / {pagination.totalPages}</span>
-          <button onClick={() => handlePageChange(pagination.page + 1)} disabled={pagination.page >= pagination.totalPages}
-            className="p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed">
+          {(() => {
+            const pages = [];
+            const maxVisible = 3;
+            const total = pagination.totalPages;
+            const current = pagination.page;
+            if (total <= maxVisible) {
+              for (let i = 1; i <= total; i++) pages.push(i);
+            } else if (current <= 2) {
+              pages.push(1, 2, 3);
+            } else if (current >= total - 1) {
+              pages.push(total - 2, total - 1, total);
+            } else {
+              pages.push(current - 1, current, current + 1);
+            }
+            return pages.map((p) => (
+              <button
+                key={p}
+                onClick={() => handlePageChange(p)}
+                className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${
+                  pagination.page === p
+                    ? "bg-primary text-white"
+                    : "border border-border hover:bg-muted"
+                }`}
+              >
+                {p}
+              </button>
+            ));
+          })()}
+          <button
+            onClick={() => handlePageChange(pagination.page + 1)}
+            disabled={pagination.page >= pagination.totalPages}
+            className="w-9 h-9 rounded-lg border border-border text-sm font-medium hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center"
+          >
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>

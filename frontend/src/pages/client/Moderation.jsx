@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { moderationApi } from "@/api/client/moderationApi";
 
-const PAGE_SIZE = 15;
+const PAGE_SIZE = 6;
 
 const TABS = [
   { key: "", label: "Tất cả", icon: ShieldCheck, gradient: "from-violet-500 to-purple-600" },
@@ -345,7 +345,7 @@ export default function Moderation() {
 
       {/* Pagination */}
       {!loading && items.length > 0 && totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 mt-6">
+        <div className="flex items-center justify-center gap-1 mt-6">
           <button
             onClick={() => handlePageChange(safePage - 1)}
             disabled={safePage <= 1}
