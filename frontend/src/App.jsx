@@ -1,10 +1,10 @@
 import { Toaster } from "@/components/ui/toaster";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClientInstance } from "@/lib/query-client";
-import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Route, Routes, Navigate, Outlet } from "react-router-dom";
 import PageNotFound from "@/lib/PageNotFound";
 import { AuthProvider, useAuth } from "@/lib/AuthContext";
-import { AdminAuthProvider, useAdminAuth } from "@/lib/AdminAuthContext";
+import { AdminAuthProvider, useAdminAuth, ADMIN_ROLES_KEY } from "@/lib/AdminAuthContext";
 import ClientLayout from "@/components/layouts/ClientLayout";
 import AdminLayout from "@/components/layouts/AdminLayout";
 import Home from "@/pages/client/Home";
@@ -62,7 +62,6 @@ const ProtectedRoute = () => {
 };
 
 // Route bảo vệ yêu cầu xác thực admin
-// Chỉ kiểm tra isAuthenticated - quyền truy cập route cụ thể do backend xử lý
 const AdminProtectedRoute = () => {
   const { isAuthenticated, isLoading } = useAdminAuth();
 
@@ -75,6 +74,35 @@ const AdminProtectedRoute = () => {
   }
 
   return <AdminLayout />;
+};
+
+// Route chỉ dành cho admin (role 3), dùng lồng bên trong AdminProtectedRoute
+const AdminOnlyRoute = () => {
+  const { admin, isLoading } = useAdminAuth();
+
+  if (isLoading) {
+    return <AdminLoadingScreen />;
+  }
+
+  // Đọc roles từ localStorage (fallback nếu context chưa kịp set, tương tự AdminLayout)
+  const getCachedRoles = () => {
+    try {
+      const raw = localStorage.getItem(ADMIN_ROLES_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed.map(Number);
+      }
+    } catch { /* ignore */ }
+    return [];
+  };
+  const cachedRoles = getCachedRoles();
+  const roles = (admin?.user?.roles ?? cachedRoles).map(Number);
+
+  if (!roles.includes(3)) {
+    return <Navigate to="/admin/vocabulary" replace />;
+  }
+
+  return <Outlet />;
 };
 
 // Component định tuyến chính dựa trên trạng thái xác thực người dùng
@@ -122,12 +150,14 @@ const AuthenticatedApp = () => {
       <Route path="/admin" element={<Navigate to="/admin/login" replace />} />
       <Route path="/admin/login" element={<AdminLogin />} />
       <Route element={<AdminProtectedRoute />}>
-        <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        <Route element={<AdminOnlyRoute />}>
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin/users" element={<AdminUsers />} />
+        </Route>
         <Route path="/admin/vocabulary" element={<AdminVocabulary />} />
         <Route path="/admin/reading" element={<AdminReading />} />
         <Route path="/admin/listening" element={<AdminListening />} />
         <Route path="/admin/moderation" element={<AdminModeration />} />
-        <Route path="/admin/users" element={<AdminUsers />} />
         <Route path="/admin/profile" element={<AdminProfile />} />
       </Route>
 

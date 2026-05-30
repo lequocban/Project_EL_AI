@@ -85,8 +85,12 @@ export default function AdminLayout() {
   const roles = (admin?.user?.roles ?? cachedRoles).map(Number);
   const hasAdminRole = roles.includes(3);
 
-  // Sidebar luôn hiển thị đầy đủ 7 trang; việc chặn route đã xử lý ở AdminProtectedRoute (App.jsx)
-  const navItems = adminNavItems;
+  // Chỉ hiển thị Tổng quan và Người dùng nếu tài khoản có role admin (3)
+  const navItems = hasAdminRole
+    ? adminNavItems
+    : adminNavItems.filter(
+        item => item.path !== "/admin/dashboard" && item.path !== "/admin/users"
+      );
 
   // Xử lý đăng xuất admin và chuyển hướng về trang đăng nhập
   const handleLogout = async () => {
