@@ -99,13 +99,25 @@ export const AdminAuthProvider = ({ children }) => {
       // Endpoint getMe trả về user trực tiếp trong response.data (không có nested user)
       const user = response.data;
       const roles = (user?.roles || []).map(Number);
+
+      // Lấy thêm họ và tên từ profile API
+      let fullName = user?.userName || user?.username;
+      try {
+        const profileRes = await adminApi.getProfileMe();
+        if (profileRes?.data?.userName) {
+          fullName = profileRes.data.userName;
+        }
+      } catch {
+        // fallback: dùng username đã có
+      }
+
       setAdmin({
-        ...response.data,
+        ...user,
         user: {
           ...user,
           roles,
         },
-        full_name: user?.userName,
+        full_name: fullName,
       });
       localStorage.setItem(ADMIN_ROLES_KEY, JSON.stringify(roles));
       setIsAuthenticated(true);
@@ -143,13 +155,25 @@ export const AdminAuthProvider = ({ children }) => {
       const roles = (loginUser?.roles || []).map(Number);
       // Lưu roles vào localStorage ĐỒNG BỘ để AdminProtectedRoute/AdminLayout đọc được ngay
       localStorage.setItem(ADMIN_ROLES_KEY, JSON.stringify(roles));
+
+      // Lấy thêm họ và tên từ profile API
+      let fullName = loginUser?.userName || loginUser?.username;
+      try {
+        const profileRes = await adminApi.getProfileMe();
+        if (profileRes?.data?.userName) {
+          fullName = profileRes.data.userName;
+        }
+      } catch {
+        // fallback
+      }
+
       setAdmin({
-        ...response.data,
+        ...loginUser,
         user: {
           ...loginUser,
           roles,
         },
-        full_name: loginUser?.userName,
+        full_name: fullName,
       });
       setIsAuthenticated(true);
       setError("");

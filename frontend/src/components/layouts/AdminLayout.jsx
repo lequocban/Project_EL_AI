@@ -10,7 +10,6 @@ import {
   ShieldCheck,
   Menu,
   X,
-  UserCircle,
 } from "lucide-react";
 import { useState } from "react";
 import { useAdminAuth, ADMIN_ROLES_KEY } from "@/lib/AdminAuthContext";
@@ -51,12 +50,6 @@ const adminNavItems = [
     label: "Người dùng",
     icon: Users,
     gradient: "from-pink-500 to-rose-500",
-  },
-  {
-    path: "/admin/profile",
-    label: "Hồ sơ",
-    icon: UserCircle,
-    gradient: "from-violet-500 to-purple-500",
   },
 ];
 
@@ -141,9 +134,27 @@ export default function AdminLayout() {
 
         <div className="p-4 border-t border-slate-200 space-y-2">
           {admin && (
-            <div className="px-4 py-2 text-sm">
-              <div className="font-bold text-slate-900 truncate">{admin?.username || admin?.email}</div>
-              <div className="text-xs text-slate-500 truncate">{admin.email}</div>
+            <div className="px-4 py-2">
+              <div className="font-bold text-slate-900 text-sm truncate">
+                {admin?.full_name || admin?.username || admin?.email}
+              </div>
+              <div className="text-xs text-slate-500 truncate">
+                {admin?.email}
+              </div>
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {(admin?.user?.roles || []).map((roleId) => {
+                  const r = {
+                    1: { label: "Người dùng", cls: "bg-blue-100 text-blue-700" },
+                    2: { label: "Quản lý nội dung", cls: "bg-violet-100 text-violet-700" },
+                    3: { label: "Quản trị viên", cls: "bg-amber-100 text-amber-700" },
+                  }[Number(roleId)] || { label: "Không xác định", cls: "bg-gray-100 text-gray-700" };
+                  return (
+                    <span key={roleId} className={`text-xs px-2 py-0.5 rounded-full font-semibold ${r.cls}`}>
+                      {r.label}
+                    </span>
+                  );
+                })}
+              </div>
             </div>
           )}
           <button
@@ -182,6 +193,30 @@ export default function AdminLayout() {
             className="bg-white text-slate-900 w-72 h-full p-4 pt-16 space-y-1 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
+            {admin && (
+              <div className="px-4 py-3 border-b border-slate-100 mb-2">
+                <div className="font-bold text-slate-900 text-sm truncate">
+                  {admin?.full_name || admin?.username || admin?.email}
+                </div>
+                <div className="text-xs text-slate-500 truncate">
+                  {admin?.email}
+                </div>
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {(admin?.user?.roles || []).map((roleId) => {
+                    const r = {
+                      1: { label: "Người dùng", cls: "bg-blue-100 text-blue-700" },
+                      2: { label: "Quản lý nội dung", cls: "bg-violet-100 text-violet-700" },
+                      3: { label: "Quản trị viên", cls: "bg-amber-100 text-amber-700" },
+                    }[Number(roleId)] || { label: "Không xác định", cls: "bg-gray-100 text-gray-700" };
+                    return (
+                      <span key={roleId} className={`text-xs px-2 py-0.5 rounded-full font-semibold ${r.cls}`}>
+                        {r.label}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             {navItems.map(({ path, label, icon: Icon, gradient }) => {
               const firstPath = navItems[0]?.path || "/admin/vocabulary";
               const active =

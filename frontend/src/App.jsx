@@ -30,7 +30,6 @@ import AdminReading from "@/pages/admin/AdminReading";
 import AdminListening from "@/pages/admin/AdminListening";
 import AdminUsers from "@/pages/admin/AdminUsers";
 import AdminModeration from "@/pages/admin/AdminModeration";
-import AdminProfile from "@/pages/admin/AdminProfile";
 
 // Component hiển thị spinner loading toàn màn hình
 const LoadingScreen = () => (
@@ -158,7 +157,6 @@ const AuthenticatedApp = () => {
         <Route path="/admin/reading" element={<AdminReading />} />
         <Route path="/admin/listening" element={<AdminListening />} />
         <Route path="/admin/moderation" element={<AdminModeration />} />
-        <Route path="/admin/profile" element={<AdminProfile />} />
       </Route>
 
       <Route path="*" element={<PageNotFound />} />
