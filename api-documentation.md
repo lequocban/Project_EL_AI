@@ -3074,8 +3074,11 @@ GET /admin/auth/me
     "id": "uuid-admin-1",
     "email": "admin@example.com",
     "username": "superadmin",
-    "role": "admin",
-    "status": "active"
+    "roles": [
+      1,
+      2, 
+      3
+    ]
   }
 }
 ```
