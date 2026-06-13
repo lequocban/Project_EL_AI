@@ -8,7 +8,6 @@ import {
   ToastViewport,
 } from "@/components/ui/toast";
 
-// Component hiển thị danh sách thông báo toast
 export function Toaster() {
   const { toasts } = useToast();
 

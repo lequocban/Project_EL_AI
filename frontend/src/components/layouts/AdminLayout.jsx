@@ -73,9 +73,10 @@ export default function AdminLayout() {
   };
   const cachedRoles = getCachedRoles();
 
-  // Ưu tiên roles từ admin context (đã được sync đồng bộ sau login),
-  // fallback sang localStorage nếu context chưa kịp set
-  const roles = (admin?.user?.roles ?? cachedRoles).map(Number);
+  // Ưu tiên roles từ admin context, fallback sang localStorage nếu context chưa kịp set
+  // hoặc context roles rỗng (do API getMe không trả về roles)
+  const contextRoles = (admin?.user?.roles || []).map(Number);
+  const roles = contextRoles.length > 0 ? contextRoles : cachedRoles;
   const hasAdminRole = roles.includes(3);
 
   // Chỉ hiển thị Tổng quan và Người dùng nếu tài khoản có role admin (3)

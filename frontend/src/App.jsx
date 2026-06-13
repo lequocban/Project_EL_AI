@@ -95,7 +95,8 @@ const AdminOnlyRoute = () => {
     return [];
   };
   const cachedRoles = getCachedRoles();
-  const roles = (admin?.user?.roles ?? cachedRoles).map(Number);
+  const contextRoles = (admin?.user?.roles || []).map(Number);
+  const roles = contextRoles.length > 0 ? contextRoles : cachedRoles;
 
   if (!roles.includes(3)) {
     return <Navigate to="/admin/vocabulary" replace />;

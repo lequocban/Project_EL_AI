@@ -1,7 +1,5 @@
-// Inspired by react-hot-toast library
 import { useState, useEffect } from "react";
 
-// Hook useToast và hàm toast để quản lý thông báo
 const TOAST_LIMIT = 20;
 const TOAST_REMOVE_DELAY = 1000000;
 
@@ -64,8 +62,6 @@ export const reducer = (state, action) => {
     case actionTypes.DISMISS_TOAST: {
       const { toastId } = action;
 
-      // ! Side effects ! - This could be extracted into a dismissToast() action,
-      // but I'll keep it here for simplicity
       if (toastId) {
         addToRemoveQueue(toastId);
       } else {

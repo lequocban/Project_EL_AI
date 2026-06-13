@@ -100,6 +100,12 @@ export const AdminAuthProvider = ({ children }) => {
       const user = response.data;
       const roles = (user?.roles || []).map(Number);
 
+      // Chỉ ghi đè cachedRoles nếu roles từ API không rỗng
+      // Tránh trường hợp API getMe không trả về roles làm mất quyền admin
+      if (roles.length > 0) {
+        localStorage.setItem(ADMIN_ROLES_KEY, JSON.stringify(roles));
+      }
+
       // Lấy thêm họ và tên từ profile API
       let fullName = user?.userName || user?.username;
       try {
@@ -119,7 +125,6 @@ export const AdminAuthProvider = ({ children }) => {
         },
         full_name: fullName,
       });
-      localStorage.setItem(ADMIN_ROLES_KEY, JSON.stringify(roles));
       setIsAuthenticated(true);
       setError("");
 
