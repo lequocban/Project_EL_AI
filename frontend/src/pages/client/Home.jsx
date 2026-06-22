@@ -44,6 +44,16 @@ const LEVEL_BADGE = {
   advanced: "border-[#DDB7FF] bg-[#F6E8FF] text-[#8549BA]",
 };
 
+const interactiveHomeCardClass =
+  "transition-all duration-200 ease-out hover:-translate-y-1 active:translate-y-0.5";
+const vocabularyCardClass = `lingo-card block min-w-0 !border-[#C7F8A1] !bg-[#F3FFE8] ${interactiveHomeCardClass} hover:!border-[#9BE765] hover:!bg-[#E5FFC2]`;
+const listeningCardClass = `lingo-card block min-w-0 !border-[#99F2DF] !bg-[#E9FFF9] ${interactiveHomeCardClass} hover:!border-[#5EE6CA] hover:!bg-[#D5FFF4]`;
+const readingCardClass = `lingo-card block min-w-0 !border-[#FFD18A] !bg-[#FFF7E8] ${interactiveHomeCardClass} hover:!border-[#FFB84D] hover:!bg-[#FFECC7]`;
+
+const vocabularyIconClass = "border-[#C7F8A1] bg-[#E5FFC2] text-[#3D7400]";
+const listeningIconClass = "border-[#99F2DF] bg-[#D5FFF4] text-[#008E70]";
+const readingIconClass = "border-[#FFD18A] bg-[#FFECC7] text-[#A85F00]";
+
 function SectionHeader({ title, to }) {
   return (
     <div className="mb-4 flex items-center justify-between gap-4">
@@ -59,10 +69,10 @@ function SectionHeader({ title, to }) {
   );
 }
 
-function EmptyCard({ icon: Icon, title, desc, to, action }) {
+function EmptyCard({ icon: Icon, title, desc, to, action, cardClass = "lingo-card", iconClass = vocabularyIconClass }) {
   return (
-    <div className="lingo-card p-6 text-center">
-      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl border-2 border-[#C7F8A1] bg-[#E5FFC2] text-[#3D7400]">
+    <div className={`${cardClass} p-6 text-center`}>
+      <div className={`mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl border-2 ${iconClass}`}>
         <Icon className="h-6 w-6" />
       </div>
       <h3 className="mb-2 text-lg font-black text-foreground">{title}</h3>
@@ -203,7 +213,7 @@ export default function Home() {
             {recentSets.length > 0 ? (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                 {recentSets.map((set) => (
-                  <Link key={set.id} to={`/vocabulary?set=${set.id}`} className="lingo-card card-hover block min-w-0 p-5">
+                  <Link key={set.id} to={`/vocabulary?set=${set.id}`} className={`${vocabularyCardClass} p-5`}>
                     <BookOpen className="mb-4 h-7 w-7 text-primary" />
                     <h3 className="line-clamp-2 text-base font-black leading-snug text-foreground">{set.title}</h3>
                     <p className="mt-3 text-sm font-bold text-muted-foreground">{set.wordCount || 0} từ</p>
@@ -216,6 +226,8 @@ export default function Home() {
                 title="Chưa có bộ từ nào"
                 desc="Tạo bộ từ đầu tiên hoặc để AI gợi ý nội dung theo chủ đề bạn cần học."
                 to="/vocabulary"
+                cardClass={vocabularyCardClass}
+                iconClass={vocabularyIconClass}
                 action="Tạo bộ từ"
               />
             )}
@@ -227,7 +239,7 @@ export default function Home() {
               {recentListening.length > 0 ? (
                 <div className="grid gap-4 sm:grid-cols-2">
                   {recentListening.map((lesson) => (
-                    <Link key={lesson.id} to="/listening" className="lingo-card card-hover block min-w-0 p-5">
+                    <Link key={lesson.id} to="/listening" className={`${listeningCardClass} p-5`}>
                       <Headphones className="mb-4 h-7 w-7 text-[#00CD9C]" />
                       <h3 className="line-clamp-2 text-base font-black leading-snug text-foreground">{lesson.title}</h3>
                       <span className={`mt-4 inline-flex rounded-xl border-2 px-3 py-1 text-xs font-extrabold uppercase tracking-[0.6px] ${LEVEL_BADGE[lesson.level] || LEVEL_BADGE.beginner}`}>
@@ -242,6 +254,8 @@ export default function Home() {
                   title="Chưa có bài nghe"
                   desc="Tạo bài nghe theo chủ đề hoặc bắt đầu từ các bài có sẵn."
                   to="/listening"
+                  cardClass={listeningCardClass}
+                  iconClass={listeningIconClass}
                   action="Mở luyện nghe"
                 />
               )}
@@ -252,7 +266,7 @@ export default function Home() {
               {recentReading.length > 0 ? (
                 <div className="grid gap-4 sm:grid-cols-2">
                   {recentReading.map((lesson) => (
-                    <Link key={lesson.id} to="/reading" className="lingo-card card-hover block min-w-0 p-5">
+                    <Link key={lesson.id} to="/reading" className={`${readingCardClass} p-5`}>
                       <BookText className="mb-4 h-7 w-7 text-[#FF9600]" />
                       <h3 className="line-clamp-2 text-base font-black leading-snug text-foreground">{lesson.title}</h3>
                       <span className={`mt-4 inline-flex rounded-xl border-2 px-3 py-1 text-xs font-extrabold uppercase tracking-[0.6px] ${LEVEL_BADGE[lesson.level] || LEVEL_BADGE.beginner}`}>
@@ -267,6 +281,8 @@ export default function Home() {
                   title="Chưa có bài đọc"
                   desc="Tạo bài đọc mới theo cấp độ để luyện đọc hiểu và mở rộng từ vựng."
                   to="/reading"
+                  cardClass={readingCardClass}
+                  iconClass={readingIconClass}
                   action="Mở luyện đọc"
                 />
               )}
