@@ -2,6 +2,7 @@ const express = require("express");
 const helmet = require("helmet");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
+const env = require("./config/env.config");
 const v1Routes = require("./api/v1/routes/index");
 const { errorHandler } = require("./utils/errorHandler");
 const { verifyToken } = require("./api/v1/middlewares/auth.middleware");
@@ -11,9 +12,9 @@ const app = express();
 // Security headers
 app.use(helmet());
 
-// CORS — cho phép mọi origin truy cập API (cấu hình origin cụ thể trong production)
+// CORS — cấu hình origin cụ thể được phép truy cập
 app.use(cors({
-  origin: "*",
+  origin: env.allowedOrigins,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true,

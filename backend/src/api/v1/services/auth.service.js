@@ -182,8 +182,8 @@ const getAdminProfile = async (user, accessToken) => {
 // -------------------------------------------------------
 // Google OAuth — lấy URL redirect
 // -------------------------------------------------------
-const getGoogleAuthUrl = async () => {
-  const { data, error } = await authRepository.signInWithOAuth();
+const getGoogleAuthUrl = async (redirectTo) => {
+  const { data, error } = await authRepository.signInWithOAuth(redirectTo);
   if (error) {
     throw new AppError("Không thể tạo link đăng nhập Google", 500);
   }

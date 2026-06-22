@@ -15,6 +15,10 @@ const env = {
   frontendUrl: process.env.FRONTEND_URL || "http://localhost:5173",
   // Backend URL (dùng để build redirectTo cho Google OAuth callback)
   backendUrl: process.env.BACKEND_URL || "http://localhost:3000",
+  // CORS Allowed Origins
+  allowedOrigins: process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(",")
+    : ["https://project-el-ai.vercel.app", "http://localhost:5173", "http://localhost"],
 };
 
 module.exports = env;

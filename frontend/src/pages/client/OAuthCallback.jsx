@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Zap } from "lucide-react";
+import { API_BASE_URL } from "@/api/authApi";
 
 const ACCESS_TOKEN_KEY = "englishup_access_token";
 const TOKEN_EXPIRES_AT_KEY = "englishup_token_expires_at";
@@ -66,7 +67,7 @@ export default function OAuthCallback() {
 
       if (code) {
         // Gửi code lên backend để exchange lấy session
-        const res = await fetch(`/api/v1/auth/google/callback?code=${encodeURIComponent(code)}`, {
+        const res = await fetch(`${API_BASE_URL || ""}/api/v1/auth/google/callback?code=${encodeURIComponent(code)}`, {
           method: "GET",
           credentials: "include",
         });
@@ -104,7 +105,7 @@ export default function OAuthCallback() {
    */
   const syncRefreshTokenToBackend = async (refreshToken, accessToken) => {
     try {
-      await fetch("/api/v1/auth/google/sync-session", {
+      await fetch(`${API_BASE_URL || ""}/api/v1/auth/google/sync-session`, {
         method: "POST",
         credentials: "include",
         headers: {

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Zap, Eye, EyeOff, Mail, CheckCircle2, ArrowLeft, RefreshCw } from "lucide-react";
-import { authApi } from "@/api/authApi";
+import { authApi, API_BASE_URL } from "@/api/authApi";
 
 // Trang đăng ký tài khoản với xác thực OTP 2 bước
 export default function Register() {
@@ -258,7 +258,7 @@ export default function Register() {
 
               {/* Nút đăng ký bằng Google */}
               <a
-                href="/api/v1/auth/google"
+                href={`${API_BASE_URL || ""}/api/v1/auth/google?origin=${encodeURIComponent(window.location.origin)}`}
                 className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl border border-border bg-white hover:bg-gray-50 transition-all font-semibold text-sm text-foreground shadow-sm"
               >
                 {/* Google icon */}
