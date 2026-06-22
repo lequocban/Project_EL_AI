@@ -1,6 +1,7 @@
 const router = require("express").Router();
 const authController = require("../../controllers/client/auth.controller");
 const {
+  registerOtpSchema,
   registerSchema,
   loginSchema,
   requestOtpSchema,
@@ -11,11 +12,21 @@ const { validateBody } = require("../../validations/validate");
 const {
   loginLimiter,
   registerLimiter,
+  registerOtpLimiter,
   requestOtpLimiter,
   resetPasswordLimiter,
 } = require("../../middlewares/rate-limit.middleware");
 const { verifyToken, requireAuth } = require("../../middlewares/auth.middleware");
 
+// Bước 1: Gửi OTP xác thực Email trước khi đăng ký
+router.post(
+  "/register/request-otp",
+  registerOtpLimiter,
+  validateBody(registerOtpSchema),
+  authController.registerRequestOtp
+);
+
+// Bước 2: Hoàn tất đăng ký (email + otp + password + ...)
 router.post(
   "/register",
   registerLimiter,
@@ -55,5 +66,11 @@ router.patch(
   validateBody(changePasswordSchema),
   authController.changePassword
 );
+
+// Google OAuth
+router.get("/google", authController.googleLogin);
+router.get("/google/callback", authController.googleCallback);
+// Nhận refresh token từ frontend sau implicit flow, set HttpOnly cookie
+router.post("/google/sync-session", authController.syncSession);
 
 module.exports = router;

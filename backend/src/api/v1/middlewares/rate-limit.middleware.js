@@ -68,9 +68,27 @@ const resetPasswordLimiter = rateLimit({
   skipSuccessfulRequests: true,
 });
 
+/**
+ * Rate limiter cho endpoint gửi OTP đăng ký tài khoản.
+ * Max 3 lần / 10 phút mỗi IP.
+ * Ngăn spam gửi email OTP đăng ký.
+ */
+const registerOtpLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 10 phút
+  max: 3,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    code: 429,
+    success: false,
+    message: "Quá nhiều yêu cầu gửi OTP đăng ký. Vui lòng thử lại sau 10 phút.",
+  },
+});
+
 module.exports = {
   loginLimiter,
   registerLimiter,
+  registerOtpLimiter,
   requestOtpLimiter,
   resetPasswordLimiter,
 };

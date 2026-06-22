@@ -1,4 +1,5 @@
 const { supabase, createAuthedClient, authAdmin } = require("../../../config/supabase");
+const env = require("../../../config/env.config");
 
 const signUp = async (payload) => {
   return supabase.auth.signUp(payload);
@@ -41,6 +42,29 @@ const updateUserPasswordById = async (userId, newPassword) => {
   return data;
 };
 
+// -------------------------------------------------------
+// Google OAuth — lấy URL redirect sang Google
+// -------------------------------------------------------
+const signInWithOAuth = async () => {
+  // redirectTo phải là frontend page để JS có thể đọc được hash fragment
+  // (Supabase implicit flow gửi token qua #hash, server không đọc được)
+  const redirectTo = `${env.frontendUrl}/auth/callback`;
+  return supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo,
+      queryParams: { access_type: "offline", prompt: "consent" },
+    },
+  });
+};
+
+// -------------------------------------------------------
+// Google OAuth — trao đổi code lấy session
+// -------------------------------------------------------
+const exchangeCodeForSession = async (code) => {
+  return supabase.auth.exchangeCodeForSession(code);
+};
+
 module.exports = {
   signUp,
   signInWithPassword,
@@ -49,5 +73,7 @@ module.exports = {
   findUserByEmail,
   updateUserPassword,
   updateUserPasswordById,
+  signInWithOAuth,
+  exchangeCodeForSession,
 };
 

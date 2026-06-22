@@ -1,10 +1,23 @@
 const { z } = require("zod");
 
+// Schema dùng ở bước 1: Chỉ nhận email để gửi OTP đăng ký
+const registerOtpSchema = z.object({
+  email: z
+    .string()
+    .email("Email không hợp lệ")
+    .transform((val) => val.toLowerCase().trim()),
+});
+
+// Schema dùng ở bước 2: Nhập đầy đủ thông tin + otp để hoàn tất đăng ký
 const registerSchema = z.object({
   email: z
     .string()
     .email("Email không hợp lệ")
     .transform((val) => val.toLowerCase().trim()),
+  otp: z
+    .string()
+    .length(6, "Mã OTP phải có 6 chữ số")
+    .regex(/^\d{6}$/, "Mã OTP phải là 6 chữ số"),
   password: z
     .string()
     .min(8, "Mật khẩu phải có ít nhất 8 ký tự")
@@ -73,6 +86,7 @@ const adminLoginSchema = z.object({
 });
 
 module.exports = {
+  registerOtpSchema,
   registerSchema,
   loginSchema,
   requestOtpSchema,

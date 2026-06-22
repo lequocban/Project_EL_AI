@@ -1,10 +1,20 @@
 const authService = require("../../services/auth.service");
 const otpService = require("../../services/otp.service");
 const { success } = require("../../../../utils/responseHandler");
+const env = require("../../../../config/env.config");
 const {
   setRefreshTokenCookie,
   clearRefreshTokenCookie,
 } = require("../../../../utils/cookie");
+
+const registerRequestOtp = async (req, res, next) => {
+  try {
+    await otpService.requestRegisterOtp(req.body.email);
+    return success(res, null, "Mã OTP đã được gửi đến email của bạn. Vui lòng kiểm tra hộp thư.");
+  } catch (error) {
+    return next(error);
+  }
+};
 
 const register = async (req, res, next) => {
   try {
@@ -31,6 +41,7 @@ const register = async (req, res, next) => {
     return next(error);
   }
 };
+
 
 const login = async (req, res, next) => {
   try {
@@ -127,7 +138,67 @@ const changePassword = async (req, res, next) => {
   }
 };
 
+const googleLogin = async (req, res, next) => {
+  try {
+    const url = await authService.getGoogleAuthUrl();
+    return res.redirect(url);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const googleCallback = async (req, res, next) => {
+  try {
+    const { code, error: oauthError } = req.query;
+
+    if (oauthError) {
+      return res.redirect(
+        `${env.frontendUrl}/login?error=${encodeURIComponent("Đăng nhập Google thất bại")}`
+      );
+    }
+
+    const result = await authService.loginWithGoogleCallback(code);
+
+    // Set refresh token vào HttpOnly Cookie
+    if (result.session?.refreshToken) {
+      setRefreshTokenCookie(res, result.session.refreshToken);
+    }
+
+    // Redirect về frontend kèm access token và expiresAt trong URL
+    const params = new URLSearchParams({
+      access_token: result.session?.accessToken || "",
+      expires_at: result.session?.expiresAt || "",
+    });
+
+    return res.redirect(`${env.frontendUrl}/home?${params.toString()}`);
+  } catch (error) {
+    const msg = error.message || "Đăng nhập Google thất bại";
+    return res.redirect(
+      `${env.frontendUrl}/login?error=${encodeURIComponent(msg)}`
+    );
+  }
+};
+
+/**
+ * POST /api/v1/auth/google/sync-session
+ * Frontend gửi refresh token lên sau implicit flow.
+ * Backend set refresh token vào HttpOnly Cookie.
+ */
+const syncSession = async (req, res, next) => {
+  try {
+    const { refreshToken } = req.body;
+    if (!refreshToken) {
+      return res.status(400).json({ message: "Thiếu refresh token" });
+    }
+    setRefreshTokenCookie(res, refreshToken);
+    return res.json({ message: "ok" });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
+  registerRequestOtp,
   register,
   login,
   logout,
@@ -135,4 +206,7 @@ module.exports = {
   requestOtp,
   resetPassword,
   changePassword,
+  googleLogin,
+  googleCallback,
+  syncSession,
 };

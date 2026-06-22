@@ -98,6 +98,7 @@ export default function Profile() {
 
   // Mở modal đổi mật khẩu
   const openPasswordModal = () => {
+    if (authUser.authProvider === "google") return;
     setPasswordForm({
       currentPassword: "",
       newPassword: "",
@@ -238,7 +239,7 @@ export default function Profile() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+        <div className={`grid grid-cols-1 ${authUser.authProvider === "google" ? "" : "sm:grid-cols-2"} gap-3 mb-4`}>
           <button
             onClick={openProfileModal}
             className="flex items-center justify-center gap-3 gradient-primary text-white rounded-2xl p-4 font-bold shadow-md hover:shadow-lg transition-all"
@@ -246,13 +247,15 @@ export default function Profile() {
             <Pencil className="w-5 h-5" />
             Cập nhật hồ sơ
           </button>
-          <button
-            onClick={openPasswordModal}
-            className="flex items-center justify-center gap-3 bg-card border border-border text-foreground rounded-2xl p-4 font-bold hover:bg-muted/40 transition-all"
-          >
-            <KeyRound className="w-5 h-5 text-primary" />
-            Đổi mật khẩu
-          </button>
+          {authUser.authProvider !== "google" && (
+            <button
+              onClick={openPasswordModal}
+              className="flex items-center justify-center gap-3 bg-white border border-border text-foreground rounded-2xl p-4 font-bold hover:bg-muted/40 transition-all"
+            >
+              <KeyRound className="w-5 h-5 text-primary" />
+              Đổi mật khẩu
+            </button>
+          )}
         </div>
 
         {/* Logout */}
