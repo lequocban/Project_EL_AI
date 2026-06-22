@@ -1,97 +1,72 @@
 import { Link } from "react-router-dom";
-import { Zap, Mail, Phone, MapPin } from "lucide-react";
+import { Mail, MapPin, Phone, Zap } from "lucide-react";
 
-export default function Footer({ className = "bg-white border-t border-border" }) {
+const FOOTER_LINKS = [
+  { to: "/vocabulary", label: "Từ vựng" },
+  { to: "/lookup", label: "Tra cứu" },
+  { to: "/listening", label: "Luyện nghe" },
+  { to: "/reading", label: "Luyện đọc" },
+];
+
+export default function Footer({ className = "border-t-2 border-border bg-white" }) {
   return (
-    <footer className={`py-4 ${className}`}>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 px-6">
-        {/* Giới thiệu */}
-        <div className="flex flex-col">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-6 h-6 gradient-primary rounded-lg flex items-center justify-center">
-              <Zap className="w-4 h-4 text-white" />
+    <footer className={`py-8 ${className}`}>
+      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-6 md:grid-cols-2 lg:grid-cols-4">
+        <div>
+          <div className="mb-3 flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-white shadow-[0_4px_0_var(--shadow-brand)]">
+              <Zap className="h-5 w-5" />
             </div>
-            <span className="text-base font-black">EnglishUp</span>
+            <span className="text-lg font-black text-foreground">EnglishUp</span>
           </div>
-          <p className="text-sm font-medium leading-relaxed">
-            Nền tảng học tiếng Anh toàn diện với AI - giúp bạn tiến bộ mỗi ngày qua từ vựng, ngữ pháp, luyện nghe và luyện đọc
+          <p className="text-sm font-medium leading-relaxed text-muted-foreground">
+            Nền tảng học tiếng Anh với AI, giúp bạn tiến bộ mỗi ngày qua từ vựng, nghe và đọc.
           </p>
         </div>
 
-        {/* Tính năng */}
-        <div className="flex flex-col">
-          <h3 className="font-black mb-2">Tính năng</h3>
+        <div>
+          <h3 className="mb-3 text-base font-black text-foreground">Tính năng</h3>
           <ul className="space-y-2">
-            <li>
-              <Link to="/vocabulary" className="text-sm hover:opacity-70 transition-opacity font-medium">
-                Từ vựng
-              </Link>
-            </li>
-            <li>
-              <Link to="/grammar" className="text-sm hover:opacity-70 transition-opacity font-medium">
-                Ngữ pháp
-              </Link>
-            </li>
-            <li>
-              <Link to="/listening" className="text-sm hover:opacity-70 transition-opacity font-medium">
-                Luyện nghe
-              </Link>
-            </li>
-            <li>
-              <Link to="/reading" className="text-sm hover:opacity-70 transition-opacity font-medium">
-                Luyện đọc
-              </Link>
-            </li>
+            {FOOTER_LINKS.map((link) => (
+              <li key={link.to}>
+                <Link to={link.to} className="text-sm font-bold text-muted-foreground hover:text-[#58A700] hover:underline">
+                  {link.label}
+                </Link>
+              </li>
+            ))}
           </ul>
         </div>
 
-        {/* Về chúng tôi */}
-        <div className="flex flex-col">
-          <h3 className="font-black mb-2">Về chúng tôi</h3>
-          <ul className="space-y-2">
-            <li className="text-sm font-medium">
-              Đội ngũ EnglishUp
-            </li>
-            <li className="text-sm font-medium">
-              Mục tiêu: Giúp người Việt học tiếng Anh hiệu quả
-            </li>
-            <li className="text-sm font-medium">
-              Phát triển với đam mê tại Việt Nam
-            </li>
+        <div>
+          <h3 className="mb-3 text-base font-black text-foreground">Về chúng tôi</h3>
+          <ul className="space-y-2 text-sm font-medium leading-relaxed text-muted-foreground">
+            <li>Đội ngũ EnglishUp</li>
+            <li>Mục tiêu: giúp người Việt học tiếng Anh hiệu quả.</li>
+            <li>Phát triển với định hướng học tập bền vững.</li>
           </ul>
         </div>
 
-        {/* Thông tin liên hệ */}
-        <div className="flex flex-col">
-          <h3 className="font-black mb-2">Liên hệ</h3>
-          <ul className="space-y-3">
+        <div>
+          <h3 className="mb-3 text-base font-black text-foreground">Liên hệ</h3>
+          <ul className="space-y-3 text-sm font-medium text-muted-foreground">
             <li className="flex items-start gap-2">
-              <Mail className="w-4 h-4 mt-0.5 flex-shrink-0" />
-              <span className="text-sm font-medium break-all">
-                quocban2211@gmail.com
-              </span>
+              <Mail className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
+              <span className="break-all">quocban2211@gmail.com</span>
             </li>
             <li className="flex items-start gap-2">
-              <Phone className="w-4 h-4 mt-0.5 flex-shrink-0" />
-              <span className="text-sm font-medium">
-                0973 639 706
-              </span>
+              <Phone className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
+              <span>0973 639 706</span>
             </li>
             <li className="flex items-start gap-2">
-              <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
-              <span className="text-sm font-medium">
-                7/14/10, đường 182, phường Tăng Nhơn Phú A, Thành phố Thủ Đức, TP.HCM, Việt Nam
-              </span>
+              <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
+              <span>Thủ Đức, TP.HCM, Việt Nam</span>
             </li>
           </ul>
         </div>
       </div>
 
-      {/* Copyright */}
-      <div className="pt-3 border-t border-border text-center px-6">
-        <p className="text-sm font-medium">
-          © 2026 EnglishUp. All rights reserved.
-        </p>
+      <div className="mx-auto mt-8 max-w-7xl border-t-2 border-border px-6 pt-5 text-center">
+        <p className="text-sm font-bold text-muted-foreground">Copyright 2026 EnglishUp. All rights reserved.</p>
       </div>
     </footer>
   );

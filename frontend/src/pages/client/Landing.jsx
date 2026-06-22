@@ -1,256 +1,223 @@
 import { Link } from "react-router-dom";
-import { Zap, Flame, ArrowRight } from "lucide-react";
+import {
+  ArrowRight,
+  BarChart3,
+  BookOpen,
+  CheckCircle2,
+  FileText,
+  Flame,
+  Headphones,
+  Layers,
+  Sparkles,
+  Trophy,
+  Zap,
+} from "lucide-react";
 import Footer from "@/components/layouts/Footer";
 
 const FEATURES = [
   {
-    icon: "📚",
+    icon: BookOpen,
     title: "Từ vựng thông minh",
-    desc: "Học từ vựng qua Flashcard, Trắc nghiệm, Gõ từ, Nghe viết. AI tạo bộ từ theo chủ đề bạn muốn.",
+    desc: "Tạo bộ từ bằng AI, học bằng flashcard, trắc nghiệm, gõ từ và nghe viết.",
   },
   {
-    icon: "✏️",
-    title: "Ngữ pháp hệ thống",
-    desc: "Các bài học ngữ pháp từ cơ bản đến nâng cao, dễ hiểu với ví dụ minh họa thực tế.",
+    icon: Headphones,
+    title: "Luyện nghe chủ động",
+    desc: "Nghe hội thoại theo chủ đề, luyện câu hỏi và theo dõi tiến độ từng bài.",
   },
   {
-    icon: "🎧",
-    title: "Luyện nghe",
-    desc: "Bài nghe đa dạng chủ đề. AI tạo hội thoại theo yêu cầu với công nghệ Text-to-Speech.",
+    icon: FileText,
+    title: "Luyện đọc có mục tiêu",
+    desc: "Đọc bài theo cấp độ, trả lời câu hỏi và mở rộng vốn từ trong ngữ cảnh.",
   },
   {
-    icon: "📖",
-    title: "Luyện đọc",
-    desc: "Đoạn văn phong phú kèm câu hỏi đọc hiểu. Tạo bài đọc mới bằng AI ngay trong ứng dụng.",
-  },
-  {
-    icon: "🏆",
-    title: "Luyện thi TOEIC",
-    desc: "Đề thi mô phỏng đầy đủ Part 1-7 với giải thích chi tiết và điểm số ước tính.",
-  },
-  {
-    icon: "🔥",
-    title: "Gamification",
-    desc: "Hệ thống Streak, XP và bảng xếp hạng giúp bạn duy trì động lực học mỗi ngày.",
+    icon: Trophy,
+    title: "Duy trì động lực",
+    desc: "Streak, XP và bảng xếp hạng giúp việc học mỗi ngày có cảm giác rõ ràng.",
   },
 ];
 
 const STATS = [
-  { value: "10,000+", label: "Người học" },
+  { value: "10K+", label: "Người học" },
   { value: "500+", label: "Bộ từ vựng" },
   { value: "95%", label: "Hài lòng" },
-  { value: "4.9★", label: "Đánh giá" },
+  { value: "4.9", label: "Đánh giá" },
 ];
 
-const SHOWCASES = [
-  {
-    img: "https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=600",
-    title: "📚 Flashcard thông minh",
-    desc: "Học từ vựng qua trò chơi tương tác vui nhộn",
-  },
-  {
-    img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600",
-    title: "🎧 Luyện nghe & đọc",
-    desc: "Bài nghe đa dạng chủ đề với AI tạo nội dung",
-  },
-  {
-    img: "https://images.unsplash.com/photo-1513258496099-48168024aec0?w=600",
-    title: "🏆 Luyện thi TOEIC",
-    desc: "Đề thi mô phỏng với điểm số ước tính chi tiết",
-  },
+const SKILLS = [
+  { icon: BookOpen, title: "Vocabulary", color: "text-primary" },
+  { icon: Headphones, title: "Listening", color: "text-[#1CB0F6]" },
+  { icon: FileText, title: "Reading", color: "text-[#FF9600]" },
+  { icon: BarChart3, title: "Progress", color: "text-[#CE82FF]" },
 ];
 
-const gradientText = {
-  background: "linear-gradient(135deg, hsl(262,83%,58%), hsl(217,91%,60%))",
-  WebkitBackgroundClip: "text",
-  WebkitTextFillColor: "transparent",
-  backgroundClip: "text",
-  display: "inline-block",
-};
-
-// Trang giới thiệu sản phẩm cho người dùng chưa đăng nhập
 export default function Landing() {
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Navbar */}
-      <nav className="bg-white border-b border-border px-6 py-4 flex items-center justify-between sticky top-0 z-10 shadow-sm">
-        <div className="flex items-center gap-2">
-          <div className="w-9 h-9 gradient-primary rounded-xl flex items-center justify-center">
-            <Zap className="w-5 h-5 text-white" />
+    <div className="min-h-screen bg-background text-foreground">
+      <nav className="sticky top-0 z-30 border-b-2 border-border bg-white">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+          <Link to="/" className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white shadow-[0_4px_0_var(--shadow-brand)]">
+              <Zap className="h-5 w-5" />
+            </div>
+            <span className="text-xl font-black tracking-tight">EnglishUp</span>
+          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              to="/login"
+              className="rounded-xl px-4 py-3 text-sm font-extrabold uppercase tracking-[0.8px] text-foreground transition-colors hover:bg-muted"
+            >
+              Đăng nhập
+            </Link>
+            <Link to="/register" className="lingo-button-brand px-5 py-3">
+              Bắt đầu
+            </Link>
           </div>
-          <span className="text-xl font-black text-foreground">EnglishUp</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link
-            to="/login"
-            className="text-sm font-bold text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-xl hover:bg-muted"
-          >
-            Đăng nhập
-          </Link>
-          <Link
-            to="/register"
-            className="gradient-primary text-white text-sm font-bold px-4 py-2 rounded-xl shadow-md hover:opacity-90 transition-all"
-          >
-            Bắt đầu miễn phí
-          </Link>
         </div>
       </nav>
 
-      {/* Hero */}
-      <section className="px-6 py-16 lg:py-24 text-center max-w-4xl mx-auto">
-        <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-bold mb-6">
-          <Flame className="w-4 h-4 text-orange-500" /> #1 Ứng dụng học tiếng
-          Anh hiệu quả
-        </div>
-        <h1 className="text-4xl lg:text-6xl font-black text-foreground mb-6 leading-tight">
-          Học tiếng Anh
-          <br />
-          <span style={gradientText}>thông minh hơn</span>
-        </h1>
-        <p className="text-lg text-muted-foreground font-medium mb-8 max-w-2xl mx-auto">
-          Nền tảng học tiếng Anh toàn diện với AI — từ từ vựng, ngữ pháp, luyện
-          nghe, đọc đến luyện thi TOEIC. Học mỗi ngày, tiến bộ mỗi ngày.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Link
-            to="/register"
-            className="gradient-primary text-white font-black text-lg px-8 py-4 rounded-2xl shadow-xl hover:opacity-90 transition-all flex items-center justify-center gap-2"
-          >
-            Bắt đầu miễn phí <ArrowRight className="w-5 h-5" />
-          </Link>
-          <Link
-            to="/login"
-            className="bg-white border-2 border-border text-foreground font-black text-lg px-8 py-4 rounded-2xl hover:bg-muted transition-all flex items-center justify-center gap-2"
-          >
-            Đăng nhập
-          </Link>
-        </div>
-        <p className="text-sm text-muted-foreground mt-4">
-          Miễn phí hoàn toàn • Không cần thẻ tín dụng
-        </p>
-      </section>
-
-      {/* Showcase images */}
-      <section className="px-6 pb-12 max-w-5xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {SHOWCASES.map((s, i) => (
-            <div
-              key={i}
-              className="rounded-2xl overflow-hidden shadow-lg border border-border card-hover group"
-            >
-              <div className="overflow-hidden h-44">
-                <img
-                  src={s.img}
-                  alt={s.title}
-                  className="w-full h-44 object-cover group-hover:scale-105 transition-transform duration-300"
-                />
+      <main>
+        <section className="border-b-2 border-border bg-white">
+          <div className="mx-auto grid max-w-7xl items-center gap-12 px-6 py-16 lg:grid-cols-[1.05fr_0.95fr] lg:py-24">
+            <div>
+              <div className="mb-6 inline-flex items-center gap-2 rounded-full border-2 border-[#C7F8A1] bg-[#E5FFC2] px-4 py-2 text-sm font-extrabold uppercase tracking-[0.8px] text-[#3D7400]">
+                <Flame className="h-4 w-4" />
+                Học đều mỗi ngày
               </div>
-              <div className="bg-white p-4">
-                <p className="font-black text-sm text-foreground">{s.title}</p>
-                <p className="text-xs text-muted-foreground mt-1 font-medium">
-                  {s.desc}
-                </p>
+              <h1 className="mb-6 max-w-3xl text-[40px] font-black leading-[1.08] tracking-[-0.4px] text-foreground md:text-5xl lg:text-6xl">
+                Học tiếng Anh dễ nhớ hơn, vui hơn và có tiến độ thật.
+              </h1>
+              <p className="mb-8 max-w-2xl text-lg font-medium leading-relaxed text-muted-foreground md:text-[19px]">
+                EnglishUp gồm từ vựng, nghe, đọc, AI tạo bài học và gamification vào một không gian học gọn gàng cho người Việt.
+              </p>
+              <div className="flex flex-col gap-4 sm:flex-row">
+                <Link to="/register" className="lingo-button-brand text-base">
+                  Bắt đầu miễn phí
+                  <ArrowRight className="h-[18px] w-[18px]" />
+                </Link>
+                <Link to="/login" className="lingo-button-secondary text-base">
+                  Tôi đã có tài khoản
+                </Link>
+              </div>
+              <div className="mt-6 flex flex-wrap gap-3 text-sm font-bold text-muted-foreground">
+                <span className="inline-flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-primary" />
+                  Không cần thẻ tín dụng
+                </span>
+                <span className="inline-flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-primary" />
+                  Học trên mọi thiết bị
+                </span>
               </div>
             </div>
-          ))}
-        </div>
-      </section>
 
-      {/* Stats */}
-      <section className="bg-white border-y border-border py-10 px-6">
-        <div className="max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6">
-          {STATS.map((s, i) => (
-            <div key={i} className="text-center">
-              <p className="text-3xl font-black text-primary">{s.value}</p>
-              <p className="text-muted-foreground font-semibold text-sm mt-1">
-                {s.label}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Features */}
-      <section className="px-6 py-16 max-w-5xl mx-auto">
-        <h2 className="text-3xl font-black text-foreground text-center mb-2">
-          Tất cả trong một
-        </h2>
-        <p className="text-muted-foreground text-center font-medium mb-10">
-          Mọi kỹ năng tiếng Anh bạn cần
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {FEATURES.map((f, i) => (
-            <div
-              key={i}
-              className="bg-white rounded-2xl p-6 border border-border card-hover"
-            >
-              <span className="text-3xl mb-3 block">{f.icon}</span>
-              <h3 className="font-black text-foreground mb-2">{f.title}</h3>
-              <p className="text-muted-foreground text-sm font-medium">
-                {f.desc}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* How it works */}
-      <section className="bg-white border-y border-border px-6 py-16">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-3xl font-black text-foreground text-center mb-10">
-            Bắt đầu chỉ trong 3 bước
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              {
-                step: "1",
-                title: "Tạo tài khoản",
-                desc: "Đăng ký miễn phí bằng email hoặc tài khoản Google.",
-              },
-              {
-                step: "2",
-                title: "Chọn kỹ năng",
-                desc: "Học từ vựng, ngữ pháp, luyện nghe/đọc hoặc ôn thi TOEIC theo nhu cầu.",
-              },
-              {
-                step: "3",
-                title: "Học mỗi ngày",
-                desc: "Duy trì streak, tích XP và leo bảng xếp hạng cùng cộng đồng.",
-              },
-            ].map((item, i) => (
-              <div key={i} className="text-center">
-                <div className="w-14 h-14 gradient-primary rounded-2xl flex items-center justify-center text-white text-2xl font-black mx-auto mb-4 shadow-lg">
-                  {item.step}
+            <div className="lingo-card-lg p-4 md:p-6">
+              <div className="mb-4 flex items-center justify-between border-b-2 border-border pb-4">
+                <div>
+                  <p className="text-sm font-extrabold uppercase tracking-[0.8px] text-muted-foreground">
+                    Hôm nay
+                  </p>
+                  <h2 className="text-2xl font-black text-foreground">15 phút học tập</h2>
                 </div>
-                <h3 className="font-black text-foreground mb-2">
-                  {item.title}
-                </h3>
-                <p className="text-muted-foreground text-sm font-medium">
-                  {item.desc}
-                </p>
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl border-2 border-[#C7F8A1] bg-[#E5FFC2] text-[#3D7400]">
+                  <Sparkles className="h-6 w-6" />
+                </div>
               </div>
-            ))}
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                {SKILLS.map(({ icon: Icon, title, color }) => (
+                  <div key={title} className="rounded-xl border-2 border-border bg-white p-4 shadow-[0_2px_0_rgb(229_229_229_/_1)]">
+                    <Icon className={`mb-4 h-7 w-7 ${color}`} />
+                    <p className="text-lg font-black text-foreground">{title}</p>
+                    <div className="mt-4 h-3 rounded-full border-2 border-border bg-muted">
+                      <div className="h-full w-2/3 rounded-full bg-primary" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-4 rounded-xl border-2 border-border bg-white p-4 shadow-[0_2px_0_rgb(229_229_229_/_1)]">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-extrabold uppercase tracking-[0.8px] text-[#58A700]">
+                      Streak đang chạy
+                    </p>
+                    <p className="text-2xl font-black">7 ngày liên tiếp</p>
+                  </div>
+                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#FFC800] text-[#4B4B4B] shadow-[0_4px_0_#E6B400]">
+                    <Zap className="h-7 w-7" />
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* CTA */}
-      <section className="px-6 py-16 text-center">
-        <div className="max-w-xl mx-auto gradient-primary rounded-3xl p-10 text-white shadow-2xl">
-          <h2 className="text-3xl font-black mb-3">Sẵn sàng bắt đầu?</h2>
-          <p className="text-white/80 font-medium mb-6">
-            Tham gia hàng nghìn học viên đang tiến bộ mỗi ngày với EnglishUp.
-          </p>
-          <Link
-            to="/register"
-            className="bg-white text-primary font-black text-lg px-8 py-4 rounded-2xl hover:bg-white/90 transition-all inline-flex items-center gap-2 shadow-xl"
-          >
-            Đăng ký ngay <ArrowRight className="w-5 h-5" />
-          </Link>
-        </div>
-      </section>
+        <section className="border-b-2 border-border bg-white px-6 py-16 lg:py-24">
+          <div className="mx-auto max-w-7xl">
+            <div className="mb-12 max-w-2xl">
+              <h2 className="mb-4 text-3xl font-black tracking-[-0.3px] md:text-4xl">
+                Tất cả kỹ năng trong một luồng học.
+              </h2>
+              <p className="text-[17px] font-medium leading-relaxed text-muted-foreground">
+                Mỗi khối học được thiết kế như một bài tập ngắn, rõ mục tiêu và có phần thưởng tiến độ.
+              </p>
+            </div>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+              {FEATURES.map(({ icon: Icon, title, desc }) => (
+                <article key={title} className="lingo-card p-6">
+                  <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl border-2 border-[#C7F8A1] bg-[#E5FFC2] text-[#3D7400]">
+                    <Icon className="h-6 w-6" />
+                  </div>
+                  <h3 className="mb-3 text-xl font-black text-foreground">{title}</h3>
+                  <p className="text-sm font-medium leading-relaxed text-muted-foreground">{desc}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
 
-      <Footer className="mt-auto bg-muted" />
+        <section className="border-b-2 border-border bg-white px-6 py-16 lg:py-24">
+          <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
+            <div>
+              <h2 className="mb-4 text-3xl font-black tracking-[-0.3px] md:text-4xl">
+                Nhìn thấy tiến độ sau từng buổi học.
+              </h2>
+              <p className="text-[17px] font-medium leading-relaxed text-muted-foreground">
+                Trang học tập gồm thống kê, bài gần đây và module tiếp theo để người học quay lại đúng việc cần làm.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+              {STATS.map((stat) => (
+                <div key={stat.label} className="lingo-card p-5 text-center">
+                  <p className="text-3xl font-black text-primary">{stat.value}</p>
+                  <p className="mt-2 text-sm font-bold text-muted-foreground">{stat.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="bg-white px-6 py-16 text-center lg:py-24">
+          <div className="mx-auto max-w-3xl">
+            <div className="lingo-card-lg p-8 md:p-10">
+              <Layers className="mx-auto mb-5 h-10 w-10 text-primary" />
+              <h2 className="mb-4 text-3xl font-black tracking-[-0.3px] md:text-4xl">
+                Sẵn sàng xây thói quen học mỗi ngày?
+              </h2>
+              <p className="mx-auto mb-8 max-w-xl text-[17px] font-medium leading-relaxed text-muted-foreground">
+                Tạo tài khoản miễn phí và bắt đầu với từ vựng, nghe hoặc đọc trong vài phút.
+              </p>
+              <Link to="/register" className="lingo-button-brand text-base">
+                Đăng ký ngay
+                <ArrowRight className="h-[18px] w-[18px]" />
+              </Link>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <Footer className="mt-auto border-t-2 border-border bg-white" />
     </div>
   );
 }

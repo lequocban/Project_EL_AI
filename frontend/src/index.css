@@ -6,54 +6,66 @@
 
 @layer base {
   :root {
-    --background: 240 33% 98%;
-    --foreground: 240 10% 15%;
+    --background: 0 0% 100%;
+    --foreground: 0 0% 29%;
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 15%;
+    --card-foreground: 0 0% 29%;
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 15%;
-    --primary: 262 83% 58%;
+    --popover-foreground: 0 0% 29%;
+    --primary: 95 97% 41%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 142 71% 45%;
-    --secondary-foreground: 0 0% 100%;
-    --muted: 240 20% 94%;
-    --muted-foreground: 240 10% 50%;
-    --accent: 38 100% 55%;
+    --secondary: 0 0% 97%;
+    --secondary-foreground: 0 0% 29%;
+    --muted: 0 0% 97%;
+    --muted-foreground: 0 0% 47%;
+    --accent: 203 91% 54%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 20% 88%;
-    --input: 240 20% 92%;
-    --ring: 262 83% 58%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 95 97% 41%;
     --radius: 0.75rem;
     --font-nunito: 'Nunito', sans-serif;
-    --green: 142 71% 45%;
-    --blue: 217 91% 60%;
-    --orange: 38 100% 55%;
-    --pink: 330 81% 60%;
-    --teal: 175 77% 40%;
+    --brand: #58CC03;
+    --brand-medium: #89E219;
+    --brand-strong: #58A700;
+    --brand-softer: #E5FFC2;
+    --shadow-brand: #58A700;
+    --shadow-success: #58A700;
+    --shadow-danger: #E62E2E;
+    --shadow-warning: #E6B400;
+    --shadow-secondary: #E5E5E5;
+    --shadow-dark: #2A2A2A;
+    --green: 95 97% 41%;
+    --blue: 203 91% 54%;
+    --orange: 35 100% 50%;
+    --pink: 323 100% 76%;
+    --teal: 165 100% 40%;
   }
 
   .dark {
-    --background: 240 15% 10%;
-    --foreground: 240 10% 95%;
-    --card: 240 15% 14%;
-    --card-foreground: 240 10% 95%;
-    --popover: 240 15% 14%;
-    --popover-foreground: 240 10% 95%;
-    --primary: 262 83% 65%;
+    --background: 195 30% 11%;
+    --foreground: 0 0% 100%;
+    --card: 195 22% 16%;
+    --card-foreground: 0 0% 100%;
+    --popover: 195 22% 16%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 95 97% 41%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 142 71% 45%;
+    --secondary: 195 22% 16%;
     --secondary-foreground: 0 0% 100%;
-    --muted: 240 15% 20%;
-    --muted-foreground: 240 10% 60%;
-    --accent: 38 100% 55%;
+    --muted: 195 22% 16%;
+    --muted-foreground: 0 0% 69%;
+    --accent: 203 91% 54%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 15% 22%;
-    --input: 240 15% 22%;
-    --ring: 262 83% 65%;
+    --border: 198 18% 26%;
+    --input: 198 18% 26%;
+    --ring: 95 97% 41%;
+    --shadow-brand: #3D7400;
+    --shadow-secondary: #2A3438;
   }
 }
 
@@ -68,16 +80,39 @@
 
 @layer utilities {
   .gradient-primary {
-    background: linear-gradient(135deg, hsl(262, 83%, 58%) 0%, hsl(217, 91%, 60%) 100%);
+    background: hsl(var(--primary));
   }
   .gradient-green {
-    background: linear-gradient(135deg, hsl(142, 71%, 45%) 0%, hsl(175, 77%, 40%) 100%);
+    background: hsl(var(--primary));
   }
   .gradient-orange {
-    background: linear-gradient(135deg, hsl(38, 100%, 55%) 0%, hsl(330, 81%, 60%) 100%);
+    background: hsl(var(--orange));
   }
   .card-hover {
-    @apply transition-all duration-200 hover:shadow-lg hover:-translate-y-1;
+    @apply transition-all duration-100 hover:bg-[#E5FFC2] hover:border-[#C7F8A1] active:translate-y-0.5;
+    box-shadow: 0 2px 0 rgb(229 229 229 / 1);
+  }
+  .lingo-button-brand {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border-2 border-transparent bg-primary px-7 py-4 text-sm font-extrabold uppercase tracking-[0.8px] text-white transition-all duration-100 hover:bg-[#89E219] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#C7F8A1] active:translate-y-0.5;
+    box-shadow: 0 4px 0 var(--shadow-brand);
+  }
+  .lingo-button-brand:active {
+    box-shadow: 0 2px 0 var(--shadow-brand);
+  }
+  .lingo-button-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border-2 border-border bg-white px-7 py-4 text-sm font-extrabold uppercase tracking-[0.8px] text-foreground transition-all duration-100 hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-muted active:translate-y-0.5;
+    box-shadow: 0 4px 0 var(--shadow-secondary);
+  }
+  .lingo-button-secondary:active {
+    box-shadow: 0 2px 0 var(--shadow-secondary);
+  }
+  .lingo-card {
+    @apply rounded-xl border-2 border-border bg-white;
+    box-shadow: 0 2px 0 rgb(229 229 229 / 1);
+  }
+  .lingo-card-lg {
+    @apply rounded-xl border-2 border-border bg-white;
+    box-shadow: 0 4px 0 rgb(229 229 229 / 1), 0 6px 12px -4px rgb(0 0 0 / 0.06);
   }
   .scrollbar-hide {
     -ms-overflow-style: none;
@@ -85,5 +120,23 @@
   }
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+  .tip-fade-slide {
+    animation: tip-fade-slide 320ms ease-out both;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .tip-fade-slide {
+      animation: none;
+    }
+  }
+  @keyframes tip-fade-slide {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 }

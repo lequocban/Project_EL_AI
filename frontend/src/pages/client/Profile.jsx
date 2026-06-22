@@ -171,7 +171,7 @@ export default function Profile() {
         <h1 className="text-2xl font-black text-foreground mb-6">👤 Hồ sơ</h1>
 
         {/* Avatar & Name */}
-        <div className="bg-white rounded-2xl border border-border p-6 mb-4 flex items-center gap-5">
+        <div className="bg-card rounded-2xl border border-border p-6 mb-4 flex items-center gap-5">
           <div className="w-16 h-16 gradient-primary rounded-2xl flex items-center justify-center text-white text-2xl font-black shadow-md uppercase">
             {authUser.full_name?.charAt(0) || authUser.email?.charAt(0) || "?"}
           </div>
@@ -248,7 +248,7 @@ export default function Profile() {
           </button>
           <button
             onClick={openPasswordModal}
-            className="flex items-center justify-center gap-3 bg-white border border-border text-foreground rounded-2xl p-4 font-bold hover:bg-muted/40 transition-all"
+            className="flex items-center justify-center gap-3 bg-card border border-border text-foreground rounded-2xl p-4 font-bold hover:bg-muted/40 transition-all"
           >
             <KeyRound className="w-5 h-5 text-primary" />
             Đổi mật khẩu
@@ -258,7 +258,7 @@ export default function Profile() {
         {/* Logout */}
         <button
           onClick={() => logout(true)}
-          className="w-full flex items-center justify-center gap-3 bg-white border border-red-200 text-red-500 rounded-2xl p-4 font-bold hover:bg-red-50 transition-all"
+          className="w-full flex items-center justify-center gap-3 bg-card border border-red-200 text-red-500 rounded-2xl p-4 font-bold hover:bg-red-50 dark:border-red-900/60 dark:hover:bg-red-950/30 transition-all"
         >
           <LogOut className="w-5 h-5" />
           Đăng xuất
@@ -267,7 +267,7 @@ export default function Profile() {
 
       {profileOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-border">
+          <div className="w-full max-w-md rounded-3xl bg-card p-6 shadow-2xl border border-border">
             <div className="flex items-start justify-between gap-4 mb-5">
               <div>
                 <h2 className="text-xl font-black text-foreground">Cập nhật hồ sơ</h2>
@@ -293,7 +293,7 @@ export default function Profile() {
                   onChange={(event) =>
                     setProfileForm((current) => ({ ...current, userName: event.target.value }))
                   }
-                  className="w-full rounded-2xl border border-border bg-white px-4 py-3 font-semibold text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  className="w-full rounded-2xl border border-border bg-background px-4 py-3 font-semibold text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                   placeholder="Nhập họ và tên"
                 />
               </label>
@@ -322,7 +322,7 @@ export default function Profile() {
                   onChange={(event) =>
                     setProfileForm((current) => ({ ...current, dayOfBirth: event.target.value }))
                   }
-                  className="w-full rounded-2xl border border-border bg-white px-4 py-3 font-semibold text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  className="w-full rounded-2xl border border-border bg-background px-4 py-3 font-semibold text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                 />
               </label>
 
@@ -352,7 +352,7 @@ export default function Profile() {
 
       {passwordOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-border">
+          <div className="w-full max-w-md rounded-3xl bg-card p-6 shadow-2xl border border-border">
             <div className="flex items-start justify-between gap-4 mb-5">
               <div>
                 <h2 className="text-xl font-black text-foreground">Đổi mật khẩu</h2>
@@ -380,7 +380,7 @@ export default function Profile() {
                     onChange={(event) =>
                       setPasswordForm((current) => ({ ...current, currentPassword: event.target.value }))
                     }
-                    className="w-full rounded-2xl border border-border bg-white px-4 py-3 font-semibold text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 pr-12"
+                    className="w-full rounded-2xl border border-border bg-background px-4 py-3 font-semibold text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 pr-12"
                     placeholder="Nhập mật khẩu hiện tại"
                   />
                   <button
@@ -409,7 +409,7 @@ export default function Profile() {
                     onChange={(event) =>
                       setPasswordForm((current) => ({ ...current, newPassword: event.target.value }))
                     }
-                    className="w-full rounded-2xl border border-border bg-white px-4 py-3 font-semibold text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 pr-12"
+                    className="w-full rounded-2xl border border-border bg-background px-4 py-3 font-semibold text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 pr-12"
                     placeholder="Tối thiểu 8 ký tự, 1 chữ hoa, 1 số"
                   />
                   <button
@@ -438,7 +438,7 @@ export default function Profile() {
                     onChange={(event) =>
                       setPasswordForm((current) => ({ ...current, confirmPassword: event.target.value }))
                     }
-                    className="w-full rounded-2xl border border-border bg-white px-4 py-3 font-semibold text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 pr-12"
+                    className="w-full rounded-2xl border border-border bg-background px-4 py-3 font-semibold text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 pr-12"
                     placeholder="Nhập lại mật khẩu mới"
                   />
                   <button

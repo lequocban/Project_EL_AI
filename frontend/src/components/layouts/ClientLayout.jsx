@@ -1,79 +1,38 @@
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
-  Home,
+  BarChart2,
   BookOpen,
   BookText,
-  Headphones,
   FileText,
+  Headphones,
+  Home,
   Menu,
+  ShieldCheck,
+  TrendingUp,
+  User,
   X,
   Zap,
-  BarChart2,
-  User,
-  TrendingUp,
-  ShieldCheck,
 } from "lucide-react";
 import { useState } from "react";
-import { isNavigationPrevented, triggerNavigationConfirm, resetNavigating, useNavigationGuardListener } from "@/lib/navigationGuard";
+import {
+  isNavigationPrevented,
+  resetNavigating,
+  triggerNavigationConfirm,
+  useNavigationGuardListener,
+} from "@/lib/navigationGuard";
 
 const navItems = [
-  {
-    path: "/home",
-    label: "Trang chủ",
-    icon: Home,
-    activeClass: "from-violet-500 to-indigo-500",
-  },
-  {
-    path: "/vocabulary",
-    label: "Từ vựng",
-    icon: BookOpen,
-    activeClass: "from-violet-500 to-indigo-500",
-  },
-  {
-    path: "/lookup",
-    label: "Tra cứu",
-    icon: BookText,
-    activeClass: "from-blue-500 to-cyan-500",
-  },
-  {
-    path: "/listening",
-    label: "Luyện nghe",
-    icon: Headphones,
-    activeClass: "from-green-500 to-teal-500",
-  },
-  {
-    path: "/reading",
-    label: "Luyện đọc",
-    icon: FileText,
-    activeClass: "from-orange-500 to-amber-500",
-  },
-  {
-    path: "/moderation",
-    label: "Kiểm duyệt",
-    icon: ShieldCheck,
-    activeClass: "from-fuchsia-500 to-purple-600",
-  },
-  {
-    path: "/stats",
-    label: "Thống kê",
-    icon: TrendingUp,
-    activeClass: "from-pink-500 to-rose-500",
-  },
-  {
-    path: "/leaderboard",
-    label: "Xếp hạng",
-    icon: BarChart2,
-    activeClass: "from-teal-500 to-cyan-600",
-  },
-  {
-    path: "/profile",
-    label: "Hồ sơ",
-    icon: User,
-    activeClass: "gradient-primary",
-  },
+  { path: "/home", label: "Trang chủ", icon: Home },
+  { path: "/vocabulary", label: "Từ vựng", icon: BookOpen },
+  { path: "/lookup", label: "Tra cứu", icon: BookText },
+  { path: "/listening", label: "Luyện nghe", icon: Headphones },
+  { path: "/reading", label: "Luyện đọc", icon: FileText },
+  { path: "/moderation", label: "Kiểm duyệt", icon: ShieldCheck },
+  { path: "/stats", label: "Thống kê", icon: TrendingUp },
+  { path: "/leaderboard", label: "Xếp hạng", icon: BarChart2 },
+  { path: "/profile", label: "Hồ sơ", icon: User },
 ];
 
-// Component bố cục trang client với sidebar và menu mobile
 export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -108,127 +67,90 @@ export default function Layout() {
     resetNavigating();
   };
 
-  // Lắng nghe sự kiện từ back/forward button
   useNavigationGuardListener(() => {
     setShowExitConfirm(true);
   });
 
+  const renderNavItem = ({ path, label, icon: Icon }) => {
+    const active = location.pathname === path || location.pathname.startsWith(`${path}/`);
+
+    return (
+      <a
+        key={path}
+        href={path}
+        onClick={(e) => {
+          setMobileOpen(false);
+          handleNavClick(e, path);
+        }}
+        className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-extrabold transition-all ${
+          active
+            ? "border-2 border-transparent bg-primary text-white shadow-[0_4px_0_var(--shadow-brand)]"
+            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+        }`}
+      >
+        <Icon className="h-5 w-5 flex-shrink-0" />
+        {label}
+      </a>
+    );
+  };
+
   return (
-    <div className="min-h-screen bg-background flex">
-      {/* Sidebar Desktop */}
-      <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-border fixed h-full z-20">
+    <div className="flex min-h-screen bg-background">
+      <aside className="fixed z-20 hidden h-full w-64 flex-col border-r-2 border-border bg-white lg:flex">
         <div className="p-6">
-          <a href="/home" onClick={(e) => handleNavClick(e, "/home")} className="flex items-center gap-2 cursor-pointer">
-            <div className="w-9 h-9 gradient-primary rounded-xl flex items-center justify-center">
-              <Zap className="w-5 h-5 text-white" />
+          <a href="/home" onClick={(e) => handleNavClick(e, "/home")} className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white shadow-[0_4px_0_var(--shadow-brand)]">
+              <Zap className="h-5 w-5" />
             </div>
-            <span className="text-xl font-black text-foreground">
-              EnglishUp
-            </span>
+            <span className="text-xl font-black text-foreground">EnglishUp</span>
           </a>
         </div>
-        <nav className="flex-1 px-3 pb-4 flex flex-col justify-between">
-          <div className="space-y-1">
-            {navItems.map(({ path, label, icon: Icon, activeClass }) => {
-              const active =
-                location.pathname === path || location.pathname.startsWith(`${path}/`);
-              return (
-                <a
-                  key={path}
-                  href={path}
-                  onClick={(e) => handleNavClick(e, path)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all cursor-pointer ${
-                    active
-                      ? `bg-gradient-to-r ${activeClass} text-white shadow-md`
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  }`}
-                >
-                  <Icon className="w-5 h-5 flex-shrink-0" />
-                  {label}
-                </a>
-              );
-            })}
-          </div>
-        </nav>
+        <nav className="flex-1 space-y-2 px-3 pb-4">{navItems.map(renderNavItem)}</nav>
       </aside>
 
-      {/* Mobile Header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-white border-b border-border px-4 py-3 flex items-center justify-between">
-        <a href="/home" onClick={(e) => handleNavClick(e, "/home")} className="flex items-center gap-2 cursor-pointer">
-          <div className="w-8 h-8 gradient-primary rounded-xl flex items-center justify-center">
-            <Zap className="w-4 h-4 text-white" />
+      <div className="fixed left-0 right-0 top-0 z-30 flex items-center justify-between border-b-2 border-border bg-white px-4 py-3 lg:hidden">
+        <a href="/home" onClick={(e) => handleNavClick(e, "/home")} className="flex items-center gap-2">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-white shadow-[0_3px_0_var(--shadow-brand)]">
+            <Zap className="h-4 w-4" />
           </div>
           <span className="text-lg font-black">EnglishUp</span>
         </a>
         <button
+          type="button"
           onClick={() => setMobileOpen(!mobileOpen)}
-          className="p-2 rounded-lg hover:bg-muted"
+          className="rounded-xl border-2 border-border bg-white p-2 text-foreground shadow-[0_2px_0_rgb(229_229_229_/_1)]"
+          aria-label="Mở điều hướng"
         >
-          {mobileOpen ? (
-            <X className="w-5 h-5" />
-          ) : (
-            <Menu className="w-5 h-5" />
-          )}
+          {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
       </div>
 
-      {/* Mobile Menu */}
       {mobileOpen && (
-        <div
-          className="lg:hidden fixed inset-0 z-20 bg-black/40"
-          onClick={() => setMobileOpen(false)}
-        >
-          <div
-            className="bg-white w-64 h-full p-4 pt-16 space-y-1"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {navItems.map(({ path, label, icon: Icon, activeClass }) => {
-              const active =
-                location.pathname === path || location.pathname.startsWith(`${path}/`);
-              return (
-                <a
-                  key={path}
-                  href={path}
-                  onClick={(e) => {
-                    setMobileOpen(false);
-                    handleNavClick(e, path);
-                  }}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm cursor-pointer ${
-                    active
-                      ? `bg-gradient-to-r ${activeClass} text-white`
-                      : "text-muted-foreground hover:bg-muted"
-                  }`}
-                >
-                  <Icon className="w-5 h-5" />
-                  {label}
-                </a>
-              );
-            })}
+        <div className="fixed inset-0 z-20 bg-black/40 lg:hidden" onClick={() => setMobileOpen(false)}>
+          <div className="h-full w-72 space-y-2 border-r-2 border-border bg-white p-4 pt-20" onClick={(e) => e.stopPropagation()}>
+            {navItems.map(renderNavItem)}
           </div>
         </div>
       )}
 
-      {/* Exit Confirmation Modal */}
       {showExitConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-xl">
-            <div className="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
-              <Zap className="w-7 h-7 text-amber-500" />
+          <div className="lingo-card-lg w-full max-w-sm p-6 text-center">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#FFF8E0] text-[#8A6F00]">
+              <Zap className="h-7 w-7" />
             </div>
-            <h2 className="text-xl font-black text-foreground mb-2">Xác nhận thoát</h2>
-            <p className="text-sm text-muted-foreground mb-6">
+            <h2 className="mb-2 text-xl font-black text-foreground">Xác nhận thoát</h2>
+            <p className="mb-6 text-sm font-medium leading-relaxed text-muted-foreground">
               Bạn có chắc muốn thoát? Tiến trình hiện tại sẽ không được lưu.
             </p>
             <div className="flex gap-3">
-              <button
-                onClick={handleCancelExit}
-                className="flex-1 border border-border py-2.5 rounded-xl font-bold text-sm hover:bg-muted transition-all"
-              >
+              <button type="button" onClick={handleCancelExit} className="lingo-button-secondary flex-1 px-4 py-3 text-xs">
                 Hủy
               </button>
               <button
+                type="button"
                 onClick={handleConfirmExit}
-                className="flex-1 bg-red-500 text-white py-2.5 rounded-xl font-bold text-sm hover:bg-red-600 transition-all"
+                className="inline-flex flex-1 items-center justify-center rounded-xl border-2 border-transparent bg-[#FF4B4B] px-4 py-3 text-xs font-extrabold uppercase tracking-[0.8px] text-white shadow-[0_4px_0_var(--shadow-danger)] transition-all duration-100 hover:bg-[#FF7373] active:translate-y-0.5 active:shadow-[0_2px_0_var(--shadow-danger)]"
               >
                 Xác nhận
               </button>
@@ -237,9 +159,8 @@ export default function Layout() {
         </div>
       )}
 
-      {/* Main Content */}
-      <main className="flex-1 lg:ml-64 pt-0 lg:pt-0">
-        <div className="pt-14 lg:pt-0">
+      <main className="flex-1 lg:ml-64">
+        <div className="pt-16 lg:pt-0">
           <Outlet />
         </div>
       </main>
