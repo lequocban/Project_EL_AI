@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Zap, Eye, EyeOff } from "lucide-react";
-import { authApi } from "@/api/authApi";
+import { authApi, API_BASE_URL } from "@/api/authApi";
 
 // Trang đăng nhập với các bước đăng nhập, quên mật khẩu và đặt lại mật khẩu
 export default function Login() {
@@ -338,7 +338,7 @@ export default function Login() {
 
               {/* Nút đăng nhập Google */}
               <a
-                href="/api/v1/auth/google"
+                href={`${API_BASE_URL || ""}/api/v1/auth/google?origin=${encodeURIComponent(window.location.origin)}`}
                 className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl border border-border bg-white hover:bg-gray-50 transition-all font-semibold text-sm text-foreground shadow-sm"
               >
                 {/* Google icon */}

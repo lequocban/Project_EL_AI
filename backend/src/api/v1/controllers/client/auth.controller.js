@@ -138,9 +138,28 @@ const changePassword = async (req, res, next) => {
   }
 };
 
+// Helper to dynamically get the frontend URL from referrer, origin or query parameters
+const getFrontendUrl = (req) => {
+  const originParam = req.query.origin || req.headers.referer || req.headers.origin;
+  if (originParam) {
+    try {
+      const parsedUrl = new URL(originParam);
+      const origin = parsedUrl.origin;
+      if (env.allowedOrigins.includes(origin)) {
+        return origin;
+      }
+    } catch (e) {
+      // Ignore invalid URLs
+    }
+  }
+  return env.frontendUrl; // Fallback
+};
+
 const googleLogin = async (req, res, next) => {
   try {
-    const url = await authService.getGoogleAuthUrl();
+    const frontendUrl = getFrontendUrl(req);
+    const redirectTo = `${frontendUrl}/auth/callback`;
+    const url = await authService.getGoogleAuthUrl(redirectTo);
     return res.redirect(url);
   } catch (error) {
     return next(error);
@@ -148,12 +167,13 @@ const googleLogin = async (req, res, next) => {
 };
 
 const googleCallback = async (req, res, next) => {
+  const frontendUrl = getFrontendUrl(req);
   try {
     const { code, error: oauthError } = req.query;
 
     if (oauthError) {
       return res.redirect(
-        `${env.frontendUrl}/login?error=${encodeURIComponent("Đăng nhập Google thất bại")}`
+        `${frontendUrl}/login?error=${encodeURIComponent("Đăng nhập Google thất bại")}`
       );
     }
 
@@ -170,11 +190,11 @@ const googleCallback = async (req, res, next) => {
       expires_at: result.session?.expiresAt || "",
     });
 
-    return res.redirect(`${env.frontendUrl}/home?${params.toString()}`);
+    return res.redirect(`${frontendUrl}/home?${params.toString()}`);
   } catch (error) {
     const msg = error.message || "Đăng nhập Google thất bại";
     return res.redirect(
-      `${env.frontendUrl}/login?error=${encodeURIComponent(msg)}`
+      `${frontendUrl}/login?error=${encodeURIComponent(msg)}`
     );
   }
 };

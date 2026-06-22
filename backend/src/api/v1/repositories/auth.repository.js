@@ -45,14 +45,14 @@ const updateUserPasswordById = async (userId, newPassword) => {
 // -------------------------------------------------------
 // Google OAuth — lấy URL redirect sang Google
 // -------------------------------------------------------
-const signInWithOAuth = async () => {
+const signInWithOAuth = async (redirectTo) => {
   // redirectTo phải là frontend page để JS có thể đọc được hash fragment
   // (Supabase implicit flow gửi token qua #hash, server không đọc được)
-  const redirectTo = `${env.frontendUrl}/auth/callback`;
+  const finalRedirectTo = redirectTo || `${env.frontendUrl}/auth/callback`;
   return supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo,
+      redirectTo: finalRedirectTo,
       queryParams: { access_type: "offline", prompt: "consent" },
     },
   });
