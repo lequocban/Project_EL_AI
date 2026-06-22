@@ -103,6 +103,11 @@ const refreshToken = async (refreshTokenValue) => {
 };
 
 const changePassword = async ({ userId, email, currentPassword, newPassword }) => {
+  const authProvider = await profileRepository.getAuthProviderByUserId(userId);
+  if (authProvider === "google") {
+    throw new AppError("Tài khoản đăng nhập bằng Google không thể thay đổi mật khẩu", 400);
+  }
+
   const { error } = await authRepository.signInWithPassword({
     email,
     password: currentPassword,
@@ -174,6 +179,43 @@ const getAdminProfile = async (user, accessToken) => {
   };
 };
 
+// -------------------------------------------------------
+// Google OAuth — lấy URL redirect
+// -------------------------------------------------------
+const getGoogleAuthUrl = async () => {
+  const { data, error } = await authRepository.signInWithOAuth();
+  if (error) {
+    throw new AppError("Không thể tạo link đăng nhập Google", 500);
+  }
+  // data.url là URL để redirect người dùng sang Google
+  return data.url;
+};
+
+// -------------------------------------------------------
+// Google OAuth — xử lý callback và trả về session
+// -------------------------------------------------------
+const loginWithGoogleCallback = async (code) => {
+  if (!code) {
+    throw new AppError("Thiếu authorization code", 400);
+  }
+
+  const { data, error } = await authRepository.exchangeCodeForSession(code);
+  if (error) {
+    throw mapAuthError(error);
+  }
+
+  const user = data.user;
+  const session = data.session;
+
+  // Kiểm tra status — chỉ cho phép đăng nhập khi status = 'active'
+  const status = await profileRepository.getStatusByUserId(user.id);
+  if (status !== null && status !== "active") {
+    throw new AppError("Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.", 403);
+  }
+
+  return buildAuthResponse(user, session);
+};
+
 module.exports = {
   register,
   login,
@@ -182,5 +224,7 @@ module.exports = {
   changePassword,
   adminLogin,
   getAdminProfile,
+  getGoogleAuthUrl,
+  loginWithGoogleCallback,
 };
 

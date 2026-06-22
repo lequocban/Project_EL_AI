@@ -20,6 +20,7 @@ const formatProfile = (profile) => {
     email: profile.email || null,
     userName: profile.user_name || null,
     dayOfBirth: toApiDate(profile.day_of_birth),
+    authProvider: profile.auth_provider || null,
   };
 };
 

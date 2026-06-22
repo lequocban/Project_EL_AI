@@ -23,6 +23,7 @@ import Moderation from "@/pages/client/Moderation";
 import Landing from "@/pages/client/Landing";
 import Register from "@/pages/client/Register";
 import Login from "@/pages/client/Login";
+import OAuthCallback from "@/pages/client/OAuthCallback";
 import AdminLogin from "@/pages/admin/AdminLogin";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminVocabulary from "@/pages/admin/AdminVocabulary";
@@ -127,6 +128,8 @@ const AuthenticatedApp = () => {
         path="/register"
         element={isAuthenticated ? <Navigate to="/home" replace /> : <Register />}
       />
+      {/* Trang xử lý callback OAuth Google — không redirect nếu đã đăng nhập */}
+      <Route path="/auth/callback" element={<OAuthCallback />} />
 
       <Route element={<ProtectedRoute />}>
         <Route path="/home" element={<Home />} />

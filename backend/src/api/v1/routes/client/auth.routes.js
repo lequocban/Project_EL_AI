@@ -67,4 +67,10 @@ router.patch(
   authController.changePassword
 );
 
+// Google OAuth
+router.get("/google", authController.googleLogin);
+router.get("/google/callback", authController.googleCallback);
+// Nhận refresh token từ frontend sau implicit flow, set HttpOnly cookie
+router.post("/google/sync-session", authController.syncSession);
+
 module.exports = router;

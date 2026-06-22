@@ -40,6 +40,36 @@ const getAppParamValue = (
   return null;
 };
 
+// -------------------------------------------------------
+// Xử lý redirect sau khi đăng nhập Google OAuth thành công.
+// Backend redirect về /home?access_token=...&expires_at=...
+// Ta đọc, lưu vào localStorage và xóa khỏi URL.
+// -------------------------------------------------------
+const handleGoogleOAuthRedirect = () => {
+  if (isNode) return;
+  const urlParams = new URLSearchParams(window.location.search);
+  const accessToken = urlParams.get("access_token");
+  const expiresAt = urlParams.get("expires_at");
+
+  if (accessToken) {
+    storage.setItem("englishup_access_token", accessToken);
+    if (expiresAt) {
+      storage.setItem("englishup_token_expires_at", expiresAt);
+    }
+
+    // Xóa token khỏi URL để không lộ trong history
+    urlParams.delete("access_token");
+    urlParams.delete("expires_at");
+    const cleanUrl = `${window.location.pathname}${
+      urlParams.toString() ? `?${urlParams.toString()}` : ""
+    }${window.location.hash}`;
+    window.history.replaceState({}, document.title, cleanUrl);
+  }
+};
+
+// Chạy ngay khi module được load
+handleGoogleOAuthRedirect();
+
 // Lấy tất cả tham số cấu hình ứng dụng
 const getAppParams = () => {
   if (getAppParamValue("clear_access_token") === "true") {

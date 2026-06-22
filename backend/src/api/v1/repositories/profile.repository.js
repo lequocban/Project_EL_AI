@@ -9,7 +9,7 @@ const getProfileById = async (accessToken, userId) => {
   const client = createAuthedClient(accessToken);
   const { data, error } = await client
     .from("profiles")
-    .select("id, user_name, email, day_of_birth, status")
+    .select("id, user_name, email, day_of_birth, status, auth_provider")
     .eq("id", userId)
     .single();
 
@@ -59,7 +59,7 @@ const updateProfile = async (accessToken, userId, updates) => {
     .from("profiles")
     .update(updates)
     .eq("id", userId)
-    .select("id, user_name, email, day_of_birth")
+    .select("id, user_name, email, day_of_birth, auth_provider")
     .single();
 
   if (error) {
@@ -72,8 +72,35 @@ const updateProfile = async (accessToken, userId, updates) => {
   return data;
 };
 
+/**
+ * Lấy auth_provider của user từ bảng profiles (dùng service role key).
+ * @param {string} userId
+ * @returns {Promise<string|null>}
+ */
+const getAuthProviderByUserId = async (userId) => {
+  if (!userId) {
+    return null;
+  }
+
+  const { createAdminClient } = require("../../../config/supabase");
+  const client = createAdminClient();
+
+  const { data, error } = await client
+    .from("profiles")
+    .select("auth_provider")
+    .eq("id", userId)
+    .single();
+
+  if (error) {
+    return null;
+  }
+
+  return data?.auth_provider || null;
+};
+
 module.exports = {
   getProfileById,
   updateProfile,
   getStatusByUserId,
+  getAuthProviderByUserId,
 };
