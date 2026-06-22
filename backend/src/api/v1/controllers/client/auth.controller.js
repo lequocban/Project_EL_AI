@@ -6,6 +6,15 @@ const {
   clearRefreshTokenCookie,
 } = require("../../../../utils/cookie");
 
+const registerRequestOtp = async (req, res, next) => {
+  try {
+    await otpService.requestRegisterOtp(req.body.email);
+    return success(res, null, "Mã OTP đã được gửi đến email của bạn. Vui lòng kiểm tra hộp thư.");
+  } catch (error) {
+    return next(error);
+  }
+};
+
 const register = async (req, res, next) => {
   try {
     const result = await authService.register(req.body);
@@ -31,6 +40,7 @@ const register = async (req, res, next) => {
     return next(error);
   }
 };
+
 
 const login = async (req, res, next) => {
   try {
@@ -128,6 +138,7 @@ const changePassword = async (req, res, next) => {
 };
 
 module.exports = {
+  registerRequestOtp,
   register,
   login,
   logout,

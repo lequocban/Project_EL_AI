@@ -1,5 +1,7 @@
 const authRepository = require("../repositories/auth.repository");
 const profileRepository = require("../repositories/profile.repository");
+const otpService = require("./otp.service");
+const otpRepository = require("../repositories/otp.repository");
 const { getRoleIdsByUserIdService } = require("../repositories/role.repository");
 const { AppError } = require("../../../utils/appError");
 const { formatSession } = require("../../../utils/auth-formatters");
@@ -9,7 +11,10 @@ const { toDbDate, toApiDate } = require("../../../utils/date.utils");
 // -------------------------------------------------------
 // Register
 // -------------------------------------------------------
-const register = async ({ email, password, userName, dayOfBirth }) => {
+const register = async ({ email, password, otp, userName, dayOfBirth }) => {
+  // Bước 1: Xác thực OTP trước khi tạo tài khoản
+  const otpId = await otpService.verifyOtp(email, otp);
+
   const userData = {};
 
   if (userName) userData.user_name = userName;
@@ -35,6 +40,9 @@ const register = async ({ email, password, userName, dayOfBirth }) => {
   if (accessToken && userId && Object.keys(userData).length > 0) {
     await profileRepository.updateProfile(accessToken, userId, userData);
   }
+
+  // Bước 2: Xóa OTP đã dùng sau khi đăng ký thành công
+  await otpRepository.deleteOtp(otpId);
 
   return buildAuthResponse(user, session);
 };

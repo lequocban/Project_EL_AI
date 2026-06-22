@@ -186,10 +186,15 @@ export const authApi = {
     return data;
   },
 
-  // Đăng ký tài khoản mới
-  register: async (email, password, userName) => {
+  // Gửi OTP xác thực Email trước khi đăng ký (Bước 1)
+  registerRequestOtp: (email) =>
+    postJson(`${AUTH_URL}/register/request-otp`, { email }),
+
+  // Hoàn tất đăng ký tài khoản mới sau khi xác thực OTP (Bước 2)
+  register: async (email, otp, password, userName) => {
     const data = await postJson(`${AUTH_URL}/register`, {
       email,
+      otp,
       password,
       userName,
     });
