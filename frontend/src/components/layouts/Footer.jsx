@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Mail, MapPin, Phone, Zap } from "lucide-react";
+import AnimatedIcon from "@/components/ui/animated-icon";
 
 const FOOTER_LINKS = [
   { to: "/vocabulary", label: "Từ vựng" },
@@ -15,7 +15,7 @@ export default function Footer({ className = "border-t-2 border-border bg-white"
         <div>
           <div className="mb-3 flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-white shadow-[0_4px_0_var(--shadow-brand)]">
-              <Zap className="h-5 w-5" />
+              <AnimatedIcon name="brand" className="h-5 w-5" />
             </div>
             <span className="text-lg font-black text-foreground">EnglishUp</span>
           </div>
@@ -50,15 +50,15 @@ export default function Footer({ className = "border-t-2 border-border bg-white"
           <h3 className="mb-3 text-base font-black text-foreground">Liên hệ</h3>
           <ul className="space-y-3 text-sm font-medium text-muted-foreground">
             <li className="flex items-start gap-2">
-              <Mail className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
+              <AnimatedIcon name="mail" className="mt-0.5 h-4 w-4 text-primary" />
               <span className="break-all">quocban2211@gmail.com</span>
             </li>
             <li className="flex items-start gap-2">
-              <Phone className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
+              <AnimatedIcon name="phone" className="mt-0.5 h-4 w-4 text-primary" />
               <span>0973 639 706</span>
             </li>
             <li className="flex items-start gap-2">
-              <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
+              <AnimatedIcon name="mapPin" className="mt-0.5 h-4 w-4 text-primary" />
               <span>Thủ Đức, TP.HCM, Việt Nam</span>
             </li>
           </ul>

@@ -1,54 +1,44 @@
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
-import {
-  LayoutDashboard,
-  BookOpen,
-  BookText,
-  Headphones,
-  Users,
-  LogOut,
-  Shield,
-  ShieldCheck,
-  Menu,
-  X,
-} from "lucide-react";
+import { LogOut, Menu, X } from "lucide-react";
 import { useState } from "react";
+import AnimatedIcon from "@/components/ui/animated-icon";
 import { useAdminAuth, ADMIN_ROLES_KEY } from "@/lib/AdminAuthContext";
 
 const adminNavItems = [
   {
     path: "/admin/dashboard",
     label: "Tổng quan",
-    icon: LayoutDashboard,
+    icon: "dashboard",
     gradient: "from-violet-500 to-indigo-500",
   },
   {
     path: "/admin/vocabulary",
     label: "Từ vựng",
-    icon: BookOpen,
+    icon: "vocabulary",
     gradient: "from-blue-500 to-cyan-500",
   },
   {
     path: "/admin/reading",
     label: "Luyện đọc",
-    icon: BookText,
+    icon: "reading",
     gradient: "from-orange-500 to-amber-500",
   },
   {
     path: "/admin/listening",
     label: "Luyện nghe",
-    icon: Headphones,
+    icon: "listening",
     gradient: "from-green-500 to-teal-500",
   },
   {
     path: "/admin/moderation",
     label: "Kiểm duyệt",
-    icon: ShieldCheck,
+    icon: "moderation",
     gradient: "from-violet-500 to-purple-500",
   },
   {
     path: "/admin/users",
     label: "Người dùng",
-    icon: Users,
+    icon: "users",
     gradient: "from-pink-500 to-rose-500",
   },
 ];
@@ -99,7 +89,7 @@ export default function AdminLayout() {
         <div className="p-6 border-b border-slate-200">
           <Link to={hasAdminRole ? "/admin/dashboard" : "/admin/vocabulary"} className="flex items-center gap-2">
             <div className="w-9 h-9 bg-gradient-to-br from-violet-500 to-indigo-500 rounded-xl flex items-center justify-center">
-              <Shield className="w-5 h-5 text-white" />
+              <AnimatedIcon name="admin" className="w-5 h-5 text-white" />
             </div>
             <div>
               <span className="text-xl font-black text-slate-900">Admin</span>
@@ -111,7 +101,7 @@ export default function AdminLayout() {
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {navItems.map(({ path, label, icon: Icon, gradient }) => {
+          {navItems.map(({ path, label, icon, gradient }) => {
             const firstPath = navItems[0]?.path || "/admin/vocabulary";
             const active =
               location.pathname === path ||
@@ -126,7 +116,7 @@ export default function AdminLayout() {
                     : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                 }`}
               >
-                <Icon className="w-5 h-5 flex-shrink-0" />
+                <AnimatedIcon name={icon} className="w-5 h-5" />
                 {label}
               </Link>
             );
@@ -172,7 +162,7 @@ export default function AdminLayout() {
       <div className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-white text-slate-900 border-b border-slate-200 px-4 py-3 flex items-center justify-between shadow-sm">
         <Link to={hasAdminRole ? "/admin/dashboard" : "/admin/vocabulary"} className="flex items-center gap-2">
           <div className="w-8 h-8 bg-gradient-to-br from-violet-500 to-indigo-500 rounded-xl flex items-center justify-center">
-            <Shield className="w-4 h-4 text-white" />
+            <AnimatedIcon name="admin" className="w-4 h-4 text-white" />
           </div>
           <span className="text-lg font-black text-slate-900">Admin</span>
         </Link>
@@ -218,7 +208,7 @@ export default function AdminLayout() {
                 </div>
               </div>
             )}
-            {navItems.map(({ path, label, icon: Icon, gradient }) => {
+            {navItems.map(({ path, label, icon, gradient }) => {
               const firstPath = navItems[0]?.path || "/admin/vocabulary";
               const active =
                 location.pathname === path ||
@@ -234,7 +224,7 @@ export default function AdminLayout() {
                       : "text-slate-600 hover:bg-slate-100"
                   }`}
                 >
-                  <Icon className="w-5 h-5" />
+                  <AnimatedIcon name={icon} className="w-5 h-5" />
                   {label}
                 </Link>
               );

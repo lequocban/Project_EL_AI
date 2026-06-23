@@ -4,6 +4,13 @@ import App from "@/App.jsx";
 import "@/index.css";
 import { API_BASE_URL } from "@/api/authApi";
 
+if (typeof window !== "undefined" && !customElements.get("lord-icon")) {
+  const script = document.createElement("script");
+  script.src = "https://cdn.lordicon.com/lordicon.js";
+  script.async = true;
+  document.head.appendChild(script);
+}
+
 // Tự động thêm API_BASE_URL vào tất cả các request relative /api/ khi deploy production
 const originalFetch = window.fetch;
 window.fetch = async (input, init) => {

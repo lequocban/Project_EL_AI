@@ -1,37 +1,29 @@
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
-  BarChart3,
-  BookOpen,
   CheckCircle2,
-  FileText,
-  Flame,
-  Headphones,
-  Layers,
-  Sparkles,
-  Trophy,
-  Zap,
 } from "lucide-react";
 import Footer from "@/components/layouts/Footer";
+import AnimatedIcon from "@/components/ui/animated-icon";
 
 const FEATURES = [
   {
-    icon: BookOpen,
+    icon: "vocabulary",
     title: "Từ vựng thông minh",
     desc: "Tạo bộ từ bằng AI, học bằng flashcard, trắc nghiệm, gõ từ và nghe viết.",
   },
   {
-    icon: Headphones,
+    icon: "listening",
     title: "Luyện nghe chủ động",
     desc: "Nghe hội thoại theo chủ đề, luyện câu hỏi và theo dõi tiến độ từng bài.",
   },
   {
-    icon: FileText,
+    icon: "reading",
     title: "Luyện đọc có mục tiêu",
     desc: "Đọc bài theo cấp độ, trả lời câu hỏi và mở rộng vốn từ trong ngữ cảnh.",
   },
   {
-    icon: Trophy,
+    icon: "trophy",
     title: "Duy trì động lực",
     desc: "Streak, XP và bảng xếp hạng giúp việc học mỗi ngày có cảm giác rõ ràng.",
   },
@@ -45,10 +37,10 @@ const STATS = [
 ];
 
 const SKILLS = [
-  { icon: BookOpen, title: "Vocabulary", color: "text-primary" },
-  { icon: Headphones, title: "Listening", color: "text-[#1CB0F6]" },
-  { icon: FileText, title: "Reading", color: "text-[#FF9600]" },
-  { icon: BarChart3, title: "Progress", color: "text-[#CE82FF]" },
+  { icon: "vocabulary", title: "Vocabulary", color: "text-primary" },
+  { icon: "listening", title: "Listening", color: "text-[#1CB0F6]" },
+  { icon: "reading", title: "Reading", color: "text-[#FF9600]" },
+  { icon: "stats", title: "Progress", color: "text-[#CE82FF]" },
 ];
 
 export default function Landing() {
@@ -58,7 +50,7 @@ export default function Landing() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <Link to="/" className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white shadow-[0_4px_0_var(--shadow-brand)]">
-              <Zap className="h-5 w-5" />
+              <AnimatedIcon name="brand" className="h-5 w-5" />
             </div>
             <span className="text-xl font-black tracking-tight">EnglishUp</span>
           </Link>
@@ -81,7 +73,7 @@ export default function Landing() {
           <div className="mx-auto grid max-w-7xl items-center gap-12 px-6 py-16 lg:grid-cols-[1.05fr_0.95fr] lg:py-24">
             <div>
               <div className="mb-6 inline-flex items-center gap-2 rounded-full border-2 border-[#C7F8A1] bg-[#E5FFC2] px-4 py-2 text-sm font-extrabold uppercase tracking-[0.8px] text-[#3D7400]">
-                <Flame className="h-4 w-4" />
+                <AnimatedIcon name="flame" className="h-4 w-4" />
                 Học đều mỗi ngày
               </div>
               <h1 className="mb-6 max-w-3xl text-[40px] font-black leading-[1.08] tracking-[-0.4px] text-foreground md:text-5xl lg:text-6xl">
@@ -120,14 +112,14 @@ export default function Landing() {
                   <h2 className="text-2xl font-black text-foreground">15 phút học tập</h2>
                 </div>
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl border-2 border-[#C7F8A1] bg-[#E5FFC2] text-[#3D7400]">
-                  <Sparkles className="h-6 w-6" />
+                  <AnimatedIcon name="sparkles" className="h-6 w-6" />
                 </div>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 {SKILLS.map(({ icon: Icon, title, color }) => (
                   <div key={title} className="rounded-xl border-2 border-border bg-white p-4 shadow-[0_2px_0_rgb(229_229_229_/_1)]">
-                    <Icon className={`mb-4 h-7 w-7 ${color}`} />
+                    <AnimatedIcon name={Icon} className={`mb-4 h-7 w-7 ${color}`} />
                     <p className="text-lg font-black text-foreground">{title}</p>
                     <div className="mt-4 h-3 rounded-full border-2 border-border bg-muted">
                       <div className="h-full w-2/3 rounded-full bg-primary" />
@@ -145,7 +137,7 @@ export default function Landing() {
                     <p className="text-2xl font-black">7 ngày liên tiếp</p>
                   </div>
                   <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#FFC800] text-[#4B4B4B] shadow-[0_4px_0_#E6B400]">
-                    <Zap className="h-7 w-7" />
+                    <AnimatedIcon name="brand" className="h-7 w-7" />
                   </div>
                 </div>
               </div>
@@ -167,7 +159,7 @@ export default function Landing() {
               {FEATURES.map(({ icon: Icon, title, desc }) => (
                 <article key={title} className="lingo-card p-6">
                   <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl border-2 border-[#C7F8A1] bg-[#E5FFC2] text-[#3D7400]">
-                    <Icon className="h-6 w-6" />
+                    <AnimatedIcon name={Icon} className="h-6 w-6" />
                   </div>
                   <h3 className="mb-3 text-xl font-black text-foreground">{title}</h3>
                   <p className="text-sm font-medium leading-relaxed text-muted-foreground">{desc}</p>
@@ -201,7 +193,7 @@ export default function Landing() {
         <section className="bg-white px-6 py-16 text-center lg:py-24">
           <div className="mx-auto max-w-3xl">
             <div className="lingo-card-lg p-8 md:p-10">
-              <Layers className="mx-auto mb-5 h-10 w-10 text-primary" />
+              <AnimatedIcon name="layers" className="mx-auto mb-5 h-10 w-10 text-primary" />
               <h2 className="mb-4 text-3xl font-black tracking-[-0.3px] md:text-4xl">
                 Sẵn sàng xây thói quen học mỗi ngày?
               </h2>

@@ -1,19 +1,7 @@
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import {
-  BarChart2,
-  BookOpen,
-  BookText,
-  FileText,
-  Headphones,
-  Home,
-  Menu,
-  ShieldCheck,
-  TrendingUp,
-  User,
-  X,
-  Zap,
-} from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { useState } from "react";
+import AnimatedIcon from "@/components/ui/animated-icon";
 import {
   isNavigationPrevented,
   resetNavigating,
@@ -22,15 +10,15 @@ import {
 } from "@/lib/navigationGuard";
 
 const navItems = [
-  { path: "/home", label: "Trang chủ", icon: Home },
-  { path: "/vocabulary", label: "Từ vựng", icon: BookOpen },
-  { path: "/lookup", label: "Tra cứu", icon: BookText },
-  { path: "/listening", label: "Luyện nghe", icon: Headphones },
-  { path: "/reading", label: "Luyện đọc", icon: FileText },
-  { path: "/moderation", label: "Kiểm duyệt", icon: ShieldCheck },
-  { path: "/stats", label: "Thống kê", icon: TrendingUp },
-  { path: "/leaderboard", label: "Xếp hạng", icon: BarChart2 },
-  { path: "/profile", label: "Hồ sơ", icon: User },
+  { path: "/home", label: "Trang chủ", icon: "home" },
+  { path: "/vocabulary", label: "Từ vựng", icon: "vocabulary" },
+  { path: "/lookup", label: "Tra cứu", icon: "lookup" },
+  { path: "/listening", label: "Luyện nghe", icon: "listening" },
+  { path: "/reading", label: "Luyện đọc", icon: "reading" },
+  { path: "/moderation", label: "Kiểm duyệt", icon: "moderation" },
+  { path: "/stats", label: "Thống kê", icon: "progress" },
+  { path: "/leaderboard", label: "Xếp hạng", icon: "stats" },
+  { path: "/profile", label: "Hồ sơ", icon: "profile" },
 ];
 
 export default function Layout() {
@@ -71,7 +59,7 @@ export default function Layout() {
     setShowExitConfirm(true);
   });
 
-  const renderNavItem = ({ path, label, icon: Icon }) => {
+  const renderNavItem = ({ path, label, icon }) => {
     const active = location.pathname === path || location.pathname.startsWith(`${path}/`);
 
     return (
@@ -88,7 +76,7 @@ export default function Layout() {
             : "text-muted-foreground hover:bg-muted hover:text-foreground"
         }`}
       >
-        <Icon className="h-5 w-5 flex-shrink-0" />
+        <AnimatedIcon name={icon} className="h-5 w-5" />
         {label}
       </a>
     );
@@ -100,7 +88,7 @@ export default function Layout() {
         <div className="p-6">
           <a href="/home" onClick={(e) => handleNavClick(e, "/home")} className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white shadow-[0_4px_0_var(--shadow-brand)]">
-              <Zap className="h-5 w-5" />
+              <AnimatedIcon name="brand" className="h-5 w-5" />
             </div>
             <span className="text-xl font-black text-foreground">EnglishUp</span>
           </a>
@@ -111,7 +99,7 @@ export default function Layout() {
       <div className="fixed left-0 right-0 top-0 z-30 flex items-center justify-between border-b-2 border-border bg-white px-4 py-3 lg:hidden">
         <a href="/home" onClick={(e) => handleNavClick(e, "/home")} className="flex items-center gap-2">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-white shadow-[0_3px_0_var(--shadow-brand)]">
-            <Zap className="h-4 w-4" />
+            <AnimatedIcon name="brand" className="h-4 w-4" />
           </div>
           <span className="text-lg font-black">EnglishUp</span>
         </a>
@@ -137,7 +125,7 @@ export default function Layout() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6">
           <div className="lingo-card-lg w-full max-w-sm p-6 text-center">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#FFF8E0] text-[#8A6F00]">
-              <Zap className="h-7 w-7" />
+              <AnimatedIcon name="brand" className="h-7 w-7" />
             </div>
             <h2 className="mb-2 text-xl font-black text-foreground">Xác nhận thoát</h2>
             <p className="mb-6 text-sm font-medium leading-relaxed text-muted-foreground">
