@@ -1195,6 +1195,7 @@ export function LessonStarter({ lesson, onBack }) {
     setEditingQuestion({
       ...q,
       correctAnswer: ["A", "B", "C", "D"].indexOf(q.correct_answer),
+      explanation: q.explanation || q.explain || "",
     });
     setShowAddQuestion(true);
   };

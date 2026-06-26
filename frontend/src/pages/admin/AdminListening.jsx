@@ -452,7 +452,7 @@ function LessonDetailModal({ lesson, onClose }) {
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div
-        className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col"
+        className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[85vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6 border-b border-slate-200 flex items-center justify-between">
@@ -461,7 +461,7 @@ function LessonDetailModal({ lesson, onClose }) {
             <XCircle className="w-5 h-5 text-slate-400" />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {data?.audioUrl && (
             <div className="p-4 rounded-xl bg-gradient-to-r from-green-500 to-teal-500 text-white">
               <div className="flex items-center gap-4">
@@ -492,6 +492,61 @@ function LessonDetailModal({ lesson, onClose }) {
               </label>
               <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
                 {data.viTranslation}
+              </div>
+            </div>
+          )}
+
+          {/* Danh sách câu hỏi */}
+          {data?.questions && data.questions.length > 0 && (
+            <div className="pt-4 border-t border-slate-100">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">
+                Danh sách câu hỏi ({data.questions.length})
+              </label>
+              <div className="space-y-6">
+                {data.questions.map((q, index) => (
+                  <div key={q.id || index} className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3">
+                    <div className="flex items-start gap-2">
+                      <span className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-slate-200 text-xs font-bold text-slate-700">
+                        {index + 1}
+                      </span>
+                      <p className="text-sm font-bold text-slate-800 pt-0.5">{q.question}</p>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pl-8">
+                      {["A", "B", "C", "D"].map((key) => {
+                        const optionText = q[`option${key}`];
+                        const isCorrect = q.correctAnswer === key;
+                        if (!optionText) return null;
+                        return (
+                          <div
+                            key={key}
+                            className={`flex items-center gap-2 p-2.5 rounded-lg border text-xs font-medium transition-all ${
+                              isCorrect
+                                ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                                : "bg-white border-slate-200 text-slate-600"
+                            }`}
+                          >
+                            <span className={`flex-shrink-0 flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-black ${
+                              isCorrect ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-500"
+                            }`}>
+                              {key}
+                            </span>
+                            <span>{optionText}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {(q.explain || q.explanation) && (
+                      <div className="pl-8 pt-1">
+                        <div className="p-3 rounded-lg bg-orange-50/50 border border-orange-100 text-xs text-slate-600 leading-relaxed">
+                          <span className="font-bold text-orange-700 block mb-1">Giải thích:</span>
+                          {q.explain || q.explanation}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
           )}

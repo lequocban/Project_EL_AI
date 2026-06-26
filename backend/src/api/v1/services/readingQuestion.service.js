@@ -1,5 +1,6 @@
 const readingQuestionRepository = require("../repositories/readingQuestion.repository");
 const { AppError } = require("../../../utils/appError");
+const { getRoleIdsByUserIdService } = require("../repositories/role.repository");
 
 /**
  * Kiểm tra quyền sở hữu lesson.
@@ -263,7 +264,10 @@ const getQuestionsByLesson = async (userId, lessonId) => {
     throw new AppError("Bài luyện đọc đã bị xóa", 404);
   }
 
-  if (lesson.status !== "public" && lesson.created_by !== userId) {
+  const roleIds = await getRoleIdsByUserIdService(userId);
+  const isManagerOrAdmin = roleIds.includes(2) || roleIds.includes(3);
+
+  if (lesson.status !== "public" && lesson.created_by !== userId && !isManagerOrAdmin) {
     throw new AppError("Bạn không có quyền xem câu hỏi của bài luyện đọc này", 403);
   }
 
