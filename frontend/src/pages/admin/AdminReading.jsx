@@ -420,12 +420,11 @@ export default function AdminReading() {
 
 // Modal hiển thị chi tiết bài luyện đọc
 function LessonDetailModal({ lesson, onClose }) {
-  const [content, setContent] = useState("");
+  const [data, setData] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (lesson?.content) {
-      setContent(lesson.content);
-    } else if (lesson?.id) {
+    if (lesson?.id) {
       loadLesson();
     }
   }, [lesson?.id]);
@@ -433,17 +432,20 @@ function LessonDetailModal({ lesson, onClose }) {
   // Tải nội dung bài đọc từ API
   const loadLesson = async () => {
     try {
+      setIsLoading(true);
       const res = await adminApi.getReadingLessonById(lesson.id);
-      setContent(res.data?.content || "");
+      setData(res.data || lesson);
     } catch {
-      // ignore
+      setData(lesson);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div
-        className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col"
+        className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[85vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6 border-b border-slate-200 flex items-center justify-between">
@@ -454,22 +456,95 @@ function LessonDetailModal({ lesson, onClose }) {
             <XCircle className="w-5 h-5 text-slate-400" />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="mb-4">
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-              Nội dung bài đọc
-            </label>
-            {content ? (
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
-                {content}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-slate-400">
-                <Loader2 className="w-6 h-6 animate-spin text-orange-500 mx-auto mb-2" />
-                Đang tải...
-              </div>
-            )}
-          </div>
+        
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {isLoading ? (
+            <div className="text-center py-12 text-slate-400">
+              <Loader2 className="w-8 h-8 animate-spin text-orange-500 mx-auto mb-2" />
+              Đang tải chi tiết bài đọc...
+            </div>
+          ) : (
+            <>
+              {/* Nội dung bài đọc */}
+              {data?.content && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                    Nội dung bài đọc
+                  </label>
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
+                    {data.content}
+                  </div>
+                </div>
+              )}
+
+              {/* Bản dịch tiếng Việt */}
+              {data?.viTranslation && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                    Bản dịch tiếng Việt
+                  </label>
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
+                    {data.viTranslation}
+                  </div>
+                </div>
+              )}
+
+              {/* Danh sách câu hỏi */}
+              {data?.questions && data.questions.length > 0 && (
+                <div className="pt-4 border-t border-slate-100">
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">
+                    Danh sách câu hỏi ({data.questions.length})
+                  </label>
+                  <div className="space-y-6">
+                    {data.questions.map((q, index) => (
+                      <div key={q.id || index} className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3">
+                        <div className="flex items-start gap-2">
+                          <span className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-slate-200 text-xs font-bold text-slate-700">
+                            {index + 1}
+                          </span>
+                          <p className="text-sm font-bold text-slate-800 pt-0.5">{q.question}</p>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pl-8">
+                          {["A", "B", "C", "D"].map((key) => {
+                            const optionText = q[`option${key}`];
+                            const isCorrect = q.correctAnswer === key;
+                            if (!optionText) return null;
+                            return (
+                              <div
+                                key={key}
+                                className={`flex items-center gap-2 p-2.5 rounded-lg border text-xs font-medium transition-all ${
+                                  isCorrect
+                                    ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                                    : "bg-white border-slate-200 text-slate-600"
+                                }`}
+                              >
+                                <span className={`flex-shrink-0 flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-black ${
+                                  isCorrect ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-500"
+                                }`}>
+                                  {key}
+                                </span>
+                                <span>{optionText}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {(q.explain || q.explanation) && (
+                          <div className="pl-8 pt-1">
+                            <div className="p-3 rounded-lg bg-orange-50/50 border border-orange-100 text-xs text-slate-600 leading-relaxed">
+                              <span className="font-bold text-orange-700 block mb-1">Giải thích:</span>
+                              {q.explain || q.explanation}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
     </div>

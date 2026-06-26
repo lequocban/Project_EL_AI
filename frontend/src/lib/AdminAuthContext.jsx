@@ -96,8 +96,8 @@ export const AdminAuthProvider = ({ children }) => {
       }
       // Backend sẽ validate role bằng requireManagerOrAdmin
       const response = await adminApi.getMe();
-      // Endpoint getMe trả về user trực tiếp trong response.data (không có nested user)
-      const user = response.data;
+      // Endpoint getMe trả về { user: { ... } } trong response.data
+      const user = response.data?.user || response.data;
       const roles = (user?.roles || []).map(Number);
 
       // Chỉ ghi đè cachedRoles nếu roles từ API không rỗng

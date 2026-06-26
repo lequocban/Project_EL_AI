@@ -2,7 +2,20 @@ const readingLessonRepository = require("../repositories/readingLesson.repositor
 const readingQuestionRepository = require("../repositories/readingQuestion.repository");
 const aiService = require("../services/ai.service");
 const { AppError } = require("../../../utils/appError");
-const { buildPaginationResponse } = require("../../../utils/paginationResponse");
+const { buildPaginationResponse = (items, { page, limit, total }) => {
+  const totalPages = Math.ceil(total / limit) || 1;
+  return {
+    items,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages
+    }
+  };
+} } = require("../../../utils/paginationResponse");
+const { getRoleIdsByUserIdService } = require("../repositories/role.repository");
+
 
 /**
  * Format response reading lesson (lite, không có questions).
@@ -221,7 +234,10 @@ const getDetail = async (id, userId) => {
     throw new AppError("Không tìm thấy bài luyện đọc", 404);
   }
 
-  if (lesson.status !== "public" && lesson.created_by !== userId) {
+  const roleIds = await getRoleIdsByUserIdService(userId);
+  const isManagerOrAdmin = roleIds.includes(2) || roleIds.includes(3);
+
+  if (lesson.status !== "public" && lesson.created_by !== userId && !isManagerOrAdmin) {
     throw new AppError("Bạn không có quyền xem bài luyện đọc này", 403);
   }
 
