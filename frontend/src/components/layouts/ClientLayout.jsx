@@ -10,15 +10,15 @@ import {
 } from "@/lib/navigationGuard";
 
 const navItems = [
-  { path: "/home", label: "Trang chủ", icon: "home" },
-  { path: "/vocabulary", label: "Từ vựng", icon: "vocabulary" },
-  { path: "/lookup", label: "Tra cứu", icon: "lookup" },
-  { path: "/listening", label: "Luyện nghe", icon: "listening" },
-  { path: "/reading", label: "Luyện đọc", icon: "reading" },
-  { path: "/moderation", label: "Kiểm duyệt", icon: "moderation" },
-  { path: "/stats", label: "Thống kê", icon: "progress" },
-  { path: "/leaderboard", label: "Xếp hạng", icon: "stats" },
-  { path: "/profile", label: "Hồ sơ", icon: "profile" },
+  { path: "/home", label: "Trang chủ", icon: "home", gradient: "from-emerald-500 to-green-500", shadow: "#166534" },
+  { path: "/vocabulary", label: "Từ vựng", icon: "vocabulary", gradient: "from-blue-500 to-indigo-500", shadow: "#1e3a8a" },
+  { path: "/lookup", label: "Tra cứu", icon: "lookup", gradient: "from-amber-500 to-orange-500", shadow: "#92400e" },
+  { path: "/listening", label: "Luyện nghe", icon: "listening", gradient: "from-cyan-500 to-teal-500", shadow: "#115e59" },
+  { path: "/reading", label: "Luyện đọc", icon: "reading", gradient: "from-violet-500 to-purple-500", shadow: "#4c1d95" },
+  { path: "/moderation", label: "Kiểm duyệt", icon: "moderation", gradient: "from-yellow-500 to-amber-500", shadow: "#92400e" },
+  { path: "/stats", label: "Thống kê", icon: "progress", gradient: "from-pink-500 to-rose-500", shadow: "#9f1239" },
+  { path: "/leaderboard", label: "Xếp hạng", icon: "stats", gradient: "from-orange-500 to-red-500", shadow: "#991b1b" },
+  { path: "/profile", label: "Hồ sơ", icon: "profile", gradient: "from-slate-500 to-gray-500", shadow: "#374151" },
 ];
 
 export default function Layout() {
@@ -59,7 +59,7 @@ export default function Layout() {
     setShowExitConfirm(true);
   });
 
-  const renderNavItem = ({ path, label, icon }) => {
+  const renderNavItem = ({ path, label, icon, gradient, shadow }) => {
     const active = location.pathname === path || location.pathname.startsWith(`${path}/`);
 
     return (
@@ -70,11 +70,36 @@ export default function Layout() {
           setMobileOpen(false);
           handleNavClick(e, path);
         }}
-        className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-extrabold transition-all ${
+        className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-extrabold transition-all duration-100 ${
           active
-            ? "border-2 border-transparent bg-primary text-white shadow-[0_4px_0_var(--shadow-brand)]"
+            ? `bg-gradient-to-r ${gradient} text-white`
             : "text-muted-foreground hover:bg-muted hover:text-foreground"
         }`}
+        style={active ? { boxShadow: `0 4px 0 ${shadow}` } : {}}
+        onMouseDown={
+          active
+            ? (e) => {
+                e.currentTarget.style.boxShadow = `0 2px 0 ${shadow}`;
+                e.currentTarget.style.transform = "translateY(2px)";
+              }
+            : undefined
+        }
+        onMouseUp={
+          active
+            ? (e) => {
+                e.currentTarget.style.boxShadow = `0 4px 0 ${shadow}`;
+                e.currentTarget.style.transform = "translateY(0)";
+              }
+            : undefined
+        }
+        onMouseLeave={
+          active
+            ? (e) => {
+                e.currentTarget.style.boxShadow = `0 4px 0 ${shadow}`;
+                e.currentTarget.style.transform = "translateY(0)";
+              }
+            : undefined
+        }
       >
         <AnimatedIcon name={icon} className="h-5 w-5" />
         {label}
