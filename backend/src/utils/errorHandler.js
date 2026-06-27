@@ -1,6 +1,15 @@
 const env = require("../config/env.config");
 
 const errorHandler = (err, req, res, next) => {
+  // In ra console để tiện debug
+  console.error("Error in request:", {
+    path: req.path,
+    method: req.method,
+    status: err.statusCode || err.status || 500,
+    message: err.message,
+    stack: err.stack,
+  });
+
   const status = err.statusCode || err.status || 500;
   const isProduction = env.nodeEnv === "production";
 

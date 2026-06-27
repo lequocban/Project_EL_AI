@@ -7,7 +7,15 @@ const DEFAULT_WORD_COUNT = 10;
 const AI_MODELS = [
   "google/gemma-3-4b-it",
   "google/gemma-4-31b-it:free",
-  "deepseek/deepseek-chat-v3:free",
+  "nvidia/nemotron-3.5-content-safety:free",
+  "nvidia/nemotron-3-ultra-550b-a55b:free",
+  "poolside/laguna-m.1:free",
+  "nvidia/nemotron-3-super-120b-a12b:free",
+  "openai/gpt-oss-120b:free",
+  "openai/gpt-oss-20b:free",
+  "qwen/qwen3-next-80b-a3b-instruct:free",
+  "meta-llama/llama-3.3-70b-instruct:free",
+  "openrouter/free",
 ];
 
 /**
@@ -62,15 +70,8 @@ Trả về đúng ${safeCount} từ tiếng Anh phổ biến và hữu ích nh�
       return await callOpenRouter(apiKey, model, systemPrompt, userPrompt, safeCount);
     } catch (error) {
       lastError = error;
-      
-      // Chỉ thử model tiếp theo nếu bị rate limit (429) hoặc service unavailable (503)
-      if (error.statusCode === 429 || error.statusCode === 503) {
-        console.warn(`Model ${model} bị rate limit, thử model tiếp theo...`);
-        continue;
-      }
-      
-      // Các lỗi khác thì throw ngay
-      throw error;
+      console.warn(`Model ${model} gặp lỗi: ${error.message || error}. Thử model tiếp theo...`);
+      continue;
     }
   }
 
@@ -290,11 +291,8 @@ Trả về đúng định dạng JSON với "content" (tiếng Anh) và "viTrans
       return parseJSONResponse(rawContent);
     } catch (error) {
       lastError = error;
-      if (error.statusCode === 429 || error.statusCode === 503) {
-        console.warn(`Model ${model} bị rate limit, thử model tiếp theo...`);
-        continue;
-      }
-      throw error;
+      console.warn(`Model ${model} gặp lỗi: ${error.message || error}. Thử model tiếp theo...`);
+      continue;
     }
   }
 
@@ -374,11 +372,8 @@ Tạo đúng ${safeCount} câu hỏi theo định dạng JSON array đã mô t�
       return await parseQuestionsResponse(rawContent, safeCount);
     } catch (error) {
       lastError = error;
-      if (error.statusCode === 429 || error.statusCode === 503) {
-        console.warn(`Model ${model} bị rate limit, thử model tiếp theo...`);
-        continue;
-      }
-      throw error;
+      console.warn(`Model ${model} gặp lỗi: ${error.message || error}. Thử model tiếp theo...`);
+      continue;
     }
   }
 
@@ -614,11 +609,8 @@ Trả về đúng định dạng JSON với "transcript" (tiếng Anh) và "viTr
       return parseListeningTranscriptResponse(rawContent);
     } catch (error) {
       lastError = error;
-      if (error.statusCode === 429 || error.statusCode === 503) {
-        console.warn(`Model ${model} bị rate limit, thử model tiếp theo...`);
-        continue;
-      }
-      throw error;
+      console.warn(`Model ${model} gặp lỗi: ${error.message || error}. Thử model tiếp theo...`);
+      continue;
     }
   }
 
@@ -734,11 +726,8 @@ Tạo đúng ${safeCount} câu hỏi theo định dạng JSON array đã mô t�
       return await parseListeningQuestionsResponse(rawContent, safeCount);
     } catch (error) {
       lastError = error;
-      if (error.statusCode === 429 || error.statusCode === 503) {
-        console.warn(`Model ${model} bị rate limit, thử model tiếp theo...`);
-        continue;
-      }
-      throw error;
+      console.warn(`Model ${model} gặp lỗi: ${error.message || error}. Thử model tiếp theo...`);
+      continue;
     }
   }
 

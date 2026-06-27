@@ -137,10 +137,28 @@ const addWordsToSet = async (setId, userId, words) => {
     if (existingWord) {
       wordIds.push(existingWord.id);
     } else {
-      const [dictionaryData, meaning] = await Promise.all([
-        vocabularyService.fetchDictionaryData(wordText),
-        vocabularyService.fetchMeaning(wordText),
-      ]);
+      let dictionaryData = { phonetic: "", audioUrl: "" };
+      let meaning = "Chưa rõ nghĩa";
+
+      try {
+        // Gọi song song Dictionary API và Google Translate
+        // Nếu một trong hai API lỗi, ta catch riêng lẻ để không làm sập cả luồng xử lý
+        const [dictResult, meaningResult] = await Promise.all([
+          vocabularyService.fetchDictionaryData(wordText).catch((err) => {
+            console.warn(`[Dictionary API] Lỗi hoặc không tìm thấy từ "${wordText}":`, err.message);
+            return { phonetic: "", audioUrl: "" };
+          }),
+          vocabularyService.fetchMeaning(wordText).catch((err) => {
+            console.warn(`[Translate API] Lỗi dịch nghĩa cho từ "${wordText}":`, err.message);
+            return "Chưa rõ nghĩa";
+          }),
+        ]);
+        dictionaryData = dictResult;
+        meaning = meaningResult;
+      } catch (err) {
+        console.error(`Lỗi nghiêm trọng khi lấy thông tin cho từ "${wordText}":`, err);
+        continue; // Bỏ qua từ này và tiếp tục với từ khác
+      }
 
       const newWord = await vocabularySetRepository.createWord({
         word: wordText,
@@ -149,7 +167,9 @@ const addWordsToSet = async (setId, userId, words) => {
         meaning,
       });
 
-      wordIds.push(newWord.id);
+      if (newWord) {
+        wordIds.push(newWord.id);
+      }
     }
   }
 

@@ -155,7 +155,12 @@ export const listeningApi = {
       method: "POST",
       body: JSON.stringify({ title, topic, level, questionCount }),
     });
-    return normalizeLesson(response.data || {});
+    const lessonData = response.data?.lesson || response.data || {};
+    const normalized = normalizeLesson(lessonData);
+    if (response.data?.questions) {
+      normalized.questions = response.data.questions.map(normalizeQuestion);
+    }
+    return normalized;
   },
 
   // Cập nhật bài luyện nghe
