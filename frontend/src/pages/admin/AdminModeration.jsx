@@ -111,8 +111,9 @@ export default function AdminModeration() {
       else if (activeTab === "reading") res = await adminApi.getModerationReadingLessons(params);
       else res = await adminApi.getModerationListeningLessons(params);
 
-      const apiData = res.data || {};
-      const listData = apiData.data || apiData;
+      // fetchAdminWithAuth trả về toàn bộ JSON: { success, data: { items, pagination }, message }
+      // Vậy res.data là { items, pagination } (field data của response wrapper)
+      const listData = res.data || {};
       const itemsArray = listData.items || [];
       const paginationData = listData.pagination || {};
 
@@ -406,19 +407,17 @@ function ModerationDetailModal({ item, tab, onClose, onReviewed }) {
     setDetailError("");
     try {
       const res = await adminApi.getModerationRequest(item.id);
-      const moderationReq = res.data || res || {};
+      // fetchAdminWithAuth trả về { success, data: {...}, message }
+      // res.data chính là object moderationRequest từ backend
+      const moderationReq = res.data || {};
       const content = moderationReq.content || {};
       const contentDetails = content.contentDetails || {};
 
-      // Backend trả về content.words là object dạng { words: [...] }
-      // nên cần đọc content.words.words thay vì content.words trực tiếp
+      // Backend trả về content.words là array trực tiếp
       let wordsData = [];
-      if (content.words) {
-        wordsData = Array.isArray(content.words.words)
-          ? content.words.words
-          : [];
-      }
-      if (wordsData.length === 0 && Array.isArray(contentDetails.words)) {
+      if (Array.isArray(content.words)) {
+        wordsData = content.words;
+      } else if (Array.isArray(contentDetails.words)) {
         wordsData = contentDetails.words;
       }
 
